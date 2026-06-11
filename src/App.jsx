@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  Line, PieChart, Pie, Cell, AreaChart, Area, ComposedChart, ReferenceLine
+  Line, LineChart, PieChart, Pie, Cell, AreaChart, Area, ComposedChart, ReferenceLine
 } from "recharts";
+import { supabase } from "./supabaseClient";
+import Auth from "./Auth";
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const OT_RATES = { weekday: 750, weekend: 680 };
@@ -75,6 +77,26 @@ const classifyExpense = (name) => {
   }
   return 'Variable';
 };
+
+function generateMockBalanceHistory(accList) {
+  const history = [];
+  const now = new Date();
+  const factors = [0.92, 0.935, 0.95, 0.97, 0.985, 1.0];
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - (5 - i) * 7);
+    const dateStr = d.toISOString().slice(0, 10);
+    const entryBalances = {};
+    accList.forEach(a => {
+      entryBalances[a.id] = Math.round(a.balance * factors[i]);
+    });
+    history.push({
+      date: dateStr,
+      balances: entryBalances
+    });
+  }
+  return history;
+}
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 function makePeriod() {
@@ -214,7 +236,10 @@ function YMPicker({year,monthIdx,onYear,onMonth,sm}) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, sm }) {
+function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm }) {
+  const [historyView, setHistoryView] = useState('total');
+  const [historyGrouping, setHistoryGrouping] = useState('weekly');
+
   const getLocalYYYYMMDD = (d) => {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -229,6 +254,78 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   const [range, setRange] = useState('current');
   const [customStart, setCustomStart] = useState(firstDayStr);
   const [customEnd, setCustomEnd] = useState(lastDayStr);
+
+  const getWeekKey = (dStr) => {
+    const date = new Date(dStr);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(date.setDate(diff));
+    return monday.toISOString().slice(0, 10);
+  };
+
+  const formatLabel = (dStr, grouping) => {
+    const d = new Date(dStr);
+    const m = MONTH_NAMES[d.getMonth()].slice(0, 3);
+    const y = String(d.getFullYear()).slice(2);
+    if (grouping === 'monthly') {
+      return `${m} '${y}`;
+    }
+    return `${m} ${d.getDate()}`;
+  };
+
+  const getGroupedHistoryData = () => {
+    if (!balanceHistory || balanceHistory.length === 0) return [];
+    
+    const sorted = [...balanceHistory].sort((a, b) => a.date.localeCompare(b.date));
+    
+    let grouped = [];
+    if (historyGrouping === 'monthly') {
+      const monthlyMap = {};
+      sorted.forEach(entry => {
+        const key = entry.date.slice(0, 7);
+        monthlyMap[key] = entry;
+      });
+      grouped = Object.values(monthlyMap);
+    } else if (historyGrouping === 'weekly') {
+      const weeklyMap = {};
+      sorted.forEach(entry => {
+        const key = getWeekKey(entry.date);
+        weeklyMap[key] = entry;
+      });
+      grouped = Object.values(weeklyMap);
+    } else {
+      grouped = sorted;
+    }
+    
+    return grouped.map(entry => {
+      const point = {
+        date: entry.date,
+        label: formatLabel(entry.date, historyGrouping),
+        total: Math.round(Object.values(entry.balances).reduce((sum, v) => sum + v, 0) / 1000)
+      };
+      
+      const categories = ['Investment', 'Savings', 'Checking', 'Digital'];
+      categories.forEach(cat => {
+        point[cat] = 0;
+      });
+      
+      accounts.forEach(acc => {
+        const bal = entry.balances[acc.id] ?? 0;
+        point[acc.name] = Math.round(bal / 1000);
+        const cat = acc.type || 'Other';
+        if (point[cat] !== undefined) {
+          point[cat] += Math.round(bal / 1000);
+        } else {
+          point[cat] = Math.round(bal / 1000);
+        }
+      });
+      
+      return point;
+    });
+  };
+
+  const ACCOUNT_COLORS = ['#388bfd', '#3fb950', '#bc8cff', '#56d364', '#f0883e', '#d29922', '#f85149', '#a8a8a8'];
+  const getAccountColor = (index) => ACCOUNT_COLORS[index % ACCOUNT_COLORS.length];
 
   const handleCustomStartChange = (val) => {
     setCustomStart(val);
@@ -571,24 +668,66 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
       </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
-        {/* Historical Net Worth Analytics */}
+        {/* Historical Net Worth / Asset Analytics */}
         <Card style={{ marginBottom: 0 }}>
-          <SecTitle>Net Worth Trend (₱k)</SecTitle>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <SecTitle style={{ margin: 0 }}>Asset History (₱k)</SecTitle>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <select 
+                value={historyView} 
+                onChange={e => setHistoryView(e.target.value)}
+                style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.text, borderRadius: 4, fontSize: 10, padding: '2px 4px', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="total">Total</option>
+                <option value="category">Category</option>
+                <option value="account">Account</option>
+              </select>
+              <select 
+                value={historyGrouping} 
+                onChange={e => setHistoryGrouping(e.target.value)}
+                style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.text, borderRadius: 4, fontSize: 10, padding: '2px 4px', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+          </div>
           <ResponsiveContainer width="100%" height={sch}>
-            <AreaChart data={netWorthHistory} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
-              <defs>
-                <linearGradient id="cnw" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={C.green} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={C.green} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-              <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
-              <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
-              <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Net Worth']} />
-              <Area type="monotone" dataKey="val" stroke={C.green} fill="url(#cnw)" strokeWidth={2} dot={{ fill: C.green, r: 2 }} />
-            </AreaChart>
+            {historyView === 'total' ? (
+              <AreaChart data={getGroupedHistoryData()} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="cnw3" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={C.green} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={C.green} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
+                <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
+                <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Total Assets']} />
+                <Area type="monotone" dataKey="total" stroke={C.green} fill="url(#cnw3)" strokeWidth={2} dot={{ fill: C.green, r: 2 }} />
+              </AreaChart>
+            ) : (
+              <LineChart data={getGroupedHistoryData()} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
+                <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
+                <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`]} />
+                {historyView === 'category' ? (
+                  ['Investment', 'Savings', 'Checking', 'Digital'].map(cat => (
+                    <Line key={cat} type="monotone" dataKey={cat} name={cat} stroke={TYPE_CLR[cat] || C.muted} strokeWidth={2} dot={{ r: 2 }} />
+                  ))
+                ) : (
+                  accounts.map((acc, index) => (
+                    <Line key={acc.id} type="monotone" dataKey={acc.name} name={acc.name} stroke={getAccountColor(index)} strokeWidth={2} dot={{ r: 2 }} />
+                  ))
+                )}
+              </LineChart>
+            )}
           </ResponsiveContainer>
+          {historyView === 'category' && <Legend items={Object.entries(TYPE_CLR)} />}
+          {historyView === 'account' && <Legend items={accounts.map((acc, index) => [acc.name, getAccountColor(index)])} />}
         </Card>
 
         {/* Forecast */}
@@ -1017,11 +1156,68 @@ function BudgetTab({budgetData,setBudgetData,sm}) {
 }
 
 // ─── ACCOUNTS ─────────────────────────────────────────────────────────────────
-function AccountsTab({ accounts, setAccounts, sm }) {
+function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory, sm }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState(null);
   const total = accounts.reduce((s, a) => s + a.balance, 0);
   const grouped = accounts.reduce((g, a) => { (g[a.type] = g[a.type] || []).push(a); return g; }, {});
+
+  const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10));
+  const [logBalances, setLogBalances] = useState({});
+  const [updateCurrent, setUpdateCurrent] = useState(true);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  useEffect(() => {
+    const existingLog = balanceHistory.find(h => h.date === logDate);
+    if (existingLog) {
+      setLogBalances(existingLog.balances);
+    } else {
+      const currentBals = {};
+      accounts.forEach(acc => {
+        currentBals[acc.id] = acc.balance;
+      });
+      setLogBalances(currentBals);
+    }
+  }, [logDate, balanceHistory, accounts]);
+
+  const handleLogBalanceChange = (id, val) => {
+    setLogBalances(prev => ({
+      ...prev,
+      [id]: val === '' ? '' : Number(val)
+    }));
+  };
+
+  const handleSaveLog = () => {
+    const newBalances = { ...logBalances };
+    accounts.forEach(acc => {
+      if (newBalances[acc.id] === undefined || newBalances[acc.id] === '') {
+        newBalances[acc.id] = 0;
+      } else {
+        newBalances[acc.id] = Number(newBalances[acc.id]);
+      }
+    });
+
+    setBalanceHistory(prev => {
+      const existingIdx = prev.findIndex(h => h.date === logDate);
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        updated[existingIdx] = { date: logDate, balances: newBalances };
+        return updated;
+      } else {
+        return [...prev, { date: logDate, balances: newBalances }];
+      }
+    });
+
+    if (updateCurrent) {
+      setAccounts(prev => prev.map(acc => ({
+        ...acc,
+        balance: newBalances[acc.id] ?? acc.balance
+      })));
+    }
+
+    setSuccessMsg('Logged successfully!');
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
 
   function startEdit(acc) {
     setEditData({ ...acc });
@@ -1055,49 +1251,160 @@ function AccountsTab({ accounts, setAccounts, sm }) {
           {['Investment', 'Savings', 'Checking', 'Digital', ...new Set(accounts.map(a => a.type))].map(t => <option key={t} value={t} />)}
         </datalist>
       </div>
-      {Object.entries(grouped).map(([type, accs]) => (
-        <Card key={type}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: TYPE_CLR[type] || C.muted, display: 'inline-block' }} />
-                <SecTitle style={{ margin: 0 }}>{type}</SecTitle>
+
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 16 }}>
+        {/* Left Column: Logger & Recent Logs */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Logger Card */}
+          <Card style={{ marginBottom: 0 }}>
+            <SecTitle>Log Account Balances</SecTitle>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: C.muted, marginBottom: 5 }}>Select Date</div>
+              <Inp 
+                type="date" 
+                value={logDate} 
+                onChange={e => setLogDate(e.target.value)} 
+              />
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12, maxHeight: 300, overflowY: 'auto', paddingRight: 4 }}>
+              {accounts.map(acc => (
+                <div key={acc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 13, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }}>
+                    {acc.name}
+                  </span>
+                  <Inp 
+                    type="number" 
+                    value={logBalances[acc.id] ?? ''} 
+                    onChange={e => handleLogBalanceChange(acc.id, e.target.value)} 
+                    style={{ width: 110, textAlign: 'right', padding: '6px 8px' }} 
+                  />
+                </div>
+              ))}
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <input 
+                type="checkbox" 
+                id="chk-update-curr" 
+                checked={updateCurrent} 
+                onChange={e => setUpdateCurrent(e.target.checked)} 
+                style={{ accentColor: C.green, cursor: 'pointer' }}
+              />
+              <label htmlFor="chk-update-curr" style={{ fontSize: 11, color: C.muted, cursor: 'pointer', userSelect: 'none' }}>
+                Update current account balances on save
+              </label>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BtnG onClick={handleSaveLog} style={{ padding: '6px 12px', fontSize: 12 }}>Save Log</BtnG>
+              {successMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>{successMsg}</span>}
+            </div>
+          </Card>
+
+          {/* Recent Logs Card */}
+          <Card style={{ marginBottom: 0 }}>
+            <SecTitle>Recent Balance Logs</SecTitle>
+            {balanceHistory.length === 0 ? (
+              <div style={{ color: C.muted, fontSize: 12 }}>No logs recorded yet.</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.muted }}>
+                      <th style={{ textAlign: 'left', padding: '6px' }}>Date</th>
+                      <th style={{ textAlign: 'right', padding: '6px' }}>Total Assets</th>
+                      <th style={{ textAlign: 'center', padding: '6px' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...balanceHistory]
+                      .sort((a, b) => b.date.localeCompare(a.date))
+                      .slice(0, 5)
+                      .map(log => {
+                        const totAssets = Object.values(log.balances).reduce((sum, v) => sum + v, 0);
+                        return (
+                          <tr key={log.date} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                            <td style={{ padding: '8px 6px' }}>{log.date}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 600, color: C.green }}>{peso(totAssets)}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center' }}>
+                              <button 
+                                onClick={() => {
+                                  setLogDate(log.date);
+                                  setLogBalances({ ...log.balances });
+                                }}
+                                style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, color: C.muted, padding: '2px 6px', cursor: 'pointer', marginRight: 6 }}
+                              >
+                                Load
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  if (confirm(`Delete log for ${log.date}?`)) {
+                                    setBalanceHistory(prev => prev.filter(h => h.date !== log.date));
+                                  }
+                                }}
+                                style={{ background: 'none', border: `1px solid ${C.red}44`, borderRadius: 4, color: C.red, padding: '2px 6px', cursor: 'pointer' }}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
               </div>
-              <button title="Add to this category" onClick={() => addNew(type)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: '50%', color: C.muted, cursor: 'pointer', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>+</button>
-            </div>
-            <span style={{ color: TYPE_CLR[type] || C.muted, fontWeight: 700, fontSize: 14 }}>{peso(accs.reduce((s, a) => s + a.balance, 0))}</span>
-          </div>
-          {accs.map(acc => (
-            <div key={acc.id} style={{ padding: '8px 0', borderTop: `1px solid ${C.border}22` }}>
-              {editing === acc.id ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} placeholder="Account Name" />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <Inp list="acc-types" value={editData.type} onChange={e => setEditData({ ...editData, type: e.target.value })} placeholder="Category" />
-                    <Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} />
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <BtnG style={{ flex: 1 }} onClick={saveEdit}>Save Changes</BtnG>
-                    <Btn onClick={() => { setEditing(null); setEditData(null); }}>Cancel</Btn>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14 }}>{acc.name}</div>
-                    <Tag color={TYPE_CLR[acc.type] || C.muted}>{acc.type}</Tag>
-                  </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Right Column: Categories & Accounts */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {Object.entries(grouped).map(([type, accs]) => (
+            <Card key={type} style={{ marginBottom: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>{peso(acc.balance)}</span>
-                    <Btn style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => startEdit(acc)}>Edit</Btn>
-                    <button onClick={() => setAccounts(p => p.filter(a => a.id !== acc.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18 }}>×</button>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: TYPE_CLR[type] || C.muted, display: 'inline-block' }} />
+                    <SecTitle style={{ margin: 0 }}>{type}</SecTitle>
                   </div>
+                  <button title="Add to this category" onClick={() => addNew(type)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: '50%', color: C.muted, cursor: 'pointer', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>+</button>
                 </div>
-              )}
-            </div>
+                <span style={{ color: TYPE_CLR[type] || C.muted, fontWeight: 700, fontSize: 14 }}>{peso(accs.reduce((s, a) => s + a.balance, 0))}</span>
+              </div>
+              {accs.map(acc => (
+                <div key={acc.id} style={{ padding: '8px 0', borderTop: `1px solid ${C.border}22` }}>
+                  {editing === acc.id ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} placeholder="Account Name" />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <Inp list="acc-types" value={editData.type} onChange={e => setEditData({ ...editData, type: e.target.value })} placeholder="Category" />
+                        <Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <BtnG style={{ flex: 1 }} onClick={saveEdit}>Save Changes</BtnG>
+                        <Btn onClick={() => { setEditing(null); setEditData(null); }}>Cancel</Btn>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14 }}>{acc.name}</div>
+                        <Tag color={TYPE_CLR[acc.type] || C.muted}>{acc.type}</Tag>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600 }}>{peso(acc.balance)}</span>
+                        <Btn style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => startEdit(acc)}>Edit</Btn>
+                        <button onClick={() => setAccounts(p => p.filter(a => a.id !== acc.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18 }}>×</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </Card>
           ))}
-        </Card>
-      ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1495,47 +1802,138 @@ export default function App() {
   const [majorExpenses,setMajorExpenses]=useState(DEF_MAJOR);
   const [credits, setCredits] = useState([]);
   const [debts, setDebts] = useState(DEF_DEBTS);
+  const [balanceHistory, setBalanceHistory] = useState([]);
+
+  // Supabase Auth and Sync States
+  const [session, setSession] = useState(null);
+  const [syncStatus, setSyncStatus] = useState('saved');
 
   // Ref to prevent saving before initial load completes
   const ready=useRef(false);
 
-  useEffect(()=>{
-    async function load(){
-      // ✅ Each key wrapped separately — one missing key won't block the others
-      const bd=await safeGet('bujdet-v2-budgetData');
-      if(bd && Object.keys(bd).length>0){
-        setBudgetData(bd);
-      } else {
-        // Try migrating old format
-        const old=await safeGet('bujdet-budgetData');
-        if(old){
-          const migrated={};
-          Object.entries(old).forEach(([k,v])=>{migrated[OLD_MAP[k]||k]=v;});
-          setBudgetData(migrated);
-        }
-      }
-      const acc=await safeGet('bujdet-accounts');
-      if(acc) setAccounts(acc);
-      const me=await safeGet('bujdet-majorExpenses');
-      if(me) setMajorExpenses(me);
-      const cr = await safeGet('bujdet-credits');
-      if (cr) setCredits(cr);
-      const db = await safeGet('bujdet-debts');
-      if (db) setDebts(db);
+  // Monitor Authentication Session
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
 
-      // ✅ Only allow saves AFTER loading is done
-      ready.current=true;
-      setLoaded(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Fetch data on session change
+  useEffect(() => {
+    if (!session) {
+      ready.current = false;
+      setLoaded(false);
+      return;
     }
-    load();
-  },[]);
 
-  // ✅ Save only after ready — prevents overwriting storage with initial empty state
-  useEffect(()=>{if(ready.current) safeSet('bujdet-v2-budgetData',budgetData);},[budgetData]);
-  useEffect(()=>{if(ready.current) safeSet('bujdet-accounts',accounts);},[accounts]);
-  useEffect(()=>{if(ready.current) safeSet('bujdet-majorExpenses',majorExpenses);},[majorExpenses]);
+    async function loadCloudData() {
+      try {
+        const { data, error } = await supabase
+          .from('user_data')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          throw error;
+        }
+
+        if (data) {
+          setBudgetData(data.budget_data || {});
+          setAccounts(data.accounts || DEF_ACCOUNTS);
+          setMajorExpenses(data.major_expenses || DEF_MAJOR);
+          setCredits(data.credits || []);
+          setDebts(data.debts || DEF_DEBTS);
+          setBalanceHistory(data.balance_history || []);
+        } else {
+          // No cloud data yet (first login).
+          // Attempt migration from local storage fallback.
+          const bd = await safeGet('bujdet-v2-budgetData');
+          const acc = await safeGet('bujdet-accounts');
+          const me = await safeGet('bujdet-majorExpenses');
+          const cr = await safeGet('bujdet-credits');
+          const db = await safeGet('bujdet-debts');
+          const bh = await safeGet('bujdet-balanceHistory');
+
+          const initialBudget = bd && Object.keys(bd).length > 0 ? bd : {};
+          const initialAccounts = acc || DEF_ACCOUNTS;
+          const initialMajor = me || DEF_MAJOR;
+          const initialCredits = cr || [];
+          const initialDebts = db || DEF_DEBTS;
+          const initialHistory = (bh && bh.length > 0) ? bh : generateMockBalanceHistory(initialAccounts);
+
+          setBudgetData(initialBudget);
+          setAccounts(initialAccounts);
+          setMajorExpenses(initialMajor);
+          setCredits(initialCredits);
+          setDebts(initialDebts);
+          setBalanceHistory(initialHistory);
+
+          await supabase.from('user_data').insert({
+            user_id: session.user.id,
+            budget_data: initialBudget,
+            accounts: initialAccounts,
+            major_expenses: initialMajor,
+            credits: initialCredits,
+            debts: initialDebts,
+            balance_history: initialHistory,
+            updated_at: new Date().toISOString()
+          });
+        }
+      } catch (err) {
+        console.error('Error loading data from Supabase:', err);
+      } finally {
+        ready.current = true;
+        setLoaded(true);
+      }
+    }
+
+    loadCloudData();
+  }, [session]);
+
+  // Debounced Cloud Sync to Supabase
+  useEffect(() => {
+    if (!ready.current || !session) return;
+
+    setSyncStatus('syncing');
+    const timer = setTimeout(async () => {
+      try {
+        const { error } = await supabase
+          .from('user_data')
+          .upsert({
+            user_id: session.user.id,
+            budget_data: budgetData,
+            accounts: accounts,
+            major_expenses: majorExpenses,
+            credits: credits,
+            debts: debts,
+            balance_history: balanceHistory,
+            updated_at: new Date().toISOString()
+          });
+        if (error) throw error;
+        setSyncStatus('saved');
+      } catch (err) {
+        console.error('Error syncing budget data to cloud:', err);
+        setSyncStatus('error');
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [budgetData, accounts, majorExpenses, credits, debts, balanceHistory, session]);
+
+  // Keep local storage updated as a secondary fallback/offline cache
+  useEffect(() => { if (ready.current) safeSet('bujdet-v2-budgetData', budgetData); }, [budgetData]);
+  useEffect(() => { if (ready.current) safeSet('bujdet-accounts', accounts); }, [accounts]);
+  useEffect(() => { if (ready.current) safeSet('bujdet-majorExpenses', majorExpenses); }, [majorExpenses]);
   useEffect(() => { if (ready.current) safeSet('bujdet-credits', credits); }, [credits]);
   useEffect(() => { if (ready.current) safeSet('bujdet-debts', debts); }, [debts]);
+  useEffect(() => { if (ready.current) safeSet('bujdet-balanceHistory', balanceHistory); }, [balanceHistory]);
 
   const TABS=[
     {id:'dashboard',label:sm?'📊':'📊 Dashboard'},
@@ -1560,14 +1958,37 @@ export default function App() {
     calendar:'Financial Calendar'
   };
 
-  return(
+  if (!session) {
+    return <Auth />;
+  }
+
+  return (
     <div style={{background:C.bg,minHeight:'100vh',fontFamily:"'Segoe UI',system-ui,sans-serif",color:C.text}}>
       <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:sm?'0 16px':'0 24px',display:'flex',justifyContent:'space-between',alignItems:'center',height:sm?52:58}}>
         <div style={{display:'flex',alignItems:'baseline',gap:6}}>
           <span style={{fontSize:sm?16:18,fontWeight:700,color:C.green}}>Bujdet</span>
           {!sm&&<span style={{fontSize:12,color:C.muted}}>Personal Budget Tracker</span>}
         </div>
-        <span style={{fontSize:11,color:loaded?C.green:C.amber}}>{loaded?'● Saved':'Loading…'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 11, color: !loaded ? C.amber : syncStatus === 'saved' ? C.green : syncStatus === 'syncing' ? C.amber : C.red }}>
+            {!loaded ? 'Loading…' : syncStatus === 'saved' ? '● Saved to Cloud' : syncStatus === 'syncing' ? '● Syncing...' : '● Sync Error'}
+          </span>
+          {!sm && <span style={{ fontSize: 12, color: C.muted }}>{session.user.email}</span>}
+          <button 
+            onClick={() => supabase.auth.signOut()} 
+            style={{ 
+              padding: '4px 8px', 
+              borderRadius: 5, 
+              border: `1px solid ${C.border}`, 
+              background: 'transparent', 
+              color: C.muted, 
+              cursor: 'pointer', 
+              fontSize: 11 
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
 
       <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,display:'flex',overflowX:'auto',scrollbarWidth:'none'}}>
@@ -1581,10 +2002,10 @@ export default function App() {
       {sm&&<div style={{padding:'8px 16px 0',fontSize:13,fontWeight:600,color:C.muted}}>{TLBL[tab]}</div>}
 
       <div style={{padding:sm?'14px 14px 60px':'24px',maxWidth:980,margin:'0 auto'}}>
-        {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} sm={sm}/>}
+        {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm}/>}
         {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
         {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm}/>}
-        {tab==='accounts' &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm}/>}
+        {tab==='accounts' &&<AccountsTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm}/>}
         {tab==='investments'&&<InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm}/>}
         {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} sm={sm}/>}
         {tab==='credits'  &&<CreditsTab credits={credits} setCredits={setCredits} sm={sm}/>}
