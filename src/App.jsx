@@ -239,6 +239,7 @@ function YMPicker({year,monthIdx,onYear,onMonth,sm}) {
 function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm }) {
   const [historyView, setHistoryView] = useState('total');
   const [historyGrouping, setHistoryGrouping] = useState('weekly');
+  const [balanceFilter, setBalanceFilter] = useState('daily');
 
   const getLocalYYYYMMDD = (d) => {
     const y = d.getFullYear();
@@ -646,6 +647,75 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
           </div>
         </div>
       </div>
+        {/* ─── RECENT BALANCE LOGS ─── */}
+        <Card style={{ marginBottom: 0 }}>
+          <SecTitle>Recent Balance Logs</SecTitle>
+          {/* Filter Controls */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8, justifyContent: 'center' }}>
+            {['daily','monthly','yearly'].map(f => (
+              <button key={f}
+                onClick={() => setBalanceFilter(f)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: `1px solid ${balanceFilter === f ? C.green : C.border}`,
+                  background: balanceFilter === f ? 'rgba(63,185,80,0.15)' : 'transparent',
+                  color: balanceFilter === f ? C.green : C.muted,
+                  cursor: 'pointer',
+                  fontSize: 11
+                }}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+          <ResponsiveContainer width="100%" height={120}>
+            <AreaChart
+              data={(() => {
+                if (!balanceHistory || balanceHistory.length === 0) return [];
+                const sorted = [...balanceHistory].sort((a, b) => a.date.localeCompare(b.date));
+                if (balanceFilter === 'daily') {
+                  return sorted.slice(-12).map(h => ({
+                    label: h.date,
+                    total: Math.round(Object.values(h.balances).reduce((s, v) => s + v, 0) / 1000)
+                  }));
+                }
+                if (balanceFilter === 'monthly') {
+                  const monthMap = {};
+                  sorted.forEach(entry => {
+                    const key = entry.date.slice(0, 7);
+                    monthMap[key] = (monthMap[key] || 0) + Object.values(entry.balances).reduce((s, v) => s + v, 0);
+                  });
+                  return Object.entries(monthMap)
+                    .map(([k, total]) => ({ label: k, total: Math.round(total / 1000) }))
+                    .slice(-12);
+                }
+                // yearly
+                const yearMap = {};
+                sorted.forEach(entry => {
+                  const key = entry.date.slice(0, 4);
+                  yearMap[key] = (yearMap[key] || 0) + Object.values(entry.balances).reduce((s, v) => s + v, 0);
+                });
+                return Object.entries(yearMap)
+                  .map(([k, total]) => ({ label: k, total: Math.round(total / 1000) }))
+                  .slice(-5);
+              })()}
+              margin={{ top: 5, right: 5, left: -15, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="bal" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={C.blue} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={C.blue} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+              <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: 10 }} />
+              <YAxis tick={{ fill: C.muted, fontSize: 10 }} tickFormatter={v => `${v}k`} />
+              <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Total']} />
+              <Area type="monotone" dataKey="total" stroke={C.blue} fill="url(#bal)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
 
       {/* ─── CASH FLOW CHART (stacked bar chart + net savings line) ─── */}
       <Card>
