@@ -193,10 +193,23 @@ const Inp=({style,...p})=><input style={{background:'#0d1117',border:`1px solid 
 const BtnG=({children,style,...p})=><button style={{padding:'8px 14px',borderRadius:7,border:`1px solid ${C.green}`,background:'rgba(63,185,80,0.15)',color:C.green,cursor:'pointer',fontSize:13,fontWeight:600,...style}} {...p}>{children}</button>;
 const Btn=({children,style,...p})=><button style={{padding:'7px 12px',borderRadius:6,border:`1px solid ${C.border}`,background:'transparent',color:C.muted,cursor:'pointer',fontSize:13,...style}} {...p}>{children}</button>;
 
-function MetricCard({label,value,sub,color,sm}) {
+function MetricCard({label,value,sub,color,sm,masked,onToggleMask}) {
   return(
     <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,padding:sm?'12px 14px':'16px 20px'}}>
-      <div style={{fontSize:sm?11:12,color:C.muted,marginBottom:4}}>{label}</div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginBottom:4}}>
+        <div style={{fontSize:sm?11:12,color:C.muted}}>{label}</div>
+        {onToggleMask&&(
+          <button
+            type="button"
+            onClick={onToggleMask}
+            title={masked?'Show amount':'Hide amount'}
+            aria-label={masked?'Show amount':'Hide amount'}
+            style={{width:24,height:24,borderRadius:6,border:`1px solid ${C.border}`,background:'transparent',color:masked?C.amber:C.muted,cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',padding:0}}
+          >
+            {masked?'***':'$'}
+          </button>
+        )}
+      </div>
       <div style={{fontSize:sm?17:22,fontWeight:700,color:color||C.text,lineHeight:1.2}}>{value}</div>
       {sub&&<div style={{fontSize:11,color:C.muted,marginTop:3}}>{sub}</div>}
     </div>
@@ -236,10 +249,97 @@ function YMPicker({year,monthIdx,onYear,onMonth,sm}) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
+const DEFAULT_CARD_ORDER = ['metrics','balance-logs','cashflow','charts-row','budget-row','insights-row'];
+
 function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm }) {
   const [historyView, setHistoryView] = useState('total');
   const [historyGrouping, setHistoryGrouping] = useState('weekly');
   const [balanceFilter, setBalanceFilter] = useState('daily');
+  const [moneyMasked, setMoneyMasked] = useState(() => {
+    try {
+      return localStorage.getItem('dashboardMoneyMasked') === 'true';
+    } catch {}
+    return false;
+  });
+  const toggleMoneyMask = () => {
+    const next = !moneyMasked;
+    setMoneyMasked(next);
+    try {
+      localStorage.setItem('dashboardMoneyMasked', String(next));
+    } catch {}
+  };
+  const confidentialValue = (value) => moneyMasked ? '*****' : value;
+
+  // ── Drag-and-drop card order ──
+  const [cardOrder, setCardOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardCardOrder');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge: keep saved order but include any new sections not yet saved
+        const merged = parsed.filter(id => DEFAULT_CARD_ORDER.includes(id));
+        DEFAULT_CARD_ORDER.forEach(id => { if (!merged.includes(id)) merged.push(id); });
+        return merged;
+      }
+    } catch {}
+    return [...DEFAULT_CARD_ORDER];
+  });
+  const dragId   = useRef(null);
+  const dragOver = useRef(null);
+  const [dragActive, setDragActive] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
+
+  const handleDragStart = (id) => { dragId.current = id; setDragActive(id); };
+  const handleDragEnter = (id) => { dragOver.current = id; setDropTarget(id); };
+  const handleDragEnd   = () => {
+    if (dragId.current && dragOver.current && dragId.current !== dragOver.current) {
+      const next = [...cardOrder];
+      const from = next.indexOf(dragId.current);
+      const to   = next.indexOf(dragOver.current);
+      next.splice(from, 1);
+      next.splice(to, 0, dragId.current);
+      setCardOrder(next);
+      localStorage.setItem('dashboardCardOrder', JSON.stringify(next));
+    }
+    dragId.current = null; dragOver.current = null;
+    setDragActive(null); setDropTarget(null);
+  };
+  const resetCardOrder = () => {
+    setCardOrder([...DEFAULT_CARD_ORDER]);
+    setCardSizes({});
+    setCardCollapsed({});
+    localStorage.removeItem('dashboardCardOrder');
+    localStorage.removeItem('dashboardCardSizes');
+    localStorage.removeItem('dashboardCardCollapsed');
+  };
+
+  // ── Per-section width: 'full' | 'half' ──
+  const [cardSizes, setCardSizes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardCardSizes');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {};
+  });
+  const toggleSize = (id) => {
+    const next = { ...cardSizes, [id]: cardSizes[id] === 'half' ? 'full' : 'half' };
+    setCardSizes(next);
+    localStorage.setItem('dashboardCardSizes', JSON.stringify(next));
+  };
+
+  // ── Per-section collapse ──
+  const [cardCollapsed, setCardCollapsed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardCardCollapsed');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {};
+  });
+  const toggleCollapse = (id) => {
+    const next = { ...cardCollapsed, [id]: !cardCollapsed[id] };
+    setCardCollapsed(next);
+    localStorage.setItem('dashboardCardCollapsed', JSON.stringify(next));
+  };
 
   const getLocalYYYYMMDD = (d) => {
     const y = d.getFullYear();
@@ -572,8 +672,314 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   const pieData = accounts.map(a => ({ name: a.name, value: a.balance, color: TYPE_CLR[a.type] || C.muted }));
   const ch = sm ? 180 : 230, sch = sm ? 155 : 195;
 
+  // ── Section renderers ──
+  const sectionContent = (id) => {
+    switch (id) {
+      case 'metrics': return (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(7, 1fr)', gap: sm ? 8 : 12 }}>
+          <MetricCard label="Net Worth" value={confidentialValue(fmtK(netWorth))} color={C.green} sm={sm} masked={moneyMasked} onToggleMask={toggleMoneyMask} />
+          <MetricCard label="Monthly Savings" value={confidentialValue(fmtK(stats.reduce((sum, s) => sum + s.savings, 0)))} color={C.blue} sm={sm} masked={moneyMasked} onToggleMask={toggleMoneyMask} />
+          <MetricCard label="Savings Rate" value={Math.round(avgRate) + '%'} color={avgRate >= 20 ? C.green : C.amber} sm={sm} />
+          <MetricCard label="Emergency Fund" value={safetyMonths.toFixed(1) + ' Mo'} color={safetyMonths >= 6 ? C.green : safetyMonths >= 3 ? C.amber : C.red} sm={sm} />
+          <MetricCard label="Debt Ratio" value={debtRatio.toFixed(0) + '%'} color={debtRatio <= 20 ? C.green : debtRatio <= 40 ? C.amber : C.red} sm={sm} />
+          <MetricCard label="Upcoming Bills" value={upcomingBillsCount + ' Due'} color={upcomingBillsCount > 0 ? C.amber : C.muted} sm={sm} />
+          <div style={{ background: C.card, borderRadius: 10, border: `1px solid ${C.border}`, padding: sm ? '12px 14px' : '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ fontSize: sm ? 10 : 11, color: C.muted, marginBottom: 2 }}>Health Score</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <span style={{ fontSize: sm ? 18 : 22, fontWeight: 800, color: grade.color }}>{healthScore}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: grade.color }}>{grade.label}</span>
+            </div>
+          </div>
+        </div>
+      );
+
+      case 'balance-logs': return (
+        <Card style={{ marginBottom: 0 }}>
+          <SecTitle>Recent Balance Logs</SecTitle>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8, justifyContent: 'center' }}>
+            {['daily','monthly','yearly'].map(f => (
+              <button key={f} onClick={() => setBalanceFilter(f)} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${balanceFilter === f ? C.green : C.border}`, background: balanceFilter === f ? 'rgba(63,185,80,0.15)' : 'transparent', color: balanceFilter === f ? C.green : C.muted, cursor: 'pointer', fontSize: 11 }}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+          <ResponsiveContainer width="100%" height={120}>
+            <AreaChart data={(() => {
+              if (!balanceHistory || balanceHistory.length === 0) return [];
+              const sorted = [...balanceHistory].sort((a, b) => a.date.localeCompare(b.date));
+              if (balanceFilter === 'daily') return sorted.slice(-12).map(h => ({ label: h.date, total: Math.round(Object.values(h.balances).reduce((s, v) => s + v, 0) / 1000) }));
+              if (balanceFilter === 'monthly') {
+                const monthMap = {};
+                sorted.forEach(entry => { const key = entry.date.slice(0, 7); monthMap[key] = (monthMap[key] || 0) + Object.values(entry.balances).reduce((s, v) => s + v, 0); });
+                return Object.entries(monthMap).map(([k, total]) => ({ label: k, total: Math.round(total / 1000) })).slice(-12);
+              }
+              const yearMap = {};
+              sorted.forEach(entry => { const key = entry.date.slice(0, 4); yearMap[key] = (yearMap[key] || 0) + Object.values(entry.balances).reduce((s, v) => s + v, 0); });
+              return Object.entries(yearMap).map(([k, total]) => ({ label: k, total: Math.round(total / 1000) })).slice(-5);
+            })()} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+              <defs><linearGradient id="bal" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.blue} stopOpacity={0.3} /><stop offset="95%" stopColor={C.blue} stopOpacity={0} /></linearGradient></defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+              <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: 10 }} />
+              <YAxis tick={{ fill: C.muted, fontSize: 10 }} tickFormatter={v => `${v}k`} />
+              <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Total']} />
+              <Area type="monotone" dataKey="total" stroke={C.blue} fill="url(#bal)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
+      );
+
+      case 'cashflow': return (
+        <Card style={{ marginBottom: 0 }}>
+          <SecTitle>Cash Flow Distribution (₱k)</SecTitle>
+          <ResponsiveContainer width="100%" height={ch}>
+            <ComposedChart data={stats} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+              <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
+              <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
+              <Tooltip contentStyle={ttip} formatter={(v, n) => [`₱${v}k`, n]} />
+              <Bar dataKey="fixed" name="Fixed Expenses" stackId="a" fill={C.red} />
+              <Bar dataKey="variable" name="Variable Expenses" stackId="a" fill={C.orange} />
+              <Bar dataKey="debt" name="Debt Payments" stackId="a" fill={C.amber} />
+              <Bar dataKey="investment" name="Investments" stackId="a" fill={C.purple} />
+              <Bar dataKey="chartSavings" name="Savings" stackId="a" fill={C.green} />
+              <Line type="monotone" dataKey={d => Math.round(d.income / 1000)} name="Net Income" stroke={C.blue} strokeWidth={2} dot={{ fill: C.blue, r: 3 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+          <Legend items={[['Income', C.blue], ['Fixed', C.red], ['Variable', C.orange], ['Debt', C.amber], ['Investment', C.purple], ['Savings', C.green]]} />
+        </Card>
+      );
+
+      case 'charts-row': return (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3, 1fr)', gap: 12 }}>
+          <Card style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <SecTitle style={{ margin: 0 }}>Asset History (₱k)</SecTitle>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <select value={historyView} onChange={e => setHistoryView(e.target.value)} style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.text, borderRadius: 4, fontSize: 10, padding: '2px 4px', cursor: 'pointer', outline: 'none' }}>
+                  <option value="total">Total</option>
+                  <option value="category">Category</option>
+                  <option value="account">Account</option>
+                </select>
+                <select value={historyGrouping} onChange={e => setHistoryGrouping(e.target.value)} style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.text, borderRadius: 4, fontSize: 10, padding: '2px 4px', cursor: 'pointer', outline: 'none' }}>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={sch}>
+              {historyView === 'total' ? (
+                <AreaChart data={getGroupedHistoryData()} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
+                  <defs><linearGradient id="cnw3" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.green} stopOpacity={0.3} /><stop offset="95%" stopColor={C.green} stopOpacity={0} /></linearGradient></defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                  <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
+                  <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
+                  <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Total Assets']} />
+                  <Area type="monotone" dataKey="total" stroke={C.green} fill="url(#cnw3)" strokeWidth={2} dot={{ fill: C.green, r: 2 }} />
+                </AreaChart>
+              ) : (
+                <LineChart data={getGroupedHistoryData()} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                  <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
+                  <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
+                  <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`]} />
+                  {historyView === 'category' ? (
+                    ['Investment', 'Savings', 'Checking', 'Digital'].map(cat => (
+                      <Line key={cat} type="monotone" dataKey={cat} name={cat} stroke={TYPE_CLR[cat] || C.muted} strokeWidth={2} dot={{ r: 2 }} />
+                    ))
+                  ) : (
+                    accounts.map((acc, index) => (
+                      <Line key={acc.id} type="monotone" dataKey={acc.name} name={acc.name} stroke={getAccountColor(index)} strokeWidth={2} dot={{ r: 2 }} />
+                    ))
+                  )}
+                </LineChart>
+              )}
+            </ResponsiveContainer>
+            {historyView === 'category' && <Legend items={Object.entries(TYPE_CLR)} />}
+            {historyView === 'account' && <Legend items={accounts.map((acc, index) => [acc.name, getAccountColor(index)])} />}
+          </Card>
+          <Card style={{ marginBottom: 0 }}>
+            <SecTitle>Net Worth Forecast (₱k)</SecTitle>
+            <ResponsiveContainer width="100%" height={sch}>
+              <AreaChart data={forecast} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
+                <defs><linearGradient id="cf" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.blue} stopOpacity={0.3} /><stop offset="95%" stopColor={C.blue} stopOpacity={0} /></linearGradient></defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
+                <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
+                <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Forecast']} />
+                <Area type="monotone" dataKey="val" stroke={C.blue} fill="url(#cf)" strokeWidth={2} dot={{ fill: C.blue, r: 2 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+          <Card style={{ marginBottom: 0 }}>
+            <SecTitle>Savings Rate %</SecTitle>
+            <ResponsiveContainer width="100%" height={sch}>
+              <BarChart data={stats} margin={{ top: 5, right: 5, left: sm ? -28 : -25, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
+                <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 10 }} tickFormatter={v => `${v}%`} />
+                <Tooltip contentStyle={ttip} formatter={v => [`${Math.round(v)}%`, 'Rate']} />
+                <ReferenceLine y={20} stroke={C.amber} strokeDasharray="4 2" />
+                <Bar dataKey={d => Math.round(d.savingsRate)} fill={C.teal} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+      );
+
+      case 'budget-row': return (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '3fr 2fr', gap: 12 }}>
+          <Card style={{ marginBottom: 0 }}>
+            <SecTitle>Budget vs Actual</SecTitle>
+            {bvsA.length === 0 ? (
+              <div style={{ color: C.muted, fontSize: 13, padding: 10 }}>No expense data for this range.</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 6 }}>
+                      <th style={{ textAlign: 'left', padding: '6px 4px', color: C.muted }}>Expense Category</th>
+                      <th style={{ textAlign: 'right', padding: '6px 4px', color: C.muted }}>Budget</th>
+                      <th style={{ textAlign: 'right', padding: '6px 4px', color: C.muted }}>Actual</th>
+                      <th style={{ textAlign: 'right', padding: '6px 4px', color: C.muted }}>Used %</th>
+                      <th style={{ textAlign: 'center', padding: '6px 4px', color: C.muted }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bvsA.slice(0, 10).map((row, i) => {
+                      const pct = row.budget > 0 ? (row.actual / row.budget) * 100 : 0;
+                      const isOver = row.actual > row.budget;
+                      return (
+                        <tr key={i} style={{ borderBottom: `1px solid ${C.border}11` }}>
+                          <td style={{ padding: '8px 4px', fontWeight: 600 }}>{row.name}</td>
+                          <td style={{ padding: '8px 4px', textAlign: 'right' }}>{peso(row.budget)}</td>
+                          <td style={{ padding: '8px 4px', textAlign: 'right', color: isOver ? C.red : C.text }}>{peso(row.actual)}</td>
+                          <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                              <span style={{ fontSize: 10, color: isOver ? C.red : C.muted }}>{pct.toFixed(0)}%</span>
+                              <div style={{ width: 40, height: 4, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
+                                <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: isOver ? C.red : C.green }} />
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                            {isOver ? <span style={{ color: C.red }}>⚠️</span> : <span style={{ color: C.green }}>✅</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Card style={{ marginBottom: 0 }}>
+              <SecTitle>Upcoming Obligations</SecTitle>
+              {upcomingBills.length === 0 ? (
+                <div style={{ color: C.muted, fontSize: 12, padding: 4 }}>No bills due in this period.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {upcomingBills.map((b, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, borderBottom: `1px solid ${C.border}22`, paddingBottom: 4 }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{b.name}</div>
+                        <div style={{ fontSize: 10, color: C.muted }}>Payroll Period: {b.period}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 700, color: C.red }}>{peso(b.amount)}</div>
+                        <Tag color={b.daysLeft <= 3 ? C.red : C.amber}>{b.daysLeft === 0 ? 'Due Today' : `Due in ${b.daysLeft}d`}</Tag>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+            <Card style={{ marginBottom: 0 }}>
+              <SecTitle>Goal Progress</SecTitle>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {majorExpenses.slice(0, 4).map(e => {
+                  const pct = e.budget > 0 ? (e.actual / e.budget) * 100 : 0;
+                  return (
+                    <div key={e.id} style={{ fontSize: 11 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <span style={{ fontWeight: 600 }}>{e.name}</span>
+                        <span style={{ color: C.muted }}>{peso(e.actual)} / {peso(e.budget)}</span>
+                      </div>
+                      <div style={{ background: C.border, borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: e.done ? C.green : C.blue, borderRadius: 4 }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: C.muted, marginTop: 1 }}>
+                        <span>{pct.toFixed(0)}% saved</span>
+                        {e.date && <span>Target: {e.date}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
+        </div>
+      );
+
+      case 'insights-row': return (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 12 }}>
+          <Card style={{ marginBottom: 0 }}>
+            <SecTitle>Smart Insights</SecTitle>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {insights.map((ins, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, padding: '6px 8px', borderRadius: 6, background: ins.type === 'warn' ? `${C.red}11` : ins.type === 'good' ? `${C.green}11` : `${C.blue}11` }}>
+                  <span style={{ color: ins.type === 'warn' ? C.red : ins.type === 'good' ? C.green : C.blue }}>
+                    {ins.type === 'warn' ? '● Warning:' : ins.type === 'good' ? '● Safe:' : '● Note:'}
+                  </span>
+                  <span style={{ color: C.text }}>{ins.text}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card style={{ marginBottom: 0 }}>
+            <SecTitle>Net Worth Breakdown</SecTitle>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ResponsiveContainer width={110} height={110}>
+                <PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={30} outerRadius={50}>{pieData.map((d, i) => <Cell key={i} fill={d.color} />)}</Pie><Tooltip contentStyle={ttip} formatter={v => peso(v)} /></PieChart>
+              </ResponsiveContainer>
+              <div style={{ flex: 1 }}>
+                {[...new Set(accounts.map(a => a.type))].map(type => {
+                  const color = TYPE_CLR[type] || C.muted;
+                  const t = accounts.filter(a => a.type === type).reduce((s, a) => s + a.balance, 0);
+                  if (!t) return null;
+                  return (
+                    <div key={type} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 5 }}>
+                      <span style={{ color, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: 2, background: color, display: 'inline-block' }} />
+                        {type}
+                      </span>
+                      <span style={{ color: C.muted }}>{fmtK(t)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
+        </div>
+      );
+
+      default: return null;
+    }
+  };
+
+  const SECTION_LABELS = {
+    'metrics': 'Key Metrics',
+    'balance-logs': 'Balance Logs',
+    'cashflow': 'Cash Flow',
+    'charts-row': 'Charts',
+    'budget-row': 'Budget & Goals',
+    'insights-row': 'Insights',
+  };
+
   return (
     <div>
+      {/* Period toolbar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14, alignItems: 'center' }}>
         <span style={{ fontSize: 12, color: C.muted }}>Period:</span>
         {[
@@ -587,393 +993,145 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
             {l}
           </button>
         ))}
-
         {range === 'custom' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
-            <input
-              type="date"
-              value={customStart}
-              onChange={e => handleCustomStartChange(e.target.value)}
-              style={{
-                background: C.card,
-                border: `1px solid ${C.border}`,
-                color: C.text,
-                borderRadius: 6,
-                padding: '6px 10px',
-                fontSize: 12,
-                outline: 'none',
-                fontFamily: 'inherit'
-              }}
-            />
+            <input type="date" value={customStart} onChange={e => handleCustomStartChange(e.target.value)} style={{ background: C.card, border: `1px solid ${C.border}`, color: C.text, borderRadius: 6, padding: '6px 10px', fontSize: 12, outline: 'none', fontFamily: 'inherit' }} />
             <span style={{ color: C.muted, fontSize: 12 }}>to</span>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={e => handleCustomEndChange(e.target.value)}
-              style={{
-                background: C.card,
-                border: `1px solid ${C.border}`,
-                color: C.text,
-                borderRadius: 6,
-                padding: '6px 10px',
-                fontSize: 12,
-                outline: 'none',
-                fontFamily: 'inherit'
-              }}
-            />
+            <input type="date" value={customEnd} onChange={e => handleCustomEndChange(e.target.value)} style={{ background: C.card, border: `1px solid ${C.border}`, color: C.text, borderRadius: 6, padding: '6px 10px', fontSize: 12, outline: 'none', fontFamily: 'inherit' }} />
           </div>
         )}
+        {/* Reset layout button */}
+        <button
+          onClick={resetCardOrder}
+          title="Reset dashboard layout to default"
+          style={{ marginLeft: 'auto', padding: '5px 11px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}
+        >
+          ↺ Reset Layout
+        </button>
       </div>
 
       <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
         Viewing: {range === 'custom' ? `${customStart} to ${customEnd}` : (keys.length > 0 ? `${displayKey(keys[0])} – ${displayKey(keys[keys.length - 1])}` : '')}
       </div>
 
-      {/* ─── EXECUTIVE METRICS PANEL ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(7, 1fr)', gap: sm ? 8 : 12, marginBottom: 14 }}>
-        <MetricCard label="Net Worth" value={fmtK(netWorth)} color={C.green} sm={sm} />
-        <MetricCard label="Monthly Savings" value={fmtK(stats.reduce((sum, s) => sum + s.savings, 0))} color={C.blue} sm={sm} />
-        <MetricCard label="Savings Rate" value={Math.round(avgRate) + '%'} color={avgRate >= 20 ? C.green : C.amber} sm={sm} />
-        <MetricCard label="Emergency Fund" value={safetyMonths.toFixed(1) + ' Mo'} color={safetyMonths >= 6 ? C.green : safetyMonths >= 3 ? C.amber : C.red} sm={sm} />
-        <MetricCard label="Debt Ratio" value={debtRatio.toFixed(0) + '%'} color={debtRatio <= 20 ? C.green : debtRatio <= 40 ? C.amber : C.red} sm={sm} />
-        <MetricCard label="Upcoming Bills" value={upcomingBillsCount + ' Due'} color={upcomingBillsCount > 0 ? C.amber : C.muted} sm={sm} />
-        
-        {/* Health Score Widget */}
-        <div style={{ background: C.card, borderRadius: 10, border: `1px solid ${C.border}`, padding: sm ? '12px 14px' : '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ fontSize: sm ? 10 : 11, color: C.muted, marginBottom: 2 }}>Health Score</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontSize: sm ? 18 : 22, fontWeight: 800, color: grade.color }}>{healthScore}</span>
-            <span style={{ fontSize: 10, fontWeight: 600, color: grade.color }}>{grade.label}</span>
-          </div>
-        </div>
-      </div>
-        {/* ─── RECENT BALANCE LOGS ─── */}
-        <Card style={{ marginBottom: 0 }}>
-          <SecTitle>Recent Balance Logs</SecTitle>
-          {/* Filter Controls */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8, justifyContent: 'center' }}>
-            {['daily','monthly','yearly'].map(f => (
-              <button key={f}
-                onClick={() => setBalanceFilter(f)}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                  border: `1px solid ${balanceFilter === f ? C.green : C.border}`,
-                  background: balanceFilter === f ? 'rgba(63,185,80,0.15)' : 'transparent',
-                  color: balanceFilter === f ? C.green : C.muted,
-                  cursor: 'pointer',
-                  fontSize: 11
-                }}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
-          <ResponsiveContainer width="100%" height={120}>
-            <AreaChart
-              data={(() => {
-                if (!balanceHistory || balanceHistory.length === 0) return [];
-                const sorted = [...balanceHistory].sort((a, b) => a.date.localeCompare(b.date));
-                if (balanceFilter === 'daily') {
-                  return sorted.slice(-12).map(h => ({
-                    label: h.date,
-                    total: Math.round(Object.values(h.balances).reduce((s, v) => s + v, 0) / 1000)
-                  }));
-                }
-                if (balanceFilter === 'monthly') {
-                  const monthMap = {};
-                  sorted.forEach(entry => {
-                    const key = entry.date.slice(0, 7);
-                    monthMap[key] = (monthMap[key] || 0) + Object.values(entry.balances).reduce((s, v) => s + v, 0);
-                  });
-                  return Object.entries(monthMap)
-                    .map(([k, total]) => ({ label: k, total: Math.round(total / 1000) }))
-                    .slice(-12);
-                }
-                // yearly
-                const yearMap = {};
-                sorted.forEach(entry => {
-                  const key = entry.date.slice(0, 4);
-                  yearMap[key] = (yearMap[key] || 0) + Object.values(entry.balances).reduce((s, v) => s + v, 0);
-                });
-                return Object.entries(yearMap)
-                  .map(([k, total]) => ({ label: k, total: Math.round(total / 1000) }))
-                  .slice(-5);
-              })()}
-              margin={{ top: 5, right: 5, left: -15, bottom: 0 }}
+      {/* ── Draggable sections ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 14, alignItems: 'start' }}>
+        {cardOrder.map(id => {
+          const isHalf     = cardSizes[id] === 'half';
+          const isCollapsed = !!cardCollapsed[id];
+          return (
+            <div
+              key={id}
+              draggable
+              onDragStart={() => handleDragStart(id)}
+              onDragEnter={() => handleDragEnter(id)}
+              onDragEnd={handleDragEnd}
+              onDragOver={e => e.preventDefault()}
+              style={{
+                gridColumn: sm ? '1' : (isHalf ? 'span 1' : 'span 2'),
+                position: 'relative',
+                opacity: dragActive === id ? 0.45 : 1,
+                outline: dropTarget === id && dragActive !== id ? `2px dashed ${C.green}` : '2px solid transparent',
+                outlineOffset: 3,
+                borderRadius: 10,
+                transition: 'opacity 0.18s, outline 0.15s',
+              }}
             >
-              <defs>
-                <linearGradient id="bal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={C.blue} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={C.blue} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-              <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: 10 }} />
-              <YAxis tick={{ fill: C.muted, fontSize: 10 }} tickFormatter={v => `${v}k`} />
-              <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Total']} />
-              <Area type="monotone" dataKey="total" stroke={C.blue} fill="url(#bal)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
-
-      {/* ─── CASH FLOW CHART (stacked bar chart + net savings line) ─── */}
-      <Card>
-        <SecTitle>Cash Flow Distribution (₱k)</SecTitle>
-        <ResponsiveContainer width="100%" height={ch}>
-          <ComposedChart data={stats} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-            <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
-            <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
-            <Tooltip contentStyle={ttip} formatter={(v, n) => [`₱${v}k`, n]} />
-            <Bar dataKey="fixed" name="Fixed Expenses" stackId="a" fill={C.red} />
-            <Bar dataKey="variable" name="Variable Expenses" stackId="a" fill={C.orange} />
-            <Bar dataKey="debt" name="Debt Payments" stackId="a" fill={C.amber} />
-            <Bar dataKey="investment" name="Investments" stackId="a" fill={C.purple} />
-            <Bar dataKey="chartSavings" name="Savings" stackId="a" fill={C.green} />
-            <Line type="monotone" dataKey={d => Math.round(d.income / 1000)} name="Net Income" stroke={C.blue} strokeWidth={2} dot={{ fill: C.blue, r: 3 }} />
-          </ComposedChart>
-        </ResponsiveContainer>
-        <Legend items={[['Income', C.blue], ['Fixed', C.red], ['Variable', C.orange], ['Debt', C.amber], ['Investment', C.purple], ['Savings', C.green]]} />
-      </Card>
-
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
-        {/* Historical Net Worth / Asset Analytics */}
-        <Card style={{ marginBottom: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <SecTitle style={{ margin: 0 }}>Asset History (₱k)</SecTitle>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <select 
-                value={historyView} 
-                onChange={e => setHistoryView(e.target.value)}
-                style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.text, borderRadius: 4, fontSize: 10, padding: '2px 4px', cursor: 'pointer', outline: 'none' }}
+              {/* Control bar: drag handle + width toggle + collapse */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  zIndex: 10,
+                  display: 'flex',
+                  gap: 3,
+                  alignItems: 'center',
+                  opacity: 0.35,
+                  transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '1'; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '0.35'; }}
               >
-                <option value="total">Total</option>
-                <option value="category">Category</option>
-                <option value="account">Account</option>
-              </select>
-              <select 
-                value={historyGrouping} 
-                onChange={e => setHistoryGrouping(e.target.value)}
-                style={{ background: C.bg, border: `1px solid ${C.border}`, color: C.text, borderRadius: 4, fontSize: 10, padding: '2px 4px', cursor: 'pointer', outline: 'none' }}
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={sch}>
-            {historyView === 'total' ? (
-              <AreaChart data={getGroupedHistoryData()} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="cnw3" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={C.green} stopOpacity={0.3} />
-                    <stop offset="95%" stopColor={C.green} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
-                <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
-                <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Total Assets']} />
-                <Area type="monotone" dataKey="total" stroke={C.green} fill="url(#cnw3)" strokeWidth={2} dot={{ fill: C.green, r: 2 }} />
-              </AreaChart>
-            ) : (
-              <LineChart data={getGroupedHistoryData()} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
-                <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
-                <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`]} />
-                {historyView === 'category' ? (
-                  ['Investment', 'Savings', 'Checking', 'Digital'].map(cat => (
-                    <Line key={cat} type="monotone" dataKey={cat} name={cat} stroke={TYPE_CLR[cat] || C.muted} strokeWidth={2} dot={{ r: 2 }} />
-                  ))
-                ) : (
-                  accounts.map((acc, index) => (
-                    <Line key={acc.id} type="monotone" dataKey={acc.name} name={acc.name} stroke={getAccountColor(index)} strokeWidth={2} dot={{ r: 2 }} />
-                  ))
-                )}
-              </LineChart>
-            )}
-          </ResponsiveContainer>
-          {historyView === 'category' && <Legend items={Object.entries(TYPE_CLR)} />}
-          {historyView === 'account' && <Legend items={accounts.map((acc, index) => [acc.name, getAccountColor(index)])} />}
-        </Card>
-
-        {/* Forecast */}
-        <Card style={{ marginBottom: 0 }}>
-          <SecTitle>Net Worth Forecast (₱k)</SecTitle>
-          <ResponsiveContainer width="100%" height={sch}>
-            <AreaChart data={forecast} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
-              <defs><linearGradient id="cf" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.blue} stopOpacity={0.3} /><stop offset="95%" stopColor={C.blue} stopOpacity={0} /></linearGradient></defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-              <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
-              <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
-              <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Forecast']} />
-              <Area type="monotone" dataKey="val" stroke={C.blue} fill="url(#cf)" strokeWidth={2} dot={{ fill: C.blue, r: 2 }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
-
-        {/* Savings Rate */}
-        <Card style={{ marginBottom: 0 }}>
-          <SecTitle>Savings Rate %</SecTitle>
-          <ResponsiveContainer width="100%" height={sch}>
-            <BarChart data={stats} margin={{ top: 5, right: 5, left: sm ? -28 : -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-              <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
-              <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 10 }} tickFormatter={v => `${v}%`} />
-              <Tooltip contentStyle={ttip} formatter={v => [`${Math.round(v)}%`, 'Rate']} />
-              <ReferenceLine y={20} stroke={C.amber} strokeDasharray="4 2" />
-              <Bar dataKey={d => Math.round(d.savingsRate)} fill={C.teal} radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '3fr 2fr', gap: 12, marginBottom: 14 }}>
-        {/* ─── BUDGET VS ACTUAL ─── */}
-        <Card style={{ marginBottom: 0 }}>
-          <SecTitle>Budget vs Actual</SecTitle>
-          {bvsA.length === 0 ? (
-            <div style={{ color: C.muted, fontSize: 13, padding: 10 }}>No expense data for this range.</div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ borderBottom: `1px solid ${C.border}`, paddingBottom: 6 }}>
-                    <th style={{ textAlign: 'left', padding: '6px 4px', color: C.muted }}>Expense Category</th>
-                    <th style={{ textAlign: 'right', padding: '6px 4px', color: C.muted }}>Budget</th>
-                    <th style={{ textAlign: 'right', padding: '6px 4px', color: C.muted }}>Actual</th>
-                    <th style={{ textAlign: 'right', padding: '6px 4px', color: C.muted }}>Used %</th>
-                    <th style={{ textAlign: 'center', padding: '6px 4px', color: C.muted }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bvsA.slice(0, 10).map((row, i) => {
-                    const pct = row.budget > 0 ? (row.actual / row.budget) * 100 : 0;
-                    const isOver = row.actual > row.budget;
-                    return (
-                      <tr key={i} style={{ borderBottom: `1px solid ${C.border}11` }}>
-                        <td style={{ padding: '8px 4px', fontWeight: 600 }}>{row.name}</td>
-                        <td style={{ padding: '8px 4px', textAlign: 'right' }}>{peso(row.budget)}</td>
-                        <td style={{ padding: '8px 4px', textAlign: 'right', color: isOver ? C.red : C.text }}>{peso(row.actual)}</td>
-                        <td style={{ padding: '8px 4px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                            <span style={{ fontSize: 10, color: isOver ? C.red : C.muted }}>{pct.toFixed(0)}%</span>
-                            <div style={{ width: 40, height: 4, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
-                              <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: isOver ? C.red : C.green }} />
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '8px 4px', textAlign: 'center' }}>
-                          {isOver ? <span style={{ color: C.red }}>⚠️</span> : <span style={{ color: C.green }}>✅</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-
-        {/* ─── UPCOMING OBLIGATIONS & OTHERS ─── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Upcoming Obligations */}
-          <Card style={{ marginBottom: 0 }}>
-            <SecTitle>Upcoming Obligations</SecTitle>
-            {upcomingBills.length === 0 ? (
-              <div style={{ color: C.muted, fontSize: 12, padding: 4 }}>No bills due in this period.</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {upcomingBills.map((b, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, borderBottom: `1px solid ${C.border}22`, paddingBottom: 4 }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{b.name}</div>
-                      <div style={{ fontSize: 10, color: C.muted }}>Payroll Period: {b.period}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 700, color: C.red }}>{peso(b.amount)}</div>
-                      <Tag color={b.daysLeft <= 3 ? C.red : C.amber}>
-                        {b.daysLeft === 0 ? 'Due Today' : `Due in ${b.daysLeft}d`}
-                      </Tag>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Goal Tracker */}
-          <Card style={{ marginBottom: 0 }}>
-            <SecTitle>Goal Progress</SecTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {majorExpenses.slice(0, 4).map(e => {
-                const pct = e.budget > 0 ? (e.actual / e.budget) * 100 : 0;
-                return (
-                  <div key={e.id} style={{ fontSize: 11 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                      <span style={{ fontWeight: 600 }}>{e.name}</span>
-                      <span style={{ color: C.muted }}>{peso(e.actual)} / {peso(e.budget)}</span>
-                    </div>
-                    <div style={{ background: C.border, borderRadius: 4, height: 6, overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
-                      <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: e.done ? C.green : C.blue, borderRadius: 4 }} />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: C.muted, marginTop: 1 }}>
-                      <span>{pct.toFixed(0)}% saved</span>
-                      {e.date && <span>Target: {e.date}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* ─── SMART INSIGHTS & ALLOCATION ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 12 }}>
-        {/* Insights Widget */}
-        <Card style={{ marginBottom: 0 }}>
-          <SecTitle>Smart Insights</SecTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {insights.map((ins, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, padding: '6px 8px', borderRadius: 6, background: ins.type === 'warn' ? `${C.red}11` : ins.type === 'good' ? `${C.green}11` : `${C.blue}11` }}>
-                <span style={{ color: ins.type === 'warn' ? C.red : ins.type === 'good' ? C.green : C.blue }}>
-                  {ins.type === 'warn' ? '● Warning:' : ins.type === 'good' ? '● Safe:' : '● Note:'}
+                {/* Width toggle */}
+                <button
+                  onClick={e => { e.stopPropagation(); toggleSize(id); }}
+                  title={isHalf ? 'Expand to full width' : 'Shrink to half width'}
+                  style={{
+                    background: `${C.card}ee`,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 4,
+                    color: C.muted,
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    padding: '2px 5px',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {isHalf ? '⬜⬜' : '⬛'}
+                </button>
+                {/* Collapse toggle */}
+                <button
+                  onClick={e => { e.stopPropagation(); toggleCollapse(id); }}
+                  title={isCollapsed ? 'Expand section' : 'Collapse section'}
+                  style={{
+                    background: `${C.card}ee`,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 4,
+                    color: C.muted,
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    padding: '2px 5px',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {isCollapsed ? '▲' : '▼'}
+                </button>
+                {/* Drag handle */}
+                <span
+                  title={`Drag to rearrange`}
+                  style={{
+                    background: `${C.card}ee`,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 4,
+                    color: C.muted,
+                    cursor: 'grab',
+                    fontSize: 14,
+                    padding: '2px 5px',
+                    lineHeight: 1.2,
+                    userSelect: 'none',
+                  }}
+                >
+                  ⠿
                 </span>
-                <span style={{ color: C.text }}>{ins.text}</span>
               </div>
-            ))}
-          </div>
-        </Card>
 
-        {/* Asset Breakdown */}
-        <Card style={{ marginBottom: 0 }}>
-          <SecTitle>Net Worth Breakdown</SecTitle>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ResponsiveContainer width={110} height={110}>
-              <PieChart><Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={30} outerRadius={50}>{pieData.map((d, i) => <Cell key={i} fill={d.color} />)}</Pie><Tooltip contentStyle={ttip} formatter={v => peso(v)} /></PieChart>
-            </ResponsiveContainer>
-            <div style={{ flex: 1 }}>
-              {[...new Set(accounts.map(a => a.type))].map(type => {
-                const color = TYPE_CLR[type] || C.muted;
-                const t = accounts.filter(a => a.type === type).reduce((s, a) => s + a.balance, 0);
-                if (!t) return null;
-                return (
-                  <div key={type} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 5 }}>
-                    <span style={{ color, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ width: 7, height: 7, borderRadius: 2, background: color, display: 'inline-block' }} />
-                      {type}
-                    </span>
-                    <span style={{ color: C.muted }}>{fmtK(t)}</span>
-                  </div>
-                );
-              })}
+              {/* Collapsed state: compact title bar */}
+              {isCollapsed ? (
+                <div
+                  onClick={() => toggleCollapse(id)}
+                  style={{
+                    background: C.card,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 10,
+                    padding: '10px 44px 10px 14px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: C.text,
+                    userSelect: 'none',
+                  }}
+                >
+                  <span style={{ fontSize: 10, color: C.muted, border: `1px solid ${C.border}`, borderRadius: 3, padding: '1px 4px' }}>▲ show</span>
+                  {SECTION_LABELS[id]}
+                </div>
+              ) : sectionContent(id)}
             </div>
-          </div>
-        </Card>
+          );
+        })}
       </div>
     </div>
   );
