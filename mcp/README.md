@@ -61,6 +61,7 @@ Set these Vercel environment variables:
 ```bash
 MCP_ACCESS_TOKEN=replace-with-a-long-random-token
 MCP_ALLOWED_HOSTS=your-vercel-domain.vercel.app
+MCP_DEFAULT_USER_ID=your-supabase-auth-user-uuid
 MCP_PUBLIC_BASE_URL=https://your-vercel-domain.vercel.app
 MCP_OAUTH_CLIENT_ID=budget-app-2026
 MCP_OAUTH_CLIENT_SECRET=replace-with-another-long-random-token
