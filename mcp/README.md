@@ -61,6 +61,9 @@ Set these Vercel environment variables:
 ```bash
 MCP_ACCESS_TOKEN=replace-with-a-long-random-token
 MCP_ALLOWED_HOSTS=your-vercel-domain.vercel.app
+MCP_PUBLIC_BASE_URL=https://your-vercel-domain.vercel.app
+MCP_OAUTH_CLIENT_ID=budget-app-2026
+MCP_OAUTH_CLIENT_SECRET=replace-with-another-long-random-token
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
@@ -73,6 +76,18 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 Do not set `MCP_HOST` on Vercel. That setting is only for the local standalone server.
+
+Use these values when ChatGPT asks for manual OAuth settings:
+
+```text
+Auth URL: https://your-vercel-domain.vercel.app/api/oauth/authorize
+Token URL: https://your-vercel-domain.vercel.app/api/oauth/token
+OAuth Client ID: budget-app-2026
+OAuth Client Secret: value of MCP_OAUTH_CLIENT_SECRET
+Token endpoint auth method: client_secret_post
+Default scopes: project.read
+Base scopes: project.read
+```
 
 ## Remote Deployment Notes
 
