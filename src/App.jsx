@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   Line, LineChart, PieChart, Pie, Cell, AreaChart, Area, ComposedChart, ReferenceLine
 } from "recharts";
-import { supabase } from "./supabaseClient";
+import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import Auth from "./Auth";
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -179,39 +179,40 @@ function useWidth() {
 }
 
 // ─── THEME ────────────────────────────────────────────────────────────────────
-const C={bg:'#0d1117',card:'#161b22',border:'#21262d',text:'#e6edf3',
-  muted:'#7d8590',green:'#3fb950',red:'#f85149',amber:'#d29922',
-  blue:'#388bfd',teal:'#56d364',purple:'#bc8cff',orange:'#f0883e'};
+const C={bg:'#020814',panel:'#07111f',card:'#0f1a2a',card2:'#101d31',border:'#1c2b42',text:'#eef5ff',
+  muted:'#8ea0b8',green:'#24d17e',red:'#ff514f',amber:'#f2a71b',
+  blue:'#4b8dff',teal:'#30d6b0',purple:'#7257ff',orange:'#ff7a45',pink:'#f45f93'};
 const ttip={background:C.card,border:`1px solid ${C.border}`,borderRadius:8,color:C.text,fontSize:11};
 
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
 const Divider=()=><div style={{borderTop:`1px solid ${C.border}`,margin:'12px 0'}}/>;
 const Tag=({children,color})=><span style={{fontSize:11,padding:'2px 8px',borderRadius:10,background:`${color}22`,color,fontWeight:600}}>{children}</span>;
-const SecTitle=({children})=><div style={{fontSize:11,fontWeight:600,color:C.muted,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:12}}>{children}</div>;
-const Card=({children,style})=><div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,padding:'16px 18px',marginBottom:14,...style}}>{children}</div>;
-const Inp=({style,...p})=><input style={{background:'#0d1117',border:`1px solid ${C.border}`,borderRadius:6,padding:'8px 10px',color:C.text,fontSize:13,width:'100%',boxSizing:'border-box',...style}} {...p}/>;
+const SecTitle=({children,style})=><div style={{fontSize:11,fontWeight:700,color:C.text,textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:12,...style}}>{children}</div>;
+const Card=({children,style})=><div style={{background:`linear-gradient(180deg, ${C.card2}, ${C.card})`,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:'0 18px 42px rgba(0,0,0,0.22)',padding:'16px 18px',marginBottom:14,...style}}>{children}</div>;
+const Inp=({style,...p})=><input style={{background:'#08111f',border:`1px solid ${C.border}`,borderRadius:6,padding:'8px 10px',color:C.text,fontSize:13,width:'100%',boxSizing:'border-box',...style}} {...p}/>;
 const BtnG=({children,style,...p})=><button style={{padding:'8px 14px',borderRadius:7,border:`1px solid ${C.green}`,background:'rgba(63,185,80,0.15)',color:C.green,cursor:'pointer',fontSize:13,fontWeight:600,...style}} {...p}>{children}</button>;
 const Btn=({children,style,...p})=><button style={{padding:'7px 12px',borderRadius:6,border:`1px solid ${C.border}`,background:'transparent',color:C.muted,cursor:'pointer',fontSize:13,...style}} {...p}>{children}</button>;
 
-function MetricCard({label,value,sub,color,sm,masked,onToggleMask}) {
+function MetricCard({label,value,sub,color,sm,masked,onToggleMask,icon}) {
   return(
-    <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,padding:sm?'12px 14px':'16px 20px'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginBottom:4}}>
-        <div style={{fontSize:sm?11:12,color:C.muted}}>{label}</div>
+    <div style={{background:`radial-gradient(circle at top left, ${color || C.blue}22, transparent 48%), linear-gradient(180deg, ${C.card2}, ${C.card})`,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:'0 14px 34px rgba(0,0,0,0.24)',padding:sm?'12px 14px':'16px 18px',minHeight:sm?96:112}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginBottom:10}}>
+        <div style={{width:34,height:34,borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center',background:`${color || C.blue}22`,border:`1px solid ${color || C.blue}44`,color:color||C.blue,fontSize:16,fontWeight:800}}>{icon || 'o'}</div>
         {onToggleMask&&(
           <button
             type="button"
             onClick={onToggleMask}
             title={masked?'Show amount':'Hide amount'}
             aria-label={masked?'Show amount':'Hide amount'}
-            style={{width:24,height:24,borderRadius:6,border:`1px solid ${C.border}`,background:'transparent',color:masked?C.amber:C.muted,cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',padding:0}}
+            style={{width:24,height:24,borderRadius:6,border:`1px solid ${C.border}`,background:'rgba(255,255,255,0.02)',color:masked?C.amber:C.muted,cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',padding:0}}
           >
             {masked?'***':'$'}
           </button>
         )}
       </div>
-      <div style={{fontSize:sm?17:22,fontWeight:700,color:color||C.text,lineHeight:1.2}}>{value}</div>
-      {sub&&<div style={{fontSize:11,color:C.muted,marginTop:3}}>{sub}</div>}
+      <div style={{fontSize:10,color:C.muted,textTransform:'uppercase',fontWeight:800,letterSpacing:'0.04em',marginBottom:4}}>{label}</div>
+      <div style={{fontSize:sm?18:23,fontWeight:800,color:C.text,lineHeight:1.1}}>{value}</div>
+      {sub&&<div style={{fontSize:11,color:color||C.muted,marginTop:7,fontWeight:700}}>{sub}</div>}
     </div>
   );
 }
@@ -676,20 +677,13 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   const sectionContent = (id) => {
     switch (id) {
       case 'metrics': return (
-        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(7, 1fr)', gap: sm ? 8 : 12 }}>
-          <MetricCard label="Net Worth" value={confidentialValue(fmtK(netWorth))} color={C.green} sm={sm} masked={moneyMasked} onToggleMask={toggleMoneyMask} />
-          <MetricCard label="Monthly Savings" value={confidentialValue(fmtK(stats.reduce((sum, s) => sum + s.savings, 0)))} color={C.blue} sm={sm} masked={moneyMasked} onToggleMask={toggleMoneyMask} />
-          <MetricCard label="Savings Rate" value={Math.round(avgRate) + '%'} color={avgRate >= 20 ? C.green : C.amber} sm={sm} />
-          <MetricCard label="Emergency Fund" value={safetyMonths.toFixed(1) + ' Mo'} color={safetyMonths >= 6 ? C.green : safetyMonths >= 3 ? C.amber : C.red} sm={sm} />
-          <MetricCard label="Debt Ratio" value={debtRatio.toFixed(0) + '%'} color={debtRatio <= 20 ? C.green : debtRatio <= 40 ? C.amber : C.red} sm={sm} />
-          <MetricCard label="Upcoming Bills" value={upcomingBillsCount + ' Due'} color={upcomingBillsCount > 0 ? C.amber : C.muted} sm={sm} />
-          <div style={{ background: C.card, borderRadius: 10, border: `1px solid ${C.border}`, padding: sm ? '12px 14px' : '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <div style={{ fontSize: sm ? 10 : 11, color: C.muted, marginBottom: 2 }}>Health Score</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-              <span style={{ fontSize: sm ? 18 : 22, fontWeight: 800, color: grade.color }}>{healthScore}</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: grade.color }}>{grade.label}</span>
-            </div>
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(6, minmax(0, 1fr))', gap: sm ? 8 : 12 }}>
+          <MetricCard icon="^" label="Net Worth" value={confidentialValue(peso(netWorth))} sub={`${Math.round(avgRate)}% savings rate`} color={C.blue} sm={sm} masked={moneyMasked} onToggleMask={toggleMoneyMask} />
+          <MetricCard icon="W" label="Total Assets" value={confidentialValue(peso(totalBal))} sub={`${accounts.length} accounts`} color={C.amber} sm={sm} masked={moneyMasked} onToggleMask={toggleMoneyMask} />
+          <MetricCard icon="-" label="Total Liabilities" value={peso(totalDebts)} sub={`${debts.length} debts`} color={C.red} sm={sm} />
+          <MetricCard icon="$" label="Cash & Equivalents" value={confidentialValue(peso(liquid))} sub={`${safetyMonths.toFixed(1)} months runway`} color={C.green} sm={sm} masked={moneyMasked} onToggleMask={toggleMoneyMask} />
+          <MetricCard icon="P" label="Money Owed To You" value={peso(totalCredits)} sub={`${credits.filter(c => !c.done).length} outstanding`} color={C.purple} sm={sm} />
+          <MetricCard icon="H" label="Financial Health" value={`${healthScore} / 100`} sub={grade.label} color={grade.color} sm={sm} />
         </div>
       );
 
@@ -979,17 +973,33 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
 
   return (
     <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:sm?'flex-start':'center',gap:14,marginBottom:16,flexDirection:sm?'column':'row'}}>
+        <div>
+          <div style={{fontSize:sm?20:25,fontWeight:800,letterSpacing:0,color:C.text}}>Welcome back, Rolan!</div>
+          <div style={{fontSize:12,color:C.muted,marginTop:5}}>Here is your financial overview for today.</div>
+        </div>
+        <select
+          value={range}
+          onChange={e => setRange(e.target.value)}
+          style={{background:C.panel,border:`1px solid ${C.border}`,color:C.text,borderRadius:7,padding:'9px 12px',fontSize:12,minWidth:sm?'100%':190,outline:'none'}}
+        >
+          <option value="current">Current month</option>
+          <option value="12m">Last 12 months</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+          <option value="custom">Custom range</option>
+        </select>
+      </div>
       {/* Period toolbar */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14, alignItems: 'center' }}>
-        <span style={{ fontSize: 12, color: C.muted }}>Period:</span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10, alignItems: 'center' }}>
         {[
-          ['current', 'Current Month'],
-          ['12m', 'Last 12 Months'],
+          ['current', '1M'],
+          ['12m', '12M'],
           ['2025', '2025'],
           ['2024', '2024'],
-          ['custom', 'Custom Range']
+          ['custom', 'Custom']
         ].map(([v, l]) => (
-          <button key={v} onClick={() => setRange(v)} style={{ padding: '6px 12px', borderRadius: 14, border: `1px solid ${range === v ? C.green : C.border}`, background: range === v ? 'rgba(63,185,80,0.15)' : 'transparent', color: range === v ? C.green : C.muted, cursor: 'pointer', fontSize: 12 }}>
+          <button key={v} onClick={() => setRange(v)} style={{ padding: '6px 11px', borderRadius: 6, border: `1px solid ${range === v ? C.purple : C.border}`, background: range === v ? `${C.purple}33` : C.panel, color: range === v ? C.text : C.muted, cursor: 'pointer', fontSize: 11, fontWeight:700 }}>
             {l}
           </button>
         ))}
@@ -1004,13 +1014,13 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
         <button
           onClick={resetCardOrder}
           title="Reset dashboard layout to default"
-          style={{ marginLeft: 'auto', padding: '5px 11px', borderRadius: 10, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}
+          style={{ marginLeft: 'auto', padding: '6px 11px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.panel, color: C.muted, cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}
         >
           ↺ Reset Layout
         </button>
       </div>
 
-      <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
+      <div style={{ fontSize: 11, color: C.muted, marginBottom: 14 }}>
         Viewing: {range === 'custom' ? `${customStart} to ${customEnd}` : (keys.length > 0 ? `${displayKey(keys[0])} – ${displayKey(keys[keys.length - 1])}` : '')}
       </div>
 
@@ -2054,6 +2064,14 @@ export default function App() {
 
   // Fetch data on session change
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      ready.current = true;
+      setLoaded(true);
+      setSyncStatus('saved');
+      setBalanceHistory(prev => prev.length ? prev : generateMockBalanceHistory(accounts));
+      return;
+    }
+
     if (!session) {
       ready.current = false;
       setLoaded(false);
@@ -2127,6 +2145,9 @@ export default function App() {
 
   // Debounced Cloud Sync to Supabase
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
     if (!ready.current || !session) return;
 
     setSyncStatus('syncing');
@@ -2185,43 +2206,93 @@ export default function App() {
     expenses:'Major Expenses',
     calendar:'Financial Calendar'
   };
+  const NAV_TABS=[
+    {id:'dashboard',label:'Dashboard',icon:'D',group:'main'},
+    {id:'accounts', label:'Accounts',icon:'A',group:'manage'},
+    {id:'history',  label:'Transactions',icon:'T',group:'manage'},
+    {id:'debts',    label:'Debts',icon:'L',group:'manage'},
+    {id:'credits',  label:'Credits (Owed to You)',icon:'C',group:'manage'},
+    {id:'expenses', label:'Goals',icon:'G',group:'manage'},
+    {id:'budget',   label:'Budget',icon:'B',group:'manage'},
+    {id:'calendar', label:'Bills',icon:'P',group:'manage'},
+    {id:'investments', label:'Investments',icon:'I',group:'analytics'},
+  ];
+  const navGroups = [
+    ['main', ''],
+    ['manage', 'Manage'],
+    ['analytics', 'Analytics'],
+  ];
+  const displayName = (session?.user?.user_metadata?.full_name || session?.user?.email || 'Rolan Eleazer').split('@')[0];
 
-  if (!session) {
+  if (!session && isSupabaseConfigured) {
     return <Auth />;
   }
 
   return (
-    <div style={{background:C.bg,minHeight:'100vh',fontFamily:"'Segoe UI',system-ui,sans-serif",color:C.text}}>
-      <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:sm?'0 16px':'0 24px',display:'flex',justifyContent:'space-between',alignItems:'center',height:sm?52:58}}>
-        <div style={{display:'flex',alignItems:'baseline',gap:6}}>
-          <span style={{fontSize:sm?16:18,fontWeight:700,color:C.green}}>Bujdet</span>
-          {!sm&&<span style={{fontSize:12,color:C.muted}}>Personal Budget Tracker</span>}
+    <div style={{background:`radial-gradient(circle at 80% -20%, ${C.blue}18, transparent 36%), ${C.bg}`,minHeight:'100vh',fontFamily:"Inter, 'Segoe UI', system-ui, sans-serif",color:C.text}}>
+      {!sm && (
+        <aside style={{position:'fixed',left:0,top:0,bottom:0,width:250,background:'linear-gradient(180deg,#071120,#030914)',borderRight:`1px solid ${C.border}`,display:'flex',flexDirection:'column',zIndex:20}}>
+          <div style={{height:58,display:'flex',alignItems:'center',gap:10,padding:'0 18px',borderBottom:`1px solid ${C.border}`}}>
+            <div style={{width:24,height:24,borderRadius:7,background:`linear-gradient(135deg, ${C.amber}, ${C.orange})`,display:'flex',alignItems:'center',justifyContent:'center',color:'#08111f',fontWeight:900,fontSize:13}}>B</div>
+            <div style={{fontSize:15,fontWeight:800}}>Budget App 2026</div>
+          </div>
+          <nav style={{padding:12,display:'flex',flexDirection:'column',gap:14,flex:1,overflowY:'auto'}}>
+            {navGroups.map(([group,label]) => (
+              <div key={group}>
+                {label && <div style={{fontSize:10,textTransform:'uppercase',letterSpacing:'0.06em',color:C.muted,fontWeight:800,padding:'8px 6px 7px'}}>{label}</div>}
+                {NAV_TABS.filter(t => t.group === group).map(t => (
+                  <button key={t.id} onClick={()=>setTab(t.id)} style={{width:'100%',height:39,border:'none',borderRadius:6,background:tab===t.id?`${C.purple}44`:'transparent',color:tab===t.id?C.text:C.muted,cursor:'pointer',display:'flex',alignItems:'center',gap:10,padding:'0 10px',fontSize:12,fontWeight:tab===t.id?700:500,textAlign:'left'}}>
+                    <span style={{width:19,height:19,borderRadius:5,border:`1px solid ${tab===t.id?C.purple:C.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:tab===t.id?C.text:C.muted,background:tab===t.id?`${C.purple}55`:'transparent'}}>{t.icon}</span>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </nav>
+          <div style={{margin:12,padding:12,border:`1px solid ${C.border}`,borderRadius:8,display:'flex',alignItems:'center',gap:10,background:C.panel}}>
+            <div style={{width:34,height:34,borderRadius:'50%',background:`linear-gradient(135deg, ${C.amber}, ${C.orange})`,display:'flex',alignItems:'center',justifyContent:'center',color:'#08111f',fontWeight:900}}>R</div>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{displayName}</div>
+              {isSupabaseConfigured ? (
+                <button onClick={() => supabase.auth.signOut()} style={{border:'none',background:'transparent',color:C.muted,fontSize:11,padding:0,cursor:'pointer'}}>Sign out</button>
+              ) : (
+                <div style={{color:C.muted,fontSize:11}}>Local demo</div>
+              )}
+            </div>
+          </div>
+        </aside>
+      )}
+      <div style={{background:'rgba(4,10,20,0.84)',backdropFilter:'blur(12px)',borderBottom:`1px solid ${C.border}`,padding:sm?'0 16px':'0 24px',display:'flex',justifyContent:'space-between',alignItems:'center',height:sm?52:58,marginLeft:sm?0:250,position:'sticky',top:0,zIndex:15}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:sm?16:20,fontWeight:700,color:sm?C.text:C.muted}}>{sm?'Budget App 2026':'Menu'}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 11, color: !loaded ? C.amber : syncStatus === 'saved' ? C.green : syncStatus === 'syncing' ? C.amber : C.red }}>
-            {!loaded ? 'Loading…' : syncStatus === 'saved' ? '● Saved to Cloud' : syncStatus === 'syncing' ? '● Syncing...' : '● Sync Error'}
+            {!isSupabaseConfigured ? 'Local Demo Mode' : !loaded ? 'Loading...' : syncStatus === 'saved' ? 'Saved to Cloud' : syncStatus === 'syncing' ? 'Syncing...' : 'Sync Error'}
           </span>
-          {!sm && <span style={{ fontSize: 12, color: C.muted }}>{session.user.email}</span>}
-          <button 
-            onClick={() => supabase.auth.signOut()} 
-            style={{ 
-              padding: '4px 8px', 
-              borderRadius: 5, 
-              border: `1px solid ${C.border}`, 
-              background: 'transparent', 
-              color: C.muted, 
-              cursor: 'pointer', 
-              fontSize: 11 
-            }}
-          >
-            Sign Out
-          </button>
+          {!sm && <span style={{ fontSize: 12, color: C.text, fontWeight: 700 }}>{displayName}</span>}
+          {isSupabaseConfigured && (
+            <button 
+              onClick={() => supabase.auth.signOut()} 
+              style={{ 
+                padding: '4px 8px', 
+                borderRadius: 5, 
+                border: `1px solid ${C.border}`, 
+                background: 'transparent', 
+                color: C.muted, 
+                cursor: 'pointer', 
+                fontSize: 11 
+              }}
+            >
+              Sign Out
+            </button>
+          )}
         </div>
       </div>
 
-      <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,display:'flex',overflowX:'auto',scrollbarWidth:'none'}}>
-        {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:sm?1:'none',padding:sm?'13px 12px':'12px 18px',border:'none',background:'none',cursor:'pointer',color:tab===t.id?C.green:C.muted,borderBottom:`2px solid ${tab===t.id?C.green:'transparent'}`,fontSize:sm?16:13,fontWeight:tab===t.id?600:400,whiteSpace:'nowrap'}}>
+      <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,display:sm?'flex':'none',overflowX:'auto',scrollbarWidth:'none'}}>
+        {NAV_TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:'none',padding:'13px 12px',border:'none',background:'none',cursor:'pointer',color:tab===t.id?C.text:C.muted,borderBottom:`2px solid ${tab===t.id?C.purple:'transparent'}`,fontSize:12,fontWeight:tab===t.id?700:500,whiteSpace:'nowrap'}}>
             {t.label}
           </button>
         ))}
@@ -2229,7 +2300,7 @@ export default function App() {
 
       {sm&&<div style={{padding:'8px 16px 0',fontSize:13,fontWeight:600,color:C.muted}}>{TLBL[tab]}</div>}
 
-      <div style={{padding:sm?'14px 14px 60px':'24px',maxWidth:980,margin:'0 auto'}}>
+      <div style={{padding:sm?'14px 14px 60px':'24px 28px 40px',maxWidth:sm?'none':1580,marginLeft:sm?0:250}}>
         {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm}/>}
         {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
         {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm}/>}
