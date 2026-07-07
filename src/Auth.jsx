@@ -46,7 +46,7 @@ export default function Auth() {
           email,
           password,
           options: {
-            emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+            emailRedirectTo: import.meta.env.VITE_PUBLIC_URL || (typeof window !== 'undefined' ? window.location.origin : undefined),
           },
         });
         if (error) throw error;
