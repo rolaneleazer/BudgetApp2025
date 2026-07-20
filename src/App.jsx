@@ -2045,6 +2045,7 @@ export default function App() {
   // Supabase Auth and Sync States
   const [session, setSession] = useState(null);
   const [syncStatus, setSyncStatus] = useState('saved');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Ref to prevent saving before initial load completes
   const ready=useRef(false);
@@ -2061,6 +2062,34 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Check if user is admin on session change
+  useEffect(() => {
+    if (!session) {
+      setIsAdmin(false);
+      return;
+    }
+    async function checkAdminStatus() {
+      try {
+        const res = await fetch("/api/admin/check", {
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(Boolean(data.isAdmin));
+        } else {
+          setIsAdmin(false);
+        }
+      } catch (err) {
+        console.error("Error checking admin status:", err);
+        setIsAdmin(false);
+      }
+    }
+    checkAdminStatus();
+  }, [session]);
+
 
   // Fetch data on session change
   useEffect(() => {
@@ -2194,6 +2223,7 @@ export default function App() {
     {id:'credits',  label:sm?'🤝':'🤝 Credits'},
     {id:'expenses', label:sm?'🎯':'🎯 Major'},
     {id:'calendar', label:sm?'📅':'📅 Calendar'},
+    ...(isAdmin ? [{id:'admin', label:sm?'⚙️':'⚙️ Admin Panel'}] : []),
   ];
   const TLBL={
     dashboard:'Dashboard',
@@ -2204,7 +2234,8 @@ export default function App() {
     debts:'Debt Manager',
     credits:'Credits (Money Owed)',
     expenses:'Major Expenses',
-    calendar:'Financial Calendar'
+    calendar:'Financial Calendar',
+    admin:'Admin Panel'
   };
   const NAV_TABS=[
     {id:'dashboard',label:'Dashboard',icon:'D',group:'main'},
@@ -2216,11 +2247,13 @@ export default function App() {
     {id:'budget',   label:'Budget',icon:'B',group:'manage'},
     {id:'calendar', label:'Bills',icon:'P',group:'manage'},
     {id:'investments', label:'Investments',icon:'I',group:'analytics'},
+    ...(isAdmin ? [{id:'admin', label:'Admin Panel',icon:'S',group:'admin'}] : []),
   ];
   const navGroups = [
     ['main', ''],
     ['manage', 'Manage'],
     ['analytics', 'Analytics'],
+    ...(isAdmin ? [['admin', 'System']] : []),
   ];
   const displayName = (session?.user?.user_metadata?.full_name || session?.user?.email || 'Rolan Eleazer').split('@')[0];
 
@@ -2310,7 +2343,478 @@ export default function App() {
         {tab==='credits'  &&<CreditsTab credits={credits} setCredits={setCredits} sm={sm}/>}
         {tab==='expenses' &&<MajorTab majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} sm={sm}/>}
         {tab==='calendar'  &&<CalendarTab budgetData={budgetData} sm={sm}/>}
+        {tab==='admin'     &&<AdminTab sm={sm}/>}
       </div>
     </div>
   );
 }
+
+// ─── ADMIN PANEL ─────────────────────────────────────────────────────────────
+function AdminTab({ sm }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [adminConfigured, setAdminConfigured] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionSuccess, setActionSuccess] = useState("");
+  
+  // Modals
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showPwdModal, setShowPwdModal] = useState(false);
+  const [targetUser, setTargetUser] = useState(null);
+  
+  // Forms
+  const [addEmail, setAddEmail] = useState("");
+  const [addPassword, setAddPassword] = useState("");
+  const [addFullName, setAddFullName] = useState("");
+  const [resetPwd, setResetPwd] = useState("");
+
+  useEffect(() => {
+    if (isSupabaseConfigured) {
+      fetchUsers();
+    }
+  }, []);
+
+  async function fetchUsers() {
+    setLoading(true);
+    setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session.");
+      
+      // Check configuration status first
+      const checkRes = await fetch("/api/admin/check", {
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`
+        }
+      });
+      const checkData = await checkRes.json();
+      setAdminConfigured(Boolean(checkData.adminConfigured));
+
+      if (checkData.adminConfigured) {
+        const res = await fetch("/api/admin/users", {
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to fetch users");
+        setUsers(data.users || []);
+      } else {
+        setUsers([]);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAdd(e) {
+    e.preventDefault();
+    if (!addEmail || !addPassword) return;
+    setActionLoading(true);
+    setActionSuccess("");
+    setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          email: addEmail,
+          password: addPassword,
+          fullName: addFullName
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create user");
+      
+      setActionSuccess(`Successfully added user ${addEmail}`);
+      setAddEmail("");
+      setAddPassword("");
+      setAddFullName("");
+      setShowAddModal(false);
+      fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleResetPwd(e) {
+    e.preventDefault();
+    if (!targetUser || !resetPwd) return;
+    setActionLoading(true);
+    setActionSuccess("");
+    setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/admin/users?id=${targetUser.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          password: resetPwd
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to reset password");
+      
+      setActionSuccess(`Password successfully updated for ${targetUser.email}`);
+      setResetPwd("");
+      setTargetUser(null);
+      setShowPwdModal(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleDelete(user) {
+    if (!confirm(`Are you absolutely sure you want to delete user ${user.email}?\nThis will remove them from Supabase auth and delete all of their budget data. This cannot be undone.`)) {
+      return;
+    }
+    setActionLoading(true);
+    setActionSuccess("");
+    setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/admin/users?id=${user.id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete user");
+      
+      setActionSuccess(`User ${user.email} has been deleted.`);
+      fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  if (!isSupabaseConfigured) {
+    return (
+      <Card>
+        <SecTitle>Admin Panel</SecTitle>
+        <div style={{ color: C.amber, fontSize: 13 }}>
+          Admin features are not available in Local Demo Mode. Please configure Supabase credentials in your <code>.env</code> file to enable this panel.
+        </div>
+      </Card>
+    );
+  }
+
+  const filteredUsers = users.filter(u => {
+    const term = search.toLowerCase();
+    const emailMatch = (u.email || "").toLowerCase().includes(term);
+    const nameMatch = (u.user_metadata?.full_name || "").toLowerCase().includes(term);
+    return emailMatch || nameMatch;
+  });
+
+  const getAvatarColor = (id) => {
+    const colors = [C.blue, C.green, C.purple, C.pink, C.orange, C.teal];
+    if (!id) return colors[0];
+    const index = id.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
+
+  const getInitials = (user) => {
+    const name = user.user_metadata?.full_name || user.email || "U";
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "Never";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  return (
+    <div>
+      {/* Metric Cards at the Top */}
+      <div style={{ display: "grid", gridTemplateColumns: sm ? "1fr" : "repeat(3, 1fr)", gap: 12, marginBottom: 14 }}>
+        <MetricCard label="Total Registered Users" value={users.length} color={C.blue} sm={sm} icon="👥" />
+        <MetricCard label="Filtered Search Results" value={filteredUsers.length} color={C.purple} sm={sm} icon="🔍" />
+        <MetricCard label="Service Role Status" value={adminConfigured ? "Active" : "Inactive"} color={adminConfigured ? C.green : C.red} sub={adminConfigured ? "Backend Access Ready" : "Missing credentials"} sm={sm} icon="🛡️" />
+      </div>
+
+      {/* Warning if service role key is missing */}
+      {!adminConfigured && !loading && (
+        <div style={{ background: "rgba(242, 167, 27, 0.1)", border: `1px solid ${C.amber}44`, borderRadius: 8, padding: 16, marginBottom: 14, color: C.amber, fontSize: 13, lineHeight: 1.5 }}>
+          <strong>🛡️ Supabase Service Role Key Required:</strong>
+          <div style={{ marginTop: 6 }}>
+            To enable user management, you must configure the backend with your Supabase Service Role Key. 
+            Add the following line to your local <code>.env</code> file and restart the server:
+          </div>
+          <pre style={{ background: "#08111f", padding: 8, borderRadius: 4, marginTop: 8, color: C.text, fontSize: 12 }}>
+            SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+          </pre>
+        </div>
+      )}
+
+      {/* Messages */}
+      {error && (
+        <div style={{ background: "rgba(255, 81, 79, 0.1)", border: `1px solid ${C.red}44`, borderRadius: 8, padding: 12, marginBottom: 14, color: C.red, fontSize: 13 }}>
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+      {actionSuccess && (
+        <div style={{ background: "rgba(36, 209, 126, 0.1)", border: `1px solid ${C.green}44`, borderRadius: 8, padding: 12, marginBottom: 14, color: C.green, fontSize: 13 }}>
+          <strong>Success:</strong> {actionSuccess}
+        </div>
+      )}
+
+      {/* User Management Panel */}
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 12, flexDirection: sm ? "column" : "row" }}>
+          <SecTitle style={{ margin: 0 }}>System User Management</SecTitle>
+          <div style={{ display: "flex", gap: 8, width: sm ? "100%" : "auto" }}>
+            <Inp 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              placeholder="Search name or email..." 
+              style={{ width: sm ? "100%" : 240, height: 35 }} 
+              disabled={!adminConfigured}
+            />
+            <BtnG 
+              onClick={() => { setActionSuccess(""); setError(""); setShowAddModal(true); }} 
+              style={{ height: 35, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", opacity: adminConfigured ? 1 : 0.5 }}
+              disabled={!adminConfigured}
+            >
+              + Add User
+            </BtnG>
+          </div>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: "center", color: C.muted, padding: "40px 0", fontSize: 14 }}>
+            Loading users from Supabase...
+          </div>
+        ) : !adminConfigured ? (
+          <div style={{ textAlign: "center", color: C.muted, padding: "40px 0", fontSize: 14 }}>
+            Please configure the Supabase Service Role Key to load the user directory.
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div style={{ textAlign: "center", color: C.muted, padding: "40px 0", fontSize: 14 }}>
+            {users.length === 0 ? "No users found in database." : "No users match your search criteria."}
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "#08111f", borderBottom: `1px solid ${C.border}` }}>
+                  <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted }}>User Info</th>
+                  <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted, display: sm ? "none" : "table-cell" }}>Created At</th>
+                  <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted, display: sm ? "none" : "table-cell" }}>Last Sign In</th>
+                  <th style={{ padding: "10px 8px", textAlign: "center", color: C.muted }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map(user => {
+                  const avClr = getAvatarColor(user.id);
+                  const fullName = user.user_metadata?.full_name || "";
+                  return (
+                    <tr key={user.id} style={{ borderBottom: `1px solid ${C.border}22`, transition: "background 0.2s" }}>
+                      <td style={{ padding: "10px 8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ 
+                            width: 32, 
+                            height: 32, 
+                            borderRadius: "50%", 
+                            background: `${avClr}22`, 
+                            border: `1px solid ${avClr}44`, 
+                            color: avClr, 
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center", 
+                            fontWeight: 700,
+                            fontSize: 12
+                          }}>
+                            {getInitials(user)}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, color: C.text }}>{fullName || "No Name"}</div>
+                            <div style={{ fontSize: 11, color: C.muted }}>{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: "10px 8px", color: C.muted, display: sm ? "none" : "table-cell" }}>
+                        {formatDate(user.created_at)}
+                      </td>
+                      <td style={{ padding: "10px 8px", color: C.muted, display: sm ? "none" : "table-cell" }}>
+                        {formatDate(user.last_sign_in_at)}
+                      </td>
+                      <td style={{ padding: "10px 8px", textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+                          <Btn 
+                            onClick={() => {
+                              setActionSuccess(""); 
+                              setError("");
+                              setTargetUser(user);
+                              setShowPwdModal(true);
+                            }}
+                            style={{ padding: "4px 8px", fontSize: 11, border: `1px solid ${C.blue}44`, color: C.blue }}
+                            disabled={actionLoading}
+                          >
+                            Reset Pwd
+                          </Btn>
+                          <button 
+                            onClick={() => handleDelete(user)} 
+                            style={{ 
+                              background: "none", 
+                              border: `1px solid ${C.red}33`, 
+                              borderRadius: 6, 
+                              cursor: "pointer", 
+                              color: C.red, 
+                              padding: "4px 8px", 
+                              fontSize: 11,
+                              opacity: actionLoading ? 0.5 : 1
+                            }}
+                            disabled={actionLoading}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Add User Modal */}
+      {showAddModal && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(2, 8, 20, 0.8)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 100,
+          padding: 16
+        }}>
+          <Card style={{ width: "100%", maxWidth: 420, marginBottom: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <SecTitle style={{ margin: 0 }}>Manually Add User</SecTitle>
+              <button 
+                onClick={() => setShowAddModal(false)} 
+                style={{ background: "none", border: "none", color: C.muted, fontSize: 20, cursor: "pointer" }}
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleAdd} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>Full Name</label>
+                <Inp 
+                  value={addFullName} 
+                  onChange={e => setAddFullName(e.target.value)} 
+                  placeholder="e.g. John Doe" 
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>Email Address *</label>
+                <Inp 
+                  type="email"
+                  value={addEmail} 
+                  onChange={e => setAddEmail(e.target.value)} 
+                  placeholder="name@example.com" 
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>Password * (min 6 chars)</label>
+                <Inp 
+                  type="password"
+                  value={addPassword} 
+                  onChange={e => setAddPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  minLength={6}
+                  required
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <BtnG type="submit" disabled={actionLoading} style={{ flex: 1 }}>
+                  {actionLoading ? "Creating..." : "Create User"}
+                </BtnG>
+                <Btn type="button" onClick={() => setShowAddModal(false)} disabled={actionLoading}>
+                  Cancel
+                </Btn>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {showPwdModal && targetUser && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(2, 8, 20, 0.8)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 100,
+          padding: 16
+        }}>
+          <Card style={{ width: "100%", maxWidth: 420, marginBottom: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <SecTitle style={{ margin: 0 }}>Reset Password</SecTitle>
+              <button 
+                onClick={() => { setShowPwdModal(false); setTargetUser(null); }} 
+                style={{ background: "none", border: "none", color: C.muted, fontSize: 20, cursor: "pointer" }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
+              Resetting password for: <strong style={{ color: C.text }}>{targetUser.email}</strong>
+            </div>
+            <form onSubmit={handleResetPwd} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>New Password (min 6 chars)</label>
+                <Inp 
+                  type="password"
+                  value={resetPwd} 
+                  onChange={e => setResetPwd(e.target.value)} 
+                  placeholder="••••••••" 
+                  minLength={6}
+                  required
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <BtnG type="submit" disabled={actionLoading} style={{ flex: 1 }}>
+                  {actionLoading ? "Updating..." : "Update Password"}
+                </BtnG>
+                <Btn type="button" onClick={() => { setShowPwdModal(false); setTargetUser(null); }} disabled={actionLoading}>
+                  Cancel
+                </Btn>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
