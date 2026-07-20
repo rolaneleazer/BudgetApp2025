@@ -10,6 +10,9 @@ import {
   isAuthorized,
 } from "./core.js";
 import { adminHandler } from "./admin.js";
+import sendReportHandler from "../api/send-report.js";
+import schedulesHandler from "../api/schedules.js";
+import { startScheduler } from "./scheduler.js";
 
 const config = getMcpConfig();
 const isLocalHost = ["127.0.0.1", "localhost", "::1"].includes(config.host);
@@ -30,6 +33,10 @@ app.all("/api/admin/check", async (req, res) => {
 
 app.all("/api/admin/users", async (req, res) => {
   await adminHandler(req, res);
+});
+
+app.post("/api/send-report", async (req, res) => {
+  await sendReportHandler(req, res);
 });
 
 
@@ -93,6 +100,10 @@ app.delete("/mcp", authenticate, (_req, res) => {
   res.status(405).json({ error: "Method not allowed" });
 });
 
+app.all("/api/schedules", async (req, res) => {
+  await schedulesHandler(req, res);
+});
+
 app.listen(config.port, config.host, (error) => {
   if (error) {
     console.error("Failed to start MCP server:", error);
@@ -103,4 +114,7 @@ app.listen(config.port, config.host, (error) => {
   if (!config.accessToken) {
     console.warn("MCP_ACCESS_TOKEN is not set. This is only acceptable for local development.");
   }
+
+  // Start the scheduled report cron job
+  startScheduler();
 });
