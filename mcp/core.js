@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import ws from "ws";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
@@ -154,7 +155,11 @@ export function healthPayload() {
 
 function getSupabaseClient() {
   const { supabaseUrl, supabaseKey } = getMcpConfig();
-  return supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+  return supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey, {
+    realtime: {
+      transport: ws
+    }
+  }) : null;
 }
 
 function jsonContent(data) {

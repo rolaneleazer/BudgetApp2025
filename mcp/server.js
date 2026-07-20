@@ -9,6 +9,7 @@ import {
   healthPayload,
   isAuthorized,
 } from "./core.js";
+import { adminHandler } from "./admin.js";
 
 const config = getMcpConfig();
 const isLocalHost = ["127.0.0.1", "localhost", "::1"].includes(config.host);
@@ -22,6 +23,15 @@ const app = createMcpExpressApp({
   host: config.host,
   allowedHosts: config.allowedHosts,
 });
+
+app.all("/api/admin/check", async (req, res) => {
+  await adminHandler(req, res);
+});
+
+app.all("/api/admin/users", async (req, res) => {
+  await adminHandler(req, res);
+});
+
 
 function authenticate(req, res, next) {
   if (!isAuthorized(req)) {
