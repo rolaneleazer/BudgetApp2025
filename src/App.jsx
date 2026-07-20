@@ -2029,6 +2029,1129 @@ function CalendarTab({ budgetData, sm }) {
   );
 }
 
+// ─── REPORT DASHBOARD ─────────────────────────────────────────────────────────
+function ReportTab({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm, session }) {
+  const [reportRange, setReportRange] = useState('current');
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState(null);
+  const [collapsedSections, setCollapsedSections] = useState({});
+  const reportRef = useRef(null);
+
+  const toggleSection = (id) => {
+    setCollapsedSections(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // ── Compute all report data ──
+  const curKey = makeKey(CUR_YEAR, CUR_MONTH);
+
+  const getReportKeys = () => {
+    if (reportRange === 'current') return [curKey];
+    if (reportRange === '3m') {
+      const res = [];
+      for (let i = 2; i >= 0; i--) {
+        const d = new Date(CUR_YEAR, CUR_MONTH - i, 1);
+        res.push(makeKey(d.getFullYear(), d.getMonth()));
+      }
+      return res;
+    }
+    if (reportRange === 'ytd') {
+      const res = [];
+      for (let m = 0; m <= CUR_MONTH; m++) {
+        res.push(makeKey(CUR_YEAR, m));
+      }
+      return res;
+    }
+    if (reportRange === '12m') {
+      const res = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(CUR_YEAR, CUR_MONTH - i, 1);
+        res.push(makeKey(d.getFullYear(), d.getMonth()));
+      }
+      return res;
+    }
+    return [curKey];
+  };
+
+  const keys = getReportKeys();
+  const stats = keys.map(key => {
+    const md = budgetData[key] || (key === curKey ? makeMonthData() : null);
+    let fixed = 0, variable = 0, debt = 0, investment = 0;
+    if (md) {
+      ['5th', '20th'].forEach(p => {
+        if (md[p]) {
+          md[p].expenses.forEach(e => {
+            const cat = classifyExpense(e.name);
+            const amt = Number(e.amount) || 0;
+            if (cat === 'Fixed') fixed += amt;
+            else if (cat === 'Variable') variable += amt;
+            else if (cat === 'Debt') debt += amt;
+            else if (cat === 'Investment') investment += amt;
+          });
+        }
+      });
+    }
+    const mt = md ? calcMonth(md) : { income: 0, expenses: 0, savings: 0, otIncome: 0, otHours: 0, savingsRate: 0 };
+    return { key, label: shortKey(key), ...mt, fixed, variable, debt, investment };
+  });
+
+  const totalIncome = stats.reduce((s, m) => s + m.income, 0);
+  const totalExpenses = stats.reduce((s, m) => s + m.expenses, 0);
+  const totalSavings = stats.reduce((s, m) => s + m.savings, 0);
+  const totalOT = stats.reduce((s, m) => s + m.otIncome, 0);
+  const totalFixed = stats.reduce((s, m) => s + m.fixed, 0);
+  const totalVariable = stats.reduce((s, m) => s + m.variable, 0);
+  const totalDebtPayments = stats.reduce((s, m) => s + m.debt, 0);
+  const totalInvestments = stats.reduce((s, m) => s + m.investment, 0);
+
+  const active = stats.filter(s => s.income > 0);
+  const avgRate = active.length ? active.reduce((s, m) => s + m.savingsRate, 0) / active.length : 0;
+
+  // Net worth
+  const totalBal = accounts.reduce((s, a) => s + a.balance, 0);
+  const totalCredits = credits.filter(c => !c.done).reduce((s, c) => s + c.amount, 0);
+  const totalDebts = debts.reduce((s, d) => s + d.balance, 0);
+  const netWorth = totalBal + totalCredits - totalDebts;
+  const liquid = accounts.filter(a => ['Savings', 'Checking', 'Digital'].includes(a.type)).reduce((s, a) => s + a.balance, 0);
+  const avgExp = active.length ? active.reduce((s, m) => s + m.expenses, 0) / active.length : 0;
+  const safetyMonths = avgExp > 0 ? liquid / avgExp : 0;
+
+  // Health score (same algo as Dashboard)
+  const debtRatio = totalIncome > 0 ? (totalDebtPayments / totalIncome) * 100 : 0;
+  const getHealthScore = () => {
+    let score = 0;
+    if (avgRate >= 30) score += 30; else if (avgRate >= 20) score += 20; else if (avgRate >= 10) score += 10;
+    if (safetyMonths >= 6) score += 30; else if (safetyMonths >= 3) score += 20; else if (safetyMonths >= 1) score += 10;
+    if (debtRatio <= 15) score += 25; else if (debtRatio <= 30) score += 15; else if (debtRatio <= 45) score += 5;
+    const overspentCount = majorExpenses.filter(e => e.actual > e.budget).length;
+    if (overspentCount === 0) score += 15; else if (overspentCount <= 2) score += 5;
+    return score;
+  };
+  const healthScore = getHealthScore();
+  const getGrade = (s) => {
+    if (s >= 90) return { label: 'Excellent', color: C.green, emoji: '🟢' };
+    if (s >= 70) return { label: 'Good', color: C.blue, emoji: '🔵' };
+    if (s >= 50) return { label: 'Warning', color: C.amber, emoji: '🟡' };
+    return { label: 'Critical', color: C.red, emoji: '🔴' };
+  };
+  const grade = getGrade(healthScore);
+
+  // Budget vs actual
+  const getBudgetVsActual = () => {
+    const grouped = {};
+    keys.forEach(key => {
+      const md = budgetData[key];
+      if (md) {
+        ['5th', '20th'].forEach(p => {
+          if (md[p]) {
+            md[p].expenses.forEach(e => {
+              if (e.name) {
+                if (!grouped[e.name]) grouped[e.name] = { name: e.name, budget: 0, actual: 0 };
+                grouped[e.name].budget += e.budget ?? e.amount;
+                grouped[e.name].actual += e.amount;
+              }
+            });
+          }
+        });
+      }
+    });
+    return Object.values(grouped).sort((a, b) => b.budget - a.budget);
+  };
+  const bvsA = getBudgetVsActual();
+
+  // Insights
+  const getInsights = () => {
+    const list = [];
+    if (avgRate >= 30) list.push({ text: `Savings rate is excellent at ${Math.round(avgRate)}%.`, type: 'good' });
+    else if (avgRate < 10) list.push({ text: `Savings rate is low at ${Math.round(avgRate)}%. Consider cutting variable expenses.`, type: 'warn' });
+    else list.push({ text: `Savings rate is healthy at ${Math.round(avgRate)}%.`, type: 'info' });
+    if (safetyMonths >= 6) list.push({ text: 'Emergency fund is fully funded (6+ months of runway).', type: 'good' });
+    else if (safetyMonths < 3) list.push({ text: `Emergency fund covers only ${safetyMonths.toFixed(1)} months. Aim for 3-6 months.`, type: 'warn' });
+    if (debtRatio > 35) list.push({ text: `Debt payments consuming ${debtRatio.toFixed(1)}% of income — high risk.`, type: 'warn' });
+    else list.push({ text: `Debt-to-income ratio is healthy at ${debtRatio.toFixed(1)}%.`, type: 'good' });
+    if (totalSavings > 0) list.push({ text: `Net savings for this period: ${peso(totalSavings)}.`, type: 'info' });
+    const overBudgetItems = bvsA.filter(b => b.actual > b.budget && b.budget > 0);
+    if (overBudgetItems.length > 0) {
+      list.push({ text: `${overBudgetItems.length} expense(s) over budget: ${overBudgetItems.map(b => b.name).join(', ')}.`, type: 'warn' });
+    }
+    return list;
+  };
+  const insights = getInsights();
+
+  // Category breakdown for accounts
+  const accountsByType = {};
+  accounts.forEach(a => {
+    if (!accountsByType[a.type]) accountsByType[a.type] = [];
+    accountsByType[a.type].push(a);
+  });
+
+  const reportDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const rangeLabel = reportRange === 'current' ? `${displayKey(curKey)}` :
+                     reportRange === '3m' ? `${displayKey(keys[0])} – ${displayKey(keys[keys.length - 1])}` :
+                     reportRange === 'ytd' ? `Jan ${CUR_YEAR} – ${displayKey(curKey)}` :
+                     `${displayKey(keys[0])} – ${displayKey(keys[keys.length - 1])}`;
+
+  // ── Generate HTML email ──
+  const generateEmailHTML = () => {
+    const insightRows = insights.map(i => {
+      const color = i.type === 'warn' ? '#ff514f' : i.type === 'good' ? '#24d17e' : '#4b8dff';
+      const icon = i.type === 'warn' ? '⚠️' : i.type === 'good' ? '✅' : 'ℹ️';
+      return `<tr><td style="padding:8px 12px;border-bottom:1px solid #1c2b42;font-size:13px;"><span style="color:${color}">${icon}</span> ${i.text}</td></tr>`;
+    }).join('');
+
+    const budgetRows = bvsA.slice(0, 15).map(row => {
+      const pct = row.budget > 0 ? (row.actual / row.budget) * 100 : 0;
+      const isOver = row.actual > row.budget;
+      const statusColor = isOver ? '#ff514f' : '#24d17e';
+      const status = isOver ? '⚠️ Over' : '✅ OK';
+      return `<tr style="border-bottom:1px solid #1c2b4222;">
+        <td style="padding:8px 12px;font-weight:600;">${row.name}</td>
+        <td style="padding:8px 12px;text-align:right;">₱${Math.round(row.budget).toLocaleString()}</td>
+        <td style="padding:8px 12px;text-align:right;color:${statusColor};">₱${Math.round(row.actual).toLocaleString()}</td>
+        <td style="padding:8px 12px;text-align:right;">${pct.toFixed(0)}%</td>
+        <td style="padding:8px 12px;text-align:center;color:${statusColor};">${status}</td>
+      </tr>`;
+    }).join('');
+
+    const accountRows = accounts.map(a => {
+      const typeColor = TYPE_CLR[a.type] || '#8ea0b8';
+      return `<tr style="border-bottom:1px solid #1c2b4222;">
+        <td style="padding:8px 12px;font-weight:600;">${a.name}</td>
+        <td style="padding:8px 12px;"><span style="color:${typeColor};font-weight:600;">${a.type}</span></td>
+        <td style="padding:8px 12px;text-align:right;font-weight:700;">₱${a.balance.toLocaleString()}</td>
+      </tr>`;
+    }).join('');
+
+    const debtRows = debts.map(d => {
+      return `<tr style="border-bottom:1px solid #1c2b4222;">
+        <td style="padding:8px 12px;font-weight:600;">${d.name}</td>
+        <td style="padding:8px 12px;text-align:right;color:#ff514f;font-weight:700;">₱${d.balance.toLocaleString()}</td>
+        <td style="padding:8px 12px;text-align:right;">₱${d.limit.toLocaleString()}</td>
+        <td style="padding:8px 12px;text-align:right;">${d.apr}%</td>
+      </tr>`;
+    }).join('');
+
+    const goalRows = majorExpenses.map(e => {
+      const pct = e.budget > 0 ? (e.actual / e.budget) * 100 : 0;
+      const barWidth = Math.min(pct, 100);
+      const barColor = e.done ? '#24d17e' : '#4b8dff';
+      return `<tr style="border-bottom:1px solid #1c2b4222;">
+        <td style="padding:8px 12px;font-weight:600;">${e.name} ${e.done ? '✅' : ''}</td>
+        <td style="padding:8px 12px;text-align:right;">₱${e.actual.toLocaleString()} / ₱${e.budget.toLocaleString()}</td>
+        <td style="padding:8px 12px;text-align:right;">${pct.toFixed(0)}%</td>
+        <td style="padding:8px 12px;width:100px;">
+          <div style="background:#1c2b42;border-radius:4px;height:8px;overflow:hidden;">
+            <div style="width:${barWidth}%;height:100%;background:${barColor};border-radius:4px;"></div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#020814;font-family:Inter,'Segoe UI',system-ui,sans-serif;color:#eef5ff;">
+<div style="max-width:680px;margin:0 auto;padding:24px;">
+
+  <!-- Header -->
+  <div style="text-align:center;padding:28px 0 16px;border-bottom:1px solid #1c2b42;margin-bottom:24px;">
+    <div style="display:inline-block;width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#f2a71b,#ff7a45);text-align:center;line-height:38px;color:#08111f;font-weight:900;font-size:16px;margin-bottom:10px;">B</div>
+    <h1 style="margin:10px 0 4px;font-size:22px;font-weight:800;color:#eef5ff;">Financial Report</h1>
+    <p style="margin:0;font-size:12px;color:#8ea0b8;">Generated on ${reportDate}</p>
+    <p style="margin:4px 0 0;font-size:12px;color:#8ea0b8;">Period: ${rangeLabel}</p>
+  </div>
+
+  <!-- Executive Summary -->
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.06em;color:#eef5ff;border-bottom:1px solid #1c2b42;padding-bottom:8px;margin-bottom:12px;">📊 Executive Summary</h2>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>
+        <td style="padding:12px;background:#0f1a2a;border-radius:8px;border:1px solid #1c2b42;text-align:center;width:33%;">
+          <div style="font-size:10px;color:#8ea0b8;text-transform:uppercase;font-weight:800;margin-bottom:4px;">Health Score</div>
+          <div style="font-size:24px;font-weight:800;color:${grade.color};">${healthScore}/100</div>
+          <div style="font-size:11px;color:${grade.color};font-weight:700;">${grade.emoji} ${grade.label}</div>
+        </td>
+        <td style="width:8px;"></td>
+        <td style="padding:12px;background:#0f1a2a;border-radius:8px;border:1px solid #1c2b42;text-align:center;width:33%;">
+          <div style="font-size:10px;color:#8ea0b8;text-transform:uppercase;font-weight:800;margin-bottom:4px;">Net Worth</div>
+          <div style="font-size:24px;font-weight:800;color:#4b8dff;">₱${Math.round(netWorth).toLocaleString()}</div>
+          <div style="font-size:11px;color:#8ea0b8;">${safetyMonths.toFixed(1)} months runway</div>
+        </td>
+        <td style="width:8px;"></td>
+        <td style="padding:12px;background:#0f1a2a;border-radius:8px;border:1px solid #1c2b42;text-align:center;width:33%;">
+          <div style="font-size:10px;color:#8ea0b8;text-transform:uppercase;font-weight:800;margin-bottom:4px;">Savings Rate</div>
+          <div style="font-size:24px;font-weight:800;color:#24d17e;">${Math.round(avgRate)}%</div>
+          <div style="font-size:11px;color:#8ea0b8;">${active.length} active month(s)</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Income & Expenses -->
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.06em;color:#eef5ff;border-bottom:1px solid #1c2b42;padding-bottom:8px;margin-bottom:12px;">💰 Income & Expense Analysis</h2>
+    <table style="width:100%;border-collapse:collapse;background:#0f1a2a;border-radius:8px;border:1px solid #1c2b42;">
+      <tr style="border-bottom:1px solid #1c2b42;"><td style="padding:10px 14px;color:#8ea0b8;">Total Income</td><td style="padding:10px 14px;text-align:right;font-weight:700;color:#4b8dff;">₱${Math.round(totalIncome).toLocaleString()}</td></tr>
+      <tr style="border-bottom:1px solid #1c2b42;"><td style="padding:10px 14px;color:#8ea0b8;">Total Expenses</td><td style="padding:10px 14px;text-align:right;font-weight:700;color:#ff514f;">₱${Math.round(totalExpenses).toLocaleString()}</td></tr>
+      <tr style="border-bottom:1px solid #1c2b42;"><td style="padding:10px 14px;color:#8ea0b8;">Net Savings</td><td style="padding:10px 14px;text-align:right;font-weight:700;color:${totalSavings >= 0 ? '#24d17e' : '#ff514f'};">₱${Math.round(totalSavings).toLocaleString()}</td></tr>
+      <tr style="border-bottom:1px solid #1c2b42;"><td style="padding:10px 14px;color:#8ea0b8;">OT Income</td><td style="padding:10px 14px;text-align:right;font-weight:700;color:#7257ff;">₱${Math.round(totalOT).toLocaleString()}</td></tr>
+      <tr><td colspan="2" style="padding:10px 14px;border-top:2px solid #1c2b42;"></td></tr>
+      <tr style="border-bottom:1px solid #1c2b4233;"><td style="padding:6px 14px;color:#8ea0b8;font-size:12px;">  Fixed Expenses</td><td style="padding:6px 14px;text-align:right;font-size:12px;">₱${Math.round(totalFixed).toLocaleString()}</td></tr>
+      <tr style="border-bottom:1px solid #1c2b4233;"><td style="padding:6px 14px;color:#8ea0b8;font-size:12px;">  Variable Expenses</td><td style="padding:6px 14px;text-align:right;font-size:12px;">₱${Math.round(totalVariable).toLocaleString()}</td></tr>
+      <tr style="border-bottom:1px solid #1c2b4233;"><td style="padding:6px 14px;color:#8ea0b8;font-size:12px;">  Debt Payments</td><td style="padding:6px 14px;text-align:right;font-size:12px;">₱${Math.round(totalDebtPayments).toLocaleString()}</td></tr>
+      <tr><td style="padding:6px 14px;color:#8ea0b8;font-size:12px;">  Investments</td><td style="padding:6px 14px;text-align:right;font-size:12px;">₱${Math.round(totalInvestments).toLocaleString()}</td></tr>
+    </table>
+  </div>
+
+  <!-- Budget Compliance -->
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.06em;color:#eef5ff;border-bottom:1px solid #1c2b42;padding-bottom:8px;margin-bottom:12px;">📋 Budget Compliance</h2>
+    <table style="width:100%;border-collapse:collapse;background:#0f1a2a;border-radius:8px;border:1px solid #1c2b42;font-size:13px;">
+      <tr style="border-bottom:1px solid #1c2b42;color:#8ea0b8;">
+        <th style="padding:8px 12px;text-align:left;">Category</th>
+        <th style="padding:8px 12px;text-align:right;">Budget</th>
+        <th style="padding:8px 12px;text-align:right;">Actual</th>
+        <th style="padding:8px 12px;text-align:right;">Used</th>
+        <th style="padding:8px 12px;text-align:center;">Status</th>
+      </tr>
+      ${budgetRows}
+    </table>
+  </div>
+
+  <!-- Asset Allocation -->
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.06em;color:#eef5ff;border-bottom:1px solid #1c2b42;padding-bottom:8px;margin-bottom:12px;">🏦 Asset Allocation</h2>
+    <table style="width:100%;border-collapse:collapse;background:#0f1a2a;border-radius:8px;border:1px solid #1c2b42;font-size:13px;">
+      <tr style="border-bottom:1px solid #1c2b42;color:#8ea0b8;">
+        <th style="padding:8px 12px;text-align:left;">Account</th>
+        <th style="padding:8px 12px;text-align:left;">Type</th>
+        <th style="padding:8px 12px;text-align:right;">Balance</th>
+      </tr>
+      ${accountRows}
+      <tr style="border-top:2px solid #1c2b42;">
+        <td colspan="2" style="padding:10px 12px;font-weight:800;">Total Assets</td>
+        <td style="padding:10px 12px;text-align:right;font-weight:800;color:#24d17e;">₱${totalBal.toLocaleString()}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Debt Status -->
+  ${debts.length > 0 ? `<div style="margin-bottom:24px;">
+    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.06em;color:#eef5ff;border-bottom:1px solid #1c2b42;padding-bottom:8px;margin-bottom:12px;">💳 Debt Status</h2>
+    <table style="width:100%;border-collapse:collapse;background:#0f1a2a;border-radius:8px;border:1px solid #1c2b42;font-size:13px;">
+      <tr style="border-bottom:1px solid #1c2b42;color:#8ea0b8;">
+        <th style="padding:8px 12px;text-align:left;">Debt</th>
+        <th style="padding:8px 12px;text-align:right;">Balance</th>
+        <th style="padding:8px 12px;text-align:right;">Limit</th>
+        <th style="padding:8px 12px;text-align:right;">APR</th>
+      </tr>
+      ${debtRows}
+      <tr style="border-top:2px solid #1c2b42;">
+        <td style="padding:10px 12px;font-weight:800;">Total Owed</td>
+        <td style="padding:10px 12px;text-align:right;font-weight:800;color:#ff514f;">₱${totalDebts.toLocaleString()}</td>
+        <td colspan="2"></td>
+      </tr>
+    </table>
+  </div>` : ''}
+
+  <!-- Goals Progress -->
+  ${majorExpenses.length > 0 ? `<div style="margin-bottom:24px;">
+    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.06em;color:#eef5ff;border-bottom:1px solid #1c2b42;padding-bottom:8px;margin-bottom:12px;">🎯 Goals Progress</h2>
+    <table style="width:100%;border-collapse:collapse;background:#0f1a2a;border-radius:8px;border:1px solid #1c2b42;font-size:13px;">
+      <tr style="border-bottom:1px solid #1c2b42;color:#8ea0b8;">
+        <th style="padding:8px 12px;text-align:left;">Goal</th>
+        <th style="padding:8px 12px;text-align:right;">Progress</th>
+        <th style="padding:8px 12px;text-align:right;">%</th>
+        <th style="padding:8px 12px;">Bar</th>
+      </tr>
+      ${goalRows}
+    </table>
+  </div>` : ''}
+
+  <!-- Insights -->
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:0.06em;color:#eef5ff;border-bottom:1px solid #1c2b42;padding-bottom:8px;margin-bottom:12px;">💡 Smart Insights</h2>
+    <table style="width:100%;border-collapse:collapse;background:#0f1a2a;border-radius:8px;border:1px solid #1c2b42;">
+      ${insightRows}
+    </table>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center;padding:20px 0;border-top:1px solid #1c2b42;color:#8ea0b8;font-size:11px;">
+    <p style="margin:0;">This report was generated by Budget App 2026.</p>
+    <p style="margin:4px 0 0;">Period: ${rangeLabel} • ${reportDate}</p>
+  </div>
+
+</div>
+</body>
+</html>`;
+  };
+
+  // ── Send email ──
+  const handleSendEmail = async () => {
+    if (!session?.user?.email) {
+      setSendResult({ type: 'error', text: 'No signed-in email found. Please sign in first.' });
+      return;
+    }
+    setSending(true);
+    setSendResult(null);
+    try {
+      const html = generateEmailHTML();
+      const res = await fetch('/api/send-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          html,
+          recipientEmail: session.user.email,
+          subject: `Budget App — Financial Report (${rangeLabel})`,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send email');
+      setSendResult({ type: 'success', text: `Report sent to ${session.user.email}!` });
+    } catch (err) {
+      setSendResult({ type: 'error', text: err.message });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // ── Print ──
+  const handlePrint = () => {
+    const html = generateEmailHTML();
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => win.print(), 400);
+  };
+
+  // ── Section wrapper ──
+  const Section = ({ id, title, icon, children }) => {
+    const isCollapsed = collapsedSections[id];
+    return (
+      <Card style={{ marginBottom: 0 }}>
+        <div
+          onClick={() => toggleSection(id)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none', marginBottom: isCollapsed ? 0 : 12 }}
+        >
+          <SecTitle style={{ margin: 0 }}>{icon} {title}</SecTitle>
+          <span style={{ fontSize: 11, color: C.muted, border: `1px solid ${C.border}`, borderRadius: 4, padding: '2px 6px' }}>{isCollapsed ? '▶ show' : '▼ hide'}</span>
+        </div>
+        {!isCollapsed && children}
+      </Card>
+    );
+  };
+
+  const userEmail = session?.user?.email || 'your email';
+
+  return (
+    <div ref={reportRef}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: sm ? 'flex-start' : 'center', gap: 14, marginBottom: 18, flexDirection: sm ? 'column' : 'row' }}>
+        <div>
+          <div style={{ fontSize: sm ? 20 : 25, fontWeight: 800, color: C.text }}>📊 Financial Report</div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Generated {reportDate}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            onClick={handleSendEmail}
+            disabled={sending}
+            style={{
+              padding: '10px 18px',
+              borderRadius: 8,
+              border: 'none',
+              background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
+              color: '#fff',
+              cursor: sending ? 'wait' : 'pointer',
+              fontSize: 13,
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              opacity: sending ? 0.7 : 1,
+              transition: 'opacity 0.2s, transform 0.15s',
+              boxShadow: '0 4px 16px rgba(75,141,255,0.3)',
+            }}
+          >
+            {sending ? '⏳ Sending...' : '📧 Send Report to Email'}
+          </button>
+          <Btn onClick={handlePrint} style={{ fontWeight: 600 }}>📄 Print / Save PDF</Btn>
+        </div>
+      </div>
+
+      {/* Send result toast */}
+      {sendResult && (
+        <div style={{
+          padding: '10px 16px',
+          borderRadius: 8,
+          marginBottom: 14,
+          background: sendResult.type === 'success' ? `${C.green}15` : `${C.red}15`,
+          border: `1px solid ${sendResult.type === 'success' ? C.green : C.red}44`,
+          color: sendResult.type === 'success' ? C.green : C.red,
+          fontSize: 13,
+          fontWeight: 600,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <span>{sendResult.type === 'success' ? '✅' : '❌'} {sendResult.text}</span>
+          <button onClick={() => setSendResult(null)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 16 }}>×</button>
+        </div>
+      )}
+
+      {/* Recipient info */}
+      <div style={{ fontSize: 12, color: C.muted, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+        📬 Report will be sent to: <span style={{ color: C.text, fontWeight: 600 }}>{userEmail}</span>
+      </div>
+
+      {/* Range selector */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18, alignItems: 'center' }}>
+        <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Report Period:</span>
+        {[
+          ['current', 'Current Month'],
+          ['3m', 'Last 3 Months'],
+          ['ytd', 'Year to Date'],
+          ['12m', 'Last 12 Months'],
+        ].map(([v, l]) => (
+          <button key={v} onClick={() => setReportRange(v)} style={{
+            padding: '7px 14px',
+            borderRadius: 7,
+            border: `1px solid ${reportRange === v ? C.purple : C.border}`,
+            background: reportRange === v ? `${C.purple}33` : C.panel,
+            color: reportRange === v ? C.text : C.muted,
+            cursor: 'pointer',
+            fontSize: 12,
+            fontWeight: reportRange === v ? 700 : 500,
+            transition: 'all 0.15s',
+          }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 11, color: C.muted, marginBottom: 16 }}>
+        Viewing: {rangeLabel} • {keys.length} month(s) of data
+      </div>
+
+      {/* ── Report sections ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+        {/* Executive Summary */}
+        <Section id="exec" title="Executive Summary" icon="📊">
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4, 1fr)', gap: sm ? 8 : 12 }}>
+            <MetricCard icon={grade.emoji} label="Financial Health" value={`${healthScore}/100`} sub={grade.label} color={grade.color} sm={sm} />
+            <MetricCard icon="₱" label="Net Worth" value={peso(netWorth)} sub={`${accounts.length} accounts`} color={C.blue} sm={sm} />
+            <MetricCard icon="%" label="Savings Rate" value={`${Math.round(avgRate)}%`} sub={`${active.length} month(s)`} color={C.green} sm={sm} />
+            <MetricCard icon="🛡" label="Emergency Runway" value={`${safetyMonths.toFixed(1)} mo`} sub={peso(liquid) + ' liquid'} color={C.amber} sm={sm} />
+          </div>
+        </Section>
+
+        {/* Income & Expense Analysis */}
+        <Section id="income" title="Income & Expense Analysis" icon="💰">
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 14 }}>
+            <div>
+              <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', fontWeight: 800, marginBottom: 10 }}>Summary</div>
+              {[
+                ['Total Income', peso(totalIncome), C.blue],
+                ['Total Expenses', peso(totalExpenses), C.red],
+                ['Net Savings', peso(totalSavings), totalSavings >= 0 ? C.green : C.red],
+                ['OT Income', peso(totalOT), C.purple],
+              ].map(([l, v, c]) => (
+                <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${C.border}22`, fontSize: 13 }}>
+                  <span style={{ color: C.muted }}>{l}</span>
+                  <span style={{ color: c, fontWeight: 700 }}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', fontWeight: 800, marginBottom: 10 }}>Expense Breakdown</div>
+              {[
+                ['Fixed Expenses', peso(totalFixed), C.red],
+                ['Variable Expenses', peso(totalVariable), C.orange],
+                ['Debt Payments', peso(totalDebtPayments), C.amber],
+                ['Investments', peso(totalInvestments), C.purple],
+              ].map(([l, v, c]) => (
+                <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${C.border}22`, fontSize: 13 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: c, display: 'inline-block' }} />
+                    <span style={{ color: C.muted }}>{l}</span>
+                  </span>
+                  <span style={{ fontWeight: 600 }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Monthly trend */}
+          {stats.length > 1 && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', fontWeight: 800, marginBottom: 8 }}>Monthly Trend</div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.muted }}>
+                      <th style={{ textAlign: 'left', padding: '6px 8px' }}>Month</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px' }}>Income</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px' }}>Expenses</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px' }}>Savings</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px' }}>Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.map(s => (
+                      <tr key={s.key} style={{ borderBottom: `1px solid ${C.border}11` }}>
+                        <td style={{ padding: '6px 8px', fontWeight: 600 }}>{s.label}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', color: C.blue }}>{peso(s.income)}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', color: C.red }}>{peso(s.expenses)}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', color: s.savings >= 0 ? C.green : C.red }}>{peso(s.savings)}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right' }}>{Math.round(s.savingsRate)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </Section>
+
+        {/* Budget Compliance */}
+        <Section id="budget" title="Budget Compliance" icon="📋">
+          {bvsA.length === 0 ? (
+            <div style={{ color: C.muted, fontSize: 13, padding: 10 }}>No expense data for this period.</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', color: C.muted }}>Category</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: C.muted }}>Budget</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: C.muted }}>Actual</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: C.muted }}>Used %</th>
+                    <th style={{ textAlign: 'center', padding: '6px 8px', color: C.muted }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bvsA.map((row, i) => {
+                    const pct = row.budget > 0 ? (row.actual / row.budget) * 100 : 0;
+                    const isOver = row.actual > row.budget;
+                    return (
+                      <tr key={i} style={{ borderBottom: `1px solid ${C.border}11` }}>
+                        <td style={{ padding: '8px', fontWeight: 600 }}>{row.name}</td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>{peso(row.budget)}</td>
+                        <td style={{ padding: '8px', textAlign: 'right', color: isOver ? C.red : C.text }}>{peso(row.actual)}</td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                            <span style={{ fontSize: 10, color: isOver ? C.red : C.muted }}>{pct.toFixed(0)}%</span>
+                            <div style={{ width: 50, height: 5, background: C.border, borderRadius: 3, overflow: 'hidden' }}>
+                              <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: isOver ? C.red : C.green }} />
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>
+                          {isOver ? <span style={{ color: C.red }}>⚠️ Over</span> : <span style={{ color: C.green }}>✅ OK</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Section>
+
+        {/* Asset Allocation */}
+        <Section id="assets" title="Asset Allocation" icon="🏦">
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 14 }}>
+            <div>
+              {Object.entries(accountsByType).map(([type, accs]) => (
+                <div key={type} style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: TYPE_CLR[type] || C.muted, display: 'inline-block' }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: TYPE_CLR[type] || C.muted }}>{type}</span>
+                    <span style={{ fontSize: 11, color: C.muted, marginLeft: 'auto' }}>{peso(accs.reduce((s, a) => s + a.balance, 0))}</span>
+                  </div>
+                  {accs.map(a => (
+                    <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '4px 0 4px 16px', borderBottom: `1px solid ${C.border}11` }}>
+                      <span>{a.name}</span>
+                      <span style={{ fontWeight: 600 }}>{peso(a.balance)}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: `${C.blue}11`, borderRadius: 8, border: `1px solid ${C.blue}33` }}>
+                  <span style={{ fontSize: 12, color: C.muted }}>Total Assets</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.blue }}>{peso(totalBal)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: `${C.red}11`, borderRadius: 8, border: `1px solid ${C.red}33` }}>
+                  <span style={{ fontSize: 12, color: C.muted }}>Total Liabilities</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.red }}>{peso(totalDebts)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: `${C.green}11`, borderRadius: 8, border: `1px solid ${C.green}33` }}>
+                  <span style={{ fontSize: 12, color: C.muted }}>Net Worth</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>{peso(netWorth)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: `${C.purple}11`, borderRadius: 8, border: `1px solid ${C.purple}33` }}>
+                  <span style={{ fontSize: 12, color: C.muted }}>Outstanding Credits</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.purple }}>{peso(totalCredits)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        {/* Debt Status */}
+        {debts.length > 0 && (
+          <Section id="debts" title="Debt Status" icon="💳">
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', color: C.muted }}>Debt</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: C.muted }}>Balance</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: C.muted }}>Limit</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: C.muted }}>APR</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: C.muted }}>Min Payment</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: C.muted }}>Utilization</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debts.map(d => {
+                    const util = d.limit > 0 ? (d.balance / d.limit) * 100 : 0;
+                    return (
+                      <tr key={d.id} style={{ borderBottom: `1px solid ${C.border}11` }}>
+                        <td style={{ padding: '8px', fontWeight: 600 }}>{d.name}</td>
+                        <td style={{ padding: '8px', textAlign: 'right', color: C.red, fontWeight: 700 }}>{peso(d.balance)}</td>
+                        <td style={{ padding: '8px', textAlign: 'right', color: C.muted }}>{peso(d.limit)}</td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>{d.apr}%</td>
+                        <td style={{ padding: '8px', textAlign: 'right', color: C.amber }}>{peso(d.minPayment)}</td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                            <span style={{ fontSize: 10, color: util > 50 ? C.red : C.muted }}>{util.toFixed(0)}%</span>
+                            <div style={{ width: 40, height: 4, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
+                              <div style={{ width: `${Math.min(util, 100)}%`, height: '100%', background: util > 70 ? C.red : util > 40 ? C.amber : C.green }} />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, padding: '10px 8px', borderTop: `1px solid ${C.border}`, fontSize: 13, fontWeight: 700 }}>
+              <span>Total Outstanding Debt</span>
+              <span style={{ color: C.red }}>{peso(totalDebts)}</span>
+            </div>
+          </Section>
+        )}
+
+        {/* Goals Progress */}
+        {majorExpenses.length > 0 && (
+        <Section id="goals" title="Goals Progress" icon="🎯">
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 10 }}>
+              {majorExpenses.map(e => {
+                const pct = e.budget > 0 ? (e.actual / e.budget) * 100 : 0;
+                return (
+                  <div key={e.id} style={{ padding: '10px 12px', background: e.done ? `${C.green}08` : `${C.blue}08`, borderRadius: 8, border: `1px solid ${e.done ? C.green : C.border}33` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>{e.name} {e.done ? '✅' : ''}</span>
+                      <span style={{ fontSize: 11, color: C.muted }}>{e.date || ''}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.muted, marginBottom: 4 }}>
+                      <span>{peso(e.actual)} / {peso(e.budget)}</span>
+                      <span style={{ fontWeight: 700, color: pct >= 100 ? C.green : C.text }}>{pct.toFixed(0)}%</span>
+                    </div>
+                    <div style={{ background: C.border, borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: e.done ? C.green : C.blue, borderRadius: 4, transition: 'width 0.3s' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        {/* Smart Insights */}
+        <Section id="insights" title="Smart Insights" icon="💡">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {insights.map((ins, i) => (
+              <div key={i} style={{
+                display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13,
+                padding: '10px 12px', borderRadius: 8,
+                background: ins.type === 'warn' ? `${C.red}11` : ins.type === 'good' ? `${C.green}11` : `${C.blue}11`,
+                border: `1px solid ${ins.type === 'warn' ? C.red : ins.type === 'good' ? C.green : C.blue}22`,
+              }}>
+                <span style={{ color: ins.type === 'warn' ? C.red : ins.type === 'good' ? C.green : C.blue, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  {ins.type === 'warn' ? '⚠️ Warning:' : ins.type === 'good' ? '✅ Healthy:' : 'ℹ️ Note:'}
+                </span>
+                <span style={{ color: C.text }}>{ins.text}</span>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* ── Scheduled Reports Manager ── */}
+        <ScheduleManager session={session} sm={sm} />
+
+      </div>
+    </div>
+  );
+}
+
+// ─── SCHEDULE MANAGER ─────────────────────────────────────────────────────────
+function ScheduleManager({ session, sm }) {
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [triggeringId, setTriggeringId] = useState(null);
+  const [formError, setFormError] = useState('');
+
+  // Form state
+  const [freq, setFreq] = useState('daily');
+  const [time, setTime] = useState('08:00');
+  const [dayOfWeek, setDayOfWeek] = useState(1);
+  const [dayOfMonth, setDayOfMonth] = useState(1);
+  const [minuteInterval, setMinuteInterval] = useState(15);
+  const [range, setRange] = useState('current');
+
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const RANGE_LABELS = { current: 'Current Month', '3m': 'Last 3 Months', ytd: 'Year to Date', '12m': 'Last 12 Months' };
+
+  const fetchSchedules = async () => {
+    if (!session?.access_token) return;
+    try {
+      const res = await fetch('/api/schedules', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+      });
+      const data = await res.json();
+      if (data.schedules) setSchedules(data.schedules);
+    } catch (err) {
+      console.error('Error fetching schedules:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchSchedules(); }, [session]);
+
+  const handleAdd = async () => {
+    if (!session?.access_token) return;
+    setSaving(true);
+    setFormError('');
+    try {
+      const res = await fetch('/api/schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          frequency: freq,
+          time: freq === 'minutes' ? '00:00' : time,
+          day_of_week: freq === 'weekly' ? dayOfWeek : undefined,
+          day_of_month: freq === 'monthly' ? dayOfMonth : (freq === 'minutes' ? minuteInterval : undefined),
+          report_range: range,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create schedule');
+      setSchedules(prev => [data.schedule, ...prev]);
+      setShowForm(false);
+      setFreq('daily');
+      setTime('08:00');
+    } catch (err) {
+      setFormError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (id, currentEnabled) => {
+    if (!session?.access_token) return;
+    try {
+      const res = await fetch(`/api/schedules?id=${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ enabled: !currentEnabled }),
+      });
+      const data = await res.json();
+      if (res.ok && data.schedule) {
+        setSchedules(prev => prev.map(s => s.id === id ? data.schedule : s));
+      }
+    } catch (err) {
+      console.error('Toggle error:', err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!session?.access_token) return;
+    try {
+      await fetch(`/api/schedules?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+      });
+      setSchedules(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      console.error('Delete error:', err);
+    }
+  };
+
+  const handleTriggerNow = async (id) => {
+    if (!session?.access_token) return;
+    setTriggeringId(id);
+    try {
+      const res = await fetch(`/api/schedules?action=trigger&id=${id}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to trigger schedule');
+      alert('⚡ Report sent immediately!');
+      fetchSchedules(); // Refresh last sent timestamp
+    } catch (err) {
+      alert(`Error triggering report: ${err.message}`);
+    } finally {
+      setTriggeringId(null);
+    }
+  };
+
+  const getScheduleLabel = (s) => {
+    if (s.frequency === 'daily') return `Daily at ${s.time}`;
+    if (s.frequency === 'weekly') return `Weekly on ${DAYS[s.day_of_week || 0]} at ${s.time}`;
+    if (s.frequency === 'monthly') return `Monthly on day ${s.day_of_month || 1} at ${s.time}`;
+    if (s.frequency === 'minutes') return `Every ${s.day_of_month || 15} minutes`;
+    return s.frequency;
+  };
+
+  const getNextRun = (s) => {
+    if (!s.enabled) return 'Paused';
+    const now = new Date();
+
+    if (s.frequency === 'minutes') {
+      const interval = s.day_of_month || 15;
+      const currentMin = now.getMinutes();
+      const minToNext = interval - (currentMin % interval);
+      return `In ~${minToNext} minute(s)`;
+    }
+
+    const [h, m] = s.time.split(':').map(Number);
+    const next = new Date(now);
+    next.setHours(h, m, 0, 0);
+
+    if (s.frequency === 'daily') {
+      if (next <= now) next.setDate(next.getDate() + 1);
+    } else if (s.frequency === 'weekly') {
+      const target = s.day_of_week ?? 1;
+      let diff = target - now.getDay();
+      if (diff < 0 || (diff === 0 && next <= now)) diff += 7;
+      next.setDate(next.getDate() + diff);
+    } else if (s.frequency === 'monthly') {
+      const target = s.day_of_month ?? 1;
+      next.setDate(target);
+      if (next <= now) next.setMonth(next.getMonth() + 1);
+    }
+
+    const diffMs = next - now;
+    const diffHrs = Math.round(diffMs / 3600000);
+    if (diffHrs < 1) return 'Less than 1 hour';
+    if (diffHrs < 24) return `In ~${diffHrs} hour(s)`;
+    const diffDays = Math.round(diffHrs / 24);
+    return `In ~${diffDays} day(s)`;
+  };
+
+  const inputStyle = {
+    padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
+    background: C.bg, color: C.text, fontSize: 13, outline: 'none',
+    fontFamily: 'inherit',
+  };
+  const selectStyle = { ...inputStyle, cursor: 'pointer' };
+
+  return (
+    <Card style={{ marginTop: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <SecTitle style={{ margin: 0 }}>⏰ Scheduled Reports</SecTitle>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          style={{
+            padding: '7px 14px', borderRadius: 7, border: 'none',
+            background: showForm ? `${C.red}33` : `${C.green}33`,
+            color: showForm ? C.red : C.green,
+            cursor: 'pointer', fontSize: 12, fontWeight: 700,
+          }}
+        >
+          {showForm ? '✕ Cancel' : '+ Add Schedule'}
+        </button>
+      </div>
+
+      <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>
+        Set up recurring reports that are automatically emailed to your signed-in address. The MCP server must be running for scheduled emails to send.
+      </div>
+
+      {/* Add form */}
+      {showForm && (
+        <div style={{
+          padding: 16, borderRadius: 10, border: `1px solid ${C.purple}44`,
+          background: `${C.purple}08`, marginBottom: 14,
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, color: C.text }}>New Schedule</div>
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Frequency</label>
+              <select value={freq} onChange={e => setFreq(e.target.value)} style={{ ...selectStyle, width: '100%' }}>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="minutes">Every X Minutes</option>
+              </select>
+            </div>
+            {freq === 'weekly' && (
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Day of Week</label>
+                <select value={dayOfWeek} onChange={e => setDayOfWeek(Number(e.target.value))} style={{ ...selectStyle, width: '100%' }}>
+                  {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                </select>
+              </div>
+            )}
+            {freq === 'monthly' && (
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Day of Month</label>
+                <select value={dayOfMonth} onChange={e => setDayOfMonth(Number(e.target.value))} style={{ ...selectStyle, width: '100%' }}>
+                  {Array.from({ length: 28 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+                </select>
+              </div>
+            )}
+            {freq === 'minutes' && (
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Interval (Minutes)</label>
+                <select value={minuteInterval} onChange={e => setMinuteInterval(Number(e.target.value))} style={{ ...selectStyle, width: '100%' }}>
+                  {[5, 10, 15, 20, 30, 45, 60].map(v => <option key={v} value={v}>Every {v} Minutes</option>)}
+                </select>
+              </div>
+            )}
+            {freq !== 'minutes' && (
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Time (24h)</label>
+                <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+              </div>
+            )}
+            <div>
+              <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Report Range</label>
+              <select value={range} onChange={e => setRange(e.target.value)} style={{ ...selectStyle, width: '100%' }}>
+                {Object.entries(RANGE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </div>
+          </div>
+          {formError && <div style={{ color: C.red, fontSize: 12, marginBottom: 10 }}>❌ {formError}</div>}
+          <button
+            onClick={handleAdd}
+            disabled={saving}
+            style={{
+              padding: '9px 20px', borderRadius: 7, border: 'none',
+              background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
+              color: '#fff', cursor: saving ? 'wait' : 'pointer',
+              fontSize: 13, fontWeight: 700, opacity: saving ? 0.7 : 1,
+            }}
+          >
+            {saving ? '⏳ Saving...' : '✅ Create Schedule'}
+          </button>
+        </div>
+      )}
+
+      {/* Schedule list */}
+      {loading ? (
+        <div style={{ color: C.muted, fontSize: 13, padding: 10 }}>Loading schedules...</div>
+      ) : schedules.length === 0 ? (
+        <div style={{ color: C.muted, fontSize: 13, padding: 16, textAlign: 'center', border: `1px dashed ${C.border}`, borderRadius: 8 }}>
+          No scheduled reports yet. Click "+ Add Schedule" to create one.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {schedules.map(s => (
+            <div key={s.id} style={{
+              display: 'flex', alignItems: sm ? 'flex-start' : 'center',
+              flexDirection: sm ? 'column' : 'row',
+              gap: sm ? 8 : 14,
+              padding: '12px 14px', borderRadius: 8,
+              border: `1px solid ${s.enabled ? C.border : `${C.border}55`}`,
+              background: s.enabled ? C.panel : `${C.panel}88`,
+              opacity: s.enabled ? 1 : 0.7,
+              transition: 'opacity 0.2s',
+            }}>
+              {/* Left: Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em',
+                    padding: '2px 6px', borderRadius: 4,
+                    background: s.frequency === 'daily' ? `${C.blue}22` : s.frequency === 'weekly' ? `${C.purple}22` : s.frequency === 'monthly' ? `${C.amber}22` : `${C.green}22`,
+                    color: s.frequency === 'daily' ? C.blue : s.frequency === 'weekly' ? C.purple : s.frequency === 'monthly' ? C.amber : C.green,
+                    border: `1px solid ${s.frequency === 'daily' ? C.blue : s.frequency === 'weekly' ? C.purple : s.frequency === 'monthly' ? C.amber : C.green}33`,
+                  }}>
+                    {s.frequency}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{getScheduleLabel(s)}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 12, fontSize: 11, color: C.muted, flexWrap: 'wrap' }}>
+                  <span>📊 {RANGE_LABELS[s.report_range] || s.report_range}</span>
+                  <span>⏭ {getNextRun(s)}</span>
+                  {s.last_sent_at && <span>✅ Last sent: {new Date(s.last_sent_at).toLocaleString()}</span>}
+                </div>
+              </div>
+
+              {/* Right: Actions */}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                <button
+                  disabled={triggeringId === s.id}
+                  onClick={() => handleTriggerNow(s.id)}
+                  style={{
+                    padding: '5px 10px', borderRadius: 5, border: 'none',
+                    background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
+                    color: '#fff', cursor: triggeringId === s.id ? 'wait' : 'pointer',
+                    fontSize: 11, fontWeight: 700, opacity: triggeringId === s.id ? 0.7 : 1,
+                  }}
+                >
+                  {triggeringId === s.id ? '⏳ Sending...' : '⚡ Send Now'}
+                </button>
+                <button
+                  onClick={() => handleToggle(s.id, s.enabled)}
+                  style={{
+                    padding: '5px 10px', borderRadius: 5, border: `1px solid ${C.border}`,
+                    background: s.enabled ? `${C.green}22` : `${C.muted}11`,
+                    color: s.enabled ? C.green : C.muted,
+                    cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                  }}
+                >
+                  {s.enabled ? '🟢 Active' : '⏸ Paused'}
+                </button>
+                <button
+                  onClick={() => handleDelete(s.id)}
+                  style={{
+                    padding: '5px 10px', borderRadius: 5, border: `1px solid ${C.red}33`,
+                    background: `${C.red}11`, color: C.red,
+                    cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                  }}
+                >
+                  🗑
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+
+
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App() {
   const width=useWidth();
@@ -2223,6 +3346,7 @@ export default function App() {
     {id:'credits',  label:sm?'🤝':'🤝 Credits'},
     {id:'expenses', label:sm?'🎯':'🎯 Major'},
     {id:'calendar', label:sm?'📅':'📅 Calendar'},
+    {id:'reports',  label:sm?'📊':'📊 Reports'},
     ...(isAdmin ? [{id:'admin', label:sm?'⚙️':'⚙️ Admin Panel'}] : []),
   ];
   const TLBL={
@@ -2235,6 +3359,7 @@ export default function App() {
     credits:'Credits (Money Owed)',
     expenses:'Major Expenses',
     calendar:'Financial Calendar',
+    reports:'Financial Reports',
     admin:'Admin Panel'
   };
   const NAV_TABS=[
@@ -2247,6 +3372,7 @@ export default function App() {
     {id:'budget',   label:'Budget',icon:'B',group:'manage'},
     {id:'calendar', label:'Bills',icon:'P',group:'manage'},
     {id:'investments', label:'Investments',icon:'I',group:'analytics'},
+    {id:'reports', label:'Reports',icon:'R',group:'analytics'},
     ...(isAdmin ? [{id:'admin', label:'Admin Panel',icon:'S',group:'admin'}] : []),
   ];
   const navGroups = [
@@ -2343,6 +3469,7 @@ export default function App() {
         {tab==='credits'  &&<CreditsTab credits={credits} setCredits={setCredits} sm={sm}/>}
         {tab==='expenses' &&<MajorTab majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} sm={sm}/>}
         {tab==='calendar'  &&<CalendarTab budgetData={budgetData} sm={sm}/>}
+        {tab==='reports'   &&<ReportTab budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session}/>}
         {tab==='admin'     &&<AdminTab sm={sm}/>}
       </div>
     </div>
