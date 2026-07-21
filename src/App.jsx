@@ -159,8 +159,27 @@ function calcMonthFiltered(md, key, range, customStart, customEnd) {
   };
 }
 
-const peso = n=>'₱'+Math.abs(Math.round(n)).toLocaleString();
-const fmtK = n=>n>=1000000?'₱'+(n/1e6).toFixed(2)+'M':n>=1000?'₱'+(n/1000).toFixed(0)+'k':peso(n);
+const scaleFake = n => {
+  const val = Number(n) || 0;
+  if (typeof window !== 'undefined' && window.isFakeModeEnabled && val !== 0) {
+    return val * 100;
+  }
+  return val;
+};
+
+const peso = n => {
+  const val = scaleFake(n);
+  return '₱' + Math.abs(Math.round(val)).toLocaleString();
+};
+
+const fmtK = n => {
+  const val = scaleFake(n);
+  return val >= 1000000 
+    ? '₱' + (val / 1e6).toFixed(2) + 'M' 
+    : val >= 1000 
+      ? '₱' + (val / 1000).toFixed(0) + 'k' 
+      : '₱' + Math.abs(Math.round(val)).toLocaleString();
+};
 
 // ─── STORAGE (fixed) ──────────────────────────────────────────────────────────
 // Each key wrapped separately so one missing key doesn't break the others
@@ -1394,7 +1413,7 @@ function BudgetTab({budgetData,setBudgetData,sm}) {
 }
 
 // ─── ACCOUNTS ─────────────────────────────────────────────────────────────────
-function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory, sm }) {
+function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory, budgetData, setBudgetData, sm }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState(null);
   const total = accounts.reduce((s, a) => s + a.balance, 0);
@@ -1404,6 +1423,21 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
   const [logBalances, setLogBalances] = useState({});
   const [updateCurrent, setUpdateCurrent] = useState(true);
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Manual Debit Form State
+  const [selectedAccId, setSelectedAccId] = useState(accounts[0]?.id || '');
+  const [debitAmount, setDebitAmount] = useState('');
+  const [debitDesc, setDebitDesc] = useState('');
+  const [debitDate, setDebitDate] = useState(new Date().toISOString().slice(0, 10));
+  const [debitPeriod, setDebitPeriod] = useState(new Date().getDate() <= 15 ? '5th' : '20th');
+  const [debitSuccessMsg, setDebitSuccessMsg] = useState('');
+  const [debitFilterDate, setDebitFilterDate] = useState('');
+
+  const handleDebitDateChange = (val) => {
+    setDebitDate(val);
+    const day = Number(val.split('-')[2]) || 1;
+    setDebitPeriod(day <= 15 ? '5th' : '20th');
+  };
 
   useEffect(() => {
     const existingLog = balanceHistory.find(h => h.date === logDate);
@@ -1455,6 +1489,100 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
 
     setSuccessMsg('Logged successfully!');
     setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
+  const handleDebit = () => {
+    const accId = selectedAccId || accounts[0]?.id;
+    if (!accId) return alert('Please select an account');
+    if (!debitAmount || Number(debitAmount) <= 0) return alert('Please enter a valid amount');
+    if (!debitDesc.trim()) return alert('Please enter a description');
+
+    const account = accounts.find(a => a.id === accId);
+    if (!account) return;
+
+    const amount = Number(debitAmount);
+    const dateStr = debitDate;
+    const period = debitPeriod;
+    const key = dateStr.slice(0, 7);
+
+    // 1. Deduct balance
+    setAccounts(prev => prev.map(a => a.id === accId ? { ...a, balance: a.balance - amount } : a));
+
+    // 2. Add expense and log history to budgetData
+    setBudgetData(prev => {
+      const monthData = prev[key] || makeMonthData();
+      const periodData = monthData[period] || makePeriod();
+
+      const newExpense = {
+        name: `${debitDesc.trim()} (${account.name})`,
+        budget: amount,
+        amount: amount,
+        done: true
+      };
+
+      const updatedExpenses = [...periodData.expenses, newExpense];
+      const prevHistory = prev.debitHistory || [];
+      const newHistoryItem = {
+        id: 'deb-' + Date.now(),
+        accountId: accId,
+        accountName: account.name,
+        amount,
+        description: debitDesc.trim(),
+        date: dateStr,
+        period,
+        timestamp: new Date().toISOString()
+      };
+
+      return {
+        ...prev,
+        [key]: {
+          ...monthData,
+          [period]: {
+            ...periodData,
+            expenses: updatedExpenses
+          }
+        },
+        debitHistory: [newHistoryItem, ...prevHistory]
+      };
+    });
+
+    setDebitAmount('');
+    setDebitDesc('');
+    setDebitSuccessMsg('Debit logged successfully!');
+    setTimeout(() => setDebitSuccessMsg(''), 3000);
+  };
+
+  const handleDeleteDebit = (debit) => {
+    if (!confirm(`Refund ₱${debit.amount.toLocaleString()} back to ${debit.accountName} and delete the logged expense?`)) return;
+
+    // 1. Add back balance
+    setAccounts(prev => prev.map(a => a.id === debit.accountId ? { ...a, balance: a.balance + debit.amount } : a));
+
+    // 2. Remove expense & history log
+    const key = debit.date.slice(0, 7);
+    const period = debit.period;
+    const expenseName = `${debit.description} (${debit.accountName})`;
+
+    setBudgetData(prev => {
+      const monthData = prev[key] || makeMonthData();
+      const periodData = monthData[period] || makePeriod();
+
+      const updatedExpenses = periodData.expenses.filter(e => e.name !== expenseName || e.amount !== debit.amount);
+      const prevHistory = prev.debitHistory || [];
+      const updatedHistory = prevHistory.filter(h => h.id !== debit.id);
+
+      return {
+        ...prev,
+        [key]: {
+          ...monthData,
+          [period]: {
+            ...periodData,
+            expenses: updatedExpenses
+          }
+        },
+        debitHistory: updatedHistory
+      };
+    });
   };
 
   function startEdit(acc) {
@@ -1538,6 +1666,171 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
               <BtnG onClick={handleSaveLog} style={{ padding: '6px 12px', fontSize: 12 }}>Save Log</BtnG>
               {successMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>{successMsg}</span>}
             </div>
+          </Card>
+
+          {/* Manual Account Debit Card */}
+          <Card style={{ marginBottom: 0 }}>
+            <SecTitle>Manual Account Debit</SecTitle>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
+              Deduct an expense directly from an account balance and log it as a paid expense in your monthly budget.
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>From Account</label>
+                <select 
+                  value={selectedAccId} 
+                  onChange={e => setSelectedAccId(e.target.value)} 
+                  style={{
+                    padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
+                    background: C.bg, color: C.text, fontSize: 13, outline: 'none',
+                    fontFamily: 'inherit', width: '100%', cursor: 'pointer'
+                  }}
+                >
+                  <option value="" disabled>Select Account</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name} ({peso(acc.balance)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
+                <Inp 
+                  type="text" 
+                  value={debitDesc} 
+                  onChange={e => setDebitDesc(e.target.value)} 
+                  placeholder="e.g. Grocery Shopping, Medicine" 
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Amount (₱)</label>
+                  <Inp 
+                    type="number" 
+                    value={debitAmount} 
+                    onChange={e => setDebitAmount(e.target.value)} 
+                    placeholder="0" 
+                    style={{ textAlign: 'right' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Date</label>
+                  <Inp 
+                    type="date" 
+                    value={debitDate} 
+                    onChange={e => handleDebitDateChange(e.target.value)} 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Payroll Period</label>
+                <select 
+                  value={debitPeriod} 
+                  onChange={e => setDebitPeriod(e.target.value)} 
+                  style={{
+                    padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
+                    background: C.bg, color: C.text, fontSize: 13, outline: 'none',
+                    fontFamily: 'inherit', width: '100%', cursor: 'pointer'
+                  }}
+                >
+                  <option value="5th">5th Payroll (1st half of month)</option>
+                  <option value="20th">20th Payroll (2nd half of month)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BtnG onClick={handleDebit} style={{ padding: '7px 14px', fontSize: 12, background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: '#fff', border: 'none' }}>
+                Deduct & Log Expense
+              </BtnG>
+              {debitSuccessMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>{debitSuccessMsg}</span>}
+            </div>
+          </Card>
+
+          {/* Recent Manual Debits Card */}
+          <Card style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 6 }}>
+              <SecTitle style={{ margin: 0 }}>Recent Manual Debits</SecTitle>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, color: C.muted }}>Filter:</span>
+                <input 
+                  type="date" 
+                  value={debitFilterDate} 
+                  onChange={e => setDebitFilterDate(e.target.value)} 
+                  style={{
+                    padding: '4px 8px', borderRadius: 4, border: `1px solid ${C.border}`,
+                    background: C.bg, color: C.text, fontSize: 11, outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                />
+                {debitFilterDate && (
+                  <button 
+                    onClick={() => setDebitFilterDate('')}
+                    style={{
+                      background: 'none', border: `1px solid ${C.border}`, borderRadius: 4,
+                      color: C.muted, padding: '4px 8px', fontSize: 11, cursor: 'pointer'
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {(!budgetData.debitHistory || budgetData.debitHistory.length === 0) ? (
+              <div style={{ color: C.muted, fontSize: 12, padding: '10px 0', textAlign: 'center' }}>No manual debits logged yet.</div>
+            ) : (() => {
+              const filteredDebits = debitFilterDate 
+                ? budgetData.debitHistory.filter(d => d.date === debitFilterDate)
+                : budgetData.debitHistory;
+
+              if (filteredDebits.length === 0) {
+                return <div style={{ color: C.muted, fontSize: 12, padding: '10px 0', textAlign: 'center' }}>No debits logged on this date.</div>;
+              }
+
+              return (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.muted }}>
+                        <th style={{ textAlign: 'left', padding: '6px' }}>Date</th>
+                        <th style={{ textAlign: 'left', padding: '6px' }}>Description</th>
+                        <th style={{ textAlign: 'left', padding: '6px' }}>Account</th>
+                        <th style={{ textAlign: 'right', padding: '6px' }}>Amount</th>
+                        <th style={{ textAlign: 'center', padding: '6px' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDebits.map(deb => (
+                        <tr key={deb.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                          <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>{deb.date}</td>
+                          <td style={{ padding: '8px 6px', fontWeight: 600 }}>{deb.description}</td>
+                          <td style={{ padding: '8px 6px', color: C.muted }}>{deb.accountName}</td>
+                          <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 600, color: C.red }}>{peso(deb.amount)}</td>
+                          <td style={{ padding: '8px 6px', textAlign: 'center' }}>
+                            <button 
+                              onClick={() => handleDeleteDebit(deb)}
+                              style={{ 
+                                background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, 
+                                color: C.red, padding: '2px 6px', cursor: 'pointer', fontSize: 10
+                              }}
+                              title="Delete & Refund balance"
+                            >
+                              🗑
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </Card>
 
           {/* Recent Logs Card */}
@@ -3157,6 +3450,25 @@ export default function App() {
   const width=useWidth();
   const sm=width<640;
   const [tab,setTab]=useState('dashboard');
+  const [fakeMode, setFakeMode] = useState(() => {
+    try {
+      return localStorage.getItem('budget-fake-mode') === 'true';
+    } catch (_) {
+      return false;
+    }
+  });
+
+  // Keep window global in sync for utility formatters
+  if (typeof window !== 'undefined') {
+    window.isFakeModeEnabled = fakeMode;
+  }
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('budget-fake-mode', fakeMode);
+    } catch (_) {}
+  }, [fakeMode]);
+
   const [loaded,setLoaded]=useState(false);
   const [budgetData,setBudgetData]=useState({});
   const [accounts,setAccounts]=useState(DEF_ACCOUNTS);
@@ -3430,6 +3742,24 @@ export default function App() {
             {!isSupabaseConfigured ? 'Local Demo Mode' : !loaded ? 'Loading...' : syncStatus === 'saved' ? 'Saved to Cloud' : syncStatus === 'syncing' ? 'Syncing...' : 'Sync Error'}
           </span>
           {!sm && <span style={{ fontSize: 12, color: C.text, fontWeight: 700 }}>{displayName}</span>}
+          <button 
+            onClick={() => setFakeMode(p => !p)} 
+            style={{ 
+              padding: '4px 8px', 
+              borderRadius: 5, 
+              border: `1px solid ${fakeMode ? C.amber : C.border}`, 
+              background: fakeMode ? `${C.amber}22` : 'transparent', 
+              color: fakeMode ? C.amber : C.muted, 
+              cursor: 'pointer', 
+              fontSize: 11,
+              fontWeight: fakeMode ? 700 : 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            {fakeMode ? '🤫 Fake Mode ON' : '🕵️‍♂️ Fake Mode'}
+          </button>
           {isSupabaseConfigured && (
             <button 
               onClick={() => supabase.auth.signOut()} 
@@ -3463,7 +3793,7 @@ export default function App() {
         {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm}/>}
         {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
         {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm}/>}
-        {tab==='accounts' &&<AccountsTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm}/>}
+        {tab==='accounts' &&<AccountsTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm}/>}
         {tab==='investments'&&<InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm}/>}
         {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} sm={sm}/>}
         {tab==='credits'  &&<CreditsTab credits={credits} setCredits={setCredits} sm={sm}/>}
