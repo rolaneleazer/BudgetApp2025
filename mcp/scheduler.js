@@ -23,7 +23,7 @@ function getSupabase() {
 /**
  * Check if a schedule should fire right now.
  */
-function shouldFire(schedule) {
+export function shouldFire(schedule) {
   const now = new Date();
   // Use timezone-aware comparison
   const formatter = new Intl.DateTimeFormat('en-US', {
