@@ -3104,6 +3104,34 @@ function ScheduleManager({ session, sm }) {
   const [triggeringId, setTriggeringId] = useState(null);
   const [formError, setFormError] = useState('');
 
+  // Scheduler logs state
+  const [logs, setLogs] = useState({});
+  const [loadingLogs, setLoadingLogs] = useState({});
+  const [openLogsId, setOpenLogsId] = useState(null);
+
+  const handleViewLogs = async (scheduleId) => {
+    if (openLogsId === scheduleId) {
+      setOpenLogsId(null);
+      return;
+    }
+    setOpenLogsId(scheduleId);
+    if (logs[scheduleId]) return;
+    setLoadingLogs(prev => ({ ...prev, [scheduleId]: true }));
+    try {
+      const res = await fetch(`/api/schedules?action=logs&scheduleId=${scheduleId}`, {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+      if (data.logs) {
+        setLogs(prev => ({ ...prev, [scheduleId]: data.logs }));
+      }
+    } catch (err) {
+      console.error('Error fetching logs:', err);
+    } finally {
+      setLoadingLogs(prev => ({ ...prev, [scheduleId]: false }));
+    }
+  };
+
   // Form state
   const [freq, setFreq] = useState('daily');
   const [time, setTime] = useState('08:00');
@@ -3368,73 +3396,134 @@ function ScheduleManager({ session, sm }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {schedules.map(s => (
-            <div key={s.id} style={{
-              display: 'flex', alignItems: sm ? 'flex-start' : 'center',
-              flexDirection: sm ? 'column' : 'row',
-              gap: sm ? 8 : 14,
-              padding: '12px 14px', borderRadius: 8,
-              border: `1px solid ${s.enabled ? C.border : `${C.border}55`}`,
-              background: s.enabled ? C.panel : `${C.panel}88`,
-              opacity: s.enabled ? 1 : 0.7,
-              transition: 'opacity 0.2s',
-            }}>
-              {/* Left: Info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{
-                    fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em',
-                    padding: '2px 6px', borderRadius: 4,
-                    background: s.frequency === 'daily' ? `${C.blue}22` : s.frequency === 'weekly' ? `${C.purple}22` : s.frequency === 'monthly' ? `${C.amber}22` : `${C.green}22`,
-                    color: s.frequency === 'daily' ? C.blue : s.frequency === 'weekly' ? C.purple : s.frequency === 'monthly' ? C.amber : C.green,
-                    border: `1px solid ${s.frequency === 'daily' ? C.blue : s.frequency === 'weekly' ? C.purple : s.frequency === 'monthly' ? C.amber : C.green}33`,
-                  }}>
-                    {s.frequency}
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{getScheduleLabel(s)}</span>
+            <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
+              <div style={{
+                display: 'flex', alignItems: sm ? 'flex-start' : 'center',
+                flexDirection: sm ? 'column' : 'row',
+                gap: sm ? 8 : 14,
+                padding: '12px 14px', borderRadius: 8,
+                border: `1px solid ${s.enabled ? C.border : `${C.border}55`}`,
+                background: s.enabled ? C.panel : `${C.panel}88`,
+                opacity: s.enabled ? 1 : 0.7,
+                transition: 'opacity 0.2s',
+              }}>
+                {/* Left: Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em',
+                      padding: '2px 6px', borderRadius: 4,
+                      background: s.frequency === 'daily' ? `${C.blue}22` : s.frequency === 'weekly' ? `${C.purple}22` : s.frequency === 'monthly' ? `${C.amber}22` : `${C.green}22`,
+                      color: s.frequency === 'daily' ? C.blue : s.frequency === 'weekly' ? C.purple : s.frequency === 'monthly' ? C.amber : C.green,
+                      border: `1px solid ${s.frequency === 'daily' ? C.blue : s.frequency === 'weekly' ? C.purple : s.frequency === 'monthly' ? C.amber : C.green}33`,
+                    }}>
+                      {s.frequency}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{getScheduleLabel(s)}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 11, color: C.muted, flexWrap: 'wrap' }}>
+                    <span>📊 {RANGE_LABELS[s.report_range] || s.report_range}</span>
+                    <span>⏭ {getNextRun(s)}</span>
+                    {s.last_sent_at && <span>✅ Last sent: {new Date(s.last_sent_at).toLocaleString()}</span>}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 12, fontSize: 11, color: C.muted, flexWrap: 'wrap' }}>
-                  <span>📊 {RANGE_LABELS[s.report_range] || s.report_range}</span>
-                  <span>⏭ {getNextRun(s)}</span>
-                  {s.last_sent_at && <span>✅ Last sent: {new Date(s.last_sent_at).toLocaleString()}</span>}
+
+                {/* Right: Actions */}
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+                  <button
+                    disabled={triggeringId === s.id}
+                    onClick={() => handleTriggerNow(s.id)}
+                    style={{
+                      padding: '5px 10px', borderRadius: 5, border: 'none',
+                      background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
+                      color: '#fff', cursor: triggeringId === s.id ? 'wait' : 'pointer',
+                      fontSize: 11, fontWeight: 700, opacity: triggeringId === s.id ? 0.7 : 1,
+                    }}
+                  >
+                    {triggeringId === s.id ? '⏳ Sending...' : '⚡ Send Now'}
+                  </button>
+                  <button
+                    onClick={() => handleToggle(s.id, s.enabled)}
+                    style={{
+                      padding: '5px 10px', borderRadius: 5, border: `1px solid ${C.border}`,
+                      background: s.enabled ? `${C.green}22` : `${C.muted}11`,
+                      color: s.enabled ? C.green : C.muted,
+                      cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                    }}
+                  >
+                    {s.enabled ? '🟢 Active' : '⏸ Paused'}
+                  </button>
+                  <button
+                    onClick={() => handleViewLogs(s.id)}
+                    style={{
+                      padding: '5px 10px', borderRadius: 5, border: `1px solid ${C.border}`,
+                      background: openLogsId === s.id ? `${C.purple}22` : 'transparent',
+                      color: openLogsId === s.id ? C.purple : C.muted,
+                      cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                    }}
+                  >
+                    📜 Logs
+                  </button>
+                  <button
+                    onClick={() => handleDelete(s.id)}
+                    style={{
+                      padding: '5px 10px', borderRadius: 5, border: `1px solid ${C.red}33`,
+                      background: `${C.red}11`, color: C.red,
+                      cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                    }}
+                  >
+                    🗑
+                  </button>
                 </div>
               </div>
 
-              {/* Right: Actions */}
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                <button
-                  disabled={triggeringId === s.id}
-                  onClick={() => handleTriggerNow(s.id)}
-                  style={{
-                    padding: '5px 10px', borderRadius: 5, border: 'none',
-                    background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
-                    color: '#fff', cursor: triggeringId === s.id ? 'wait' : 'pointer',
-                    fontSize: 11, fontWeight: 700, opacity: triggeringId === s.id ? 0.7 : 1,
-                  }}
-                >
-                  {triggeringId === s.id ? '⏳ Sending...' : '⚡ Send Now'}
-                </button>
-                <button
-                  onClick={() => handleToggle(s.id, s.enabled)}
-                  style={{
-                    padding: '5px 10px', borderRadius: 5, border: `1px solid ${C.border}`,
-                    background: s.enabled ? `${C.green}22` : `${C.muted}11`,
-                    color: s.enabled ? C.green : C.muted,
-                    cursor: 'pointer', fontSize: 11, fontWeight: 700,
-                  }}
-                >
-                  {s.enabled ? '🟢 Active' : '⏸ Paused'}
-                </button>
-                <button
-                  onClick={() => handleDelete(s.id)}
-                  style={{
-                    padding: '5px 10px', borderRadius: 5, border: `1px solid ${C.red}33`,
-                    background: `${C.red}11`, color: C.red,
-                    cursor: 'pointer', fontSize: 11, fontWeight: 700,
-                  }}
-                >
-                  🗑
-                </button>
-              </div>
+              {/* Logs dropdown panel */}
+              {openLogsId === s.id && (
+                <div style={{
+                  padding: '12px 14px', borderRadius: 8,
+                  border: `1px solid ${C.border}`,
+                  background: `${C.panel}bb`,
+                  fontSize: 12,
+                  marginTop: -2,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6
+                }}>
+                  <div style={{ fontWeight: 600, color: C.muted, display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span>Execution History (Last 10 runs)</span>
+                    {loadingLogs[s.id] && <span style={{ fontSize: 11, fontWeight: 500 }}>⏳ Loading...</span>}
+                  </div>
+                  {loadingLogs[s.id] && !logs[s.id] ? null : (!logs[s.id] || logs[s.id].length === 0) ? (
+                    <div style={{ color: C.muted, padding: '4px 0', fontStyle: 'italic' }}>No execution logs recorded yet.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {logs[s.id].map(log => (
+                        <div key={log.id} style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: sm ? 'flex-start' : 'center',
+                          flexDirection: sm ? 'column' : 'row', gap: sm ? 4 : 8,
+                          padding: '6px 10px', borderRadius: 5, background: `${C.bg}66`,
+                          borderLeft: `3px solid ${log.status === 'success' ? C.green : C.red}`
+                        }}>
+                          <div style={{ minWidth: 0 }}>
+                            <span style={{ fontWeight: 700, marginRight: 8, color: log.status === 'success' ? C.green : C.red, fontSize: 10, letterSpacing: '0.02em' }}>
+                              {log.status === 'success' ? '✅ SUCCESS' : '❌ FAILED'}
+                            </span>
+                            <span style={{ color: C.muted, fontSize: 11 }}>
+                              {new Date(log.triggered_at).toLocaleString()}
+                            </span>
+                            {log.error_message && (
+                              <div style={{ fontSize: 11, color: C.red, marginTop: 4, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                Error: {log.error_message}
+                              </div>
+                            )}
+                          </div>
+                          <span style={{ fontSize: 11, color: C.muted, alignSelf: sm ? 'flex-end' : 'auto' }}>{log.recipient_email}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
