@@ -64,7 +64,7 @@ function shouldFire(schedule) {
     return currentMin % interval === 0;
   }
 
-  if (currentTime !== scheduleTime) return false;
+  if (currentTime !== schedule.time) return false;
 
   if (schedule.frequency === 'daily') return true;
   if (schedule.frequency === 'weekly') return currentDayOfWeek === (schedule.day_of_week ?? 1);
