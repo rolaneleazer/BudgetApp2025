@@ -13,6 +13,9 @@ import { adminHandler } from "./admin.js";
 import sendReportHandler from "../api/send-report.js";
 import schedulesHandler from "../api/schedules.js";
 import adminTestsHandler from "../api/admin-tests.js";
+import rolesHandler from "../api/admin/roles.js";
+import permissionsHandler from "../api/admin/permissions.js";
+import profileHandler from "../api/profile.js";
 import { startScheduler } from "./scheduler.js";
 
 const config = getMcpConfig();
@@ -107,6 +110,18 @@ app.all("/api/schedules", async (req, res) => {
 
 app.all("/api/admin-tests", async (req, res) => {
   await adminTestsHandler(req, res);
+});
+
+app.all("/api/admin/roles", async (req, res) => {
+  await rolesHandler(req, res);
+});
+
+app.all("/api/admin/permissions", async (req, res) => {
+  await permissionsHandler(req, res);
+});
+
+app.all("/api/profile", async (req, res) => {
+  await profileHandler(req, res);
 });
 
 app.listen(config.port, config.host, (error) => {
