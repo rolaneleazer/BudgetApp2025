@@ -3916,9 +3916,69 @@ function AdminTab({ sm }) {
   const [addFullName, setAddFullName] = useState("");
   const [resetPwd, setResetPwd] = useState("");
 
+  // System Diagnostics states
+  const [testResults, setTestResults] = useState({});
+  const [testingModule, setTestingModule] = useState(null);
+  const [testLogs, setTestLogs] = useState([]);
+  const [loadingTestLogs, setLoadingTestLogs] = useState(false);
+  const [selectedLogId, setSelectedLogId] = useState(null);
+
+  const fetchTestLogs = async () => {
+    setLoadingTestLogs(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch("/api/admin-tests", {
+        headers: { "Authorization": `Bearer ${session.access_token}` }
+      });
+      const data = await res.json();
+      if (data.logs) {
+        setTestLogs(data.logs);
+      }
+    } catch (err) {
+      console.error("Error fetching test logs:", err);
+    } finally {
+      setLoadingTestLogs(false);
+    }
+  };
+
+  const runTest = async (moduleName) => {
+    setTestingModule(moduleName);
+    setActionSuccess("");
+    setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session.");
+      const res = await fetch("/api/admin-tests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ module: moduleName })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestResults(prev => ({
+          ...prev,
+          ...data.results
+        }));
+        setActionSuccess(`Successfully ran test for '${moduleName}'!`);
+        fetchTestLogs();
+      } else {
+        setError(data.error || "Failed to run tests.");
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setTestingModule(null);
+    }
+  };
+
   useEffect(() => {
     if (isSupabaseConfigured) {
       fetchUsers();
+      fetchTestLogs();
     }
   }, []);
 
@@ -4360,6 +4420,133 @@ function AdminTab({ sm }) {
           </Card>
         </div>
       )}
+      {/* System Diagnostics & Tests Card */}
+      <Card style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexDirection: sm ? "column" : "row", gap: 12 }}>
+          <div>
+            <SecTitle style={{ margin: 0 }}>🛡️ System Diagnostics & Testing</SecTitle>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Verify in-memory budget calculation logic, scheduler configurations, and MCP schemas.</div>
+          </div>
+          <BtnG 
+            disabled={testingModule !== null} 
+            onClick={() => runTest("all")}
+            style={{ display: "flex", alignItems: "center", gap: 6, opacity: testingModule !== null ? 0.7 : 1, whiteSpace: "nowrap" }}
+          >
+            {testingModule === "all" ? "⏳ Running All..." : "🧪 Run All Tests"}
+          </BtnG>
+        </div>
+
+        {/* Module States Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: sm ? "1fr" : "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
+          {[
+            { id: "dashboard", label: "Dashboard Module", icon: "📊" },
+            { id: "history", label: "History Module", icon: "📋" },
+            { id: "monthly", label: "Monthly Module", icon: "📅" },
+            { id: "accounts", label: "Accounts Module", icon: "🏦" },
+            { id: "investments", label: "Investments Module", icon: "📈" },
+            { id: "debts", label: "Debt Module", icon: "💳" },
+            { id: "credits", label: "Credits Module", icon: "🤝" },
+            { id: "major", label: "Major Goals Module", icon: "🎯" },
+            { id: "calendar", label: "Calendar Module", icon: "📅" },
+            { id: "raw", label: "Raw Parser Module", icon: "📄" },
+            { id: "mcp", label: "MCP Tools Schema", icon: "🤖" },
+            { id: "scheduler", label: "Email Scheduler", icon: "⏰" }
+          ].map(m => {
+            const res = testResults[m.id];
+            const isWorking = res?.status === "success";
+            const isFailed = res?.status === "failure";
+            const isTesting = testingModule === m.id;
+            
+            return (
+              <div key={m.id} style={{
+                padding: 10, borderRadius: 8, border: `1px solid ${C.border}`,
+                background: `${C.panel}88`, display: "flex", flexDirection: "column",
+                justifyContent: "space-between", gap: 8
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span style={{ fontSize: 14 }}>{m.icon}</span>
+                    <span style={{ fontWeight: 600, fontSize: 12 }}>{m.label}</span>
+                  </div>
+                  <span style={{
+                    fontSize: 9, fontWeight: 800, textTransform: "uppercase",
+                    padding: "2px 5px", borderRadius: 4,
+                    background: isWorking ? `${C.green}22` : isFailed ? `${C.red}22` : `${C.muted}11`,
+                    color: isWorking ? C.green : isFailed ? C.red : C.muted
+                  }}>
+                    {isTesting ? "Testing..." : isWorking ? "Working" : isFailed ? "Error" : "Untested"}
+                  </span>
+                </div>
+                {res?.error && (
+                  <div style={{ fontSize: 10, color: C.red, wordBreak: "break-all", fontFamily: "monospace" }}>
+                    Error: {res.error}
+                  </div>
+                )}
+                <button
+                  disabled={testingModule !== null}
+                  onClick={() => runTest(m.id)}
+                  style={{
+                    padding: "4px 8px", borderRadius: 5, border: `1px solid ${C.border}`,
+                    background: "transparent", color: C.text, fontSize: 10, fontWeight: 700,
+                    cursor: testingModule !== null ? "wait" : "pointer", alignSelf: "flex-end"
+                  }}
+                >
+                  {isTesting ? "⏳ Testing..." : "🧪 Test"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* System Test Logs History */}
+      <Card style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <SecTitle style={{ margin: 0 }}>📜 System Test Logs</SecTitle>
+          {loadingTestLogs && <span style={{ fontSize: 12, color: C.muted }}>⏳ Refreshing...</span>}
+        </div>
+        {testLogs.length === 0 ? (
+          <div style={{ color: C.muted, padding: "16px 0", fontStyle: "italic", textAlign: "center" }}>
+            No system test logs recorded yet. Run a test to log your first diagnostic check.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {testLogs.map(log => (
+              <div key={log.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div 
+                  onClick={() => setSelectedLogId(selectedLogId === log.id ? null : log.id)}
+                  style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "10px 12px", borderRadius: 8, background: `${C.panel}66`,
+                    borderLeft: `3px solid ${log.status === "success" ? C.green : C.red}`,
+                    cursor: "pointer", border: `1px solid ${selectedLogId === log.id ? C.border : "transparent"}`
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontWeight: 700, fontSize: 11, color: log.status === "success" ? C.green : C.red }}>
+                      {log.status === "success" ? "✅ SUCCESS" : "❌ FAILED"}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>Tested module: "{log.module_name}"</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: C.muted }}>{new Date(log.tested_at).toLocaleString()}</span>
+                    <span style={{ fontSize: 10, color: C.muted }}>{selectedLogId === log.id ? "▲" : "▼"}</span>
+                  </div>
+                </div>
+
+                {selectedLogId === log.id && (
+                  <pre style={{
+                    padding: 10, borderRadius: 8, background: `${C.bg}bb`, border: `1px solid ${C.border}`,
+                    fontFamily: "monospace", fontSize: 11, color: C.muted, overflowX: "auto", margin: 0
+                  }}>
+                    {JSON.stringify(log.results, null, 2)}
+                  </pre>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
