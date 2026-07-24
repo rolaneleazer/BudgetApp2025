@@ -362,7 +362,7 @@ function calcMonthSummary(monthData = {}) {
   };
 }
 
-function normalizeProfile(row) {
+export function normalizeProfile(row) {
   return {
     userId: row?.user_id,
     updatedAt: row?.updated_at,
@@ -636,7 +636,7 @@ function dashboardSnapshot(profile) {
   };
 }
 
-function buildModulePayload(profile, moduleName, args = {}) {
+export function buildModulePayload(profile, moduleName, args = {}) {
   switch (moduleName) {
     case "dashboard":
       return dashboardSnapshot(profile);
