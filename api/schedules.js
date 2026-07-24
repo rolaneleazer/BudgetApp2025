@@ -70,6 +70,23 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Not authenticated.' });
   }
 
+  // GET — list logs for a schedule
+  if (req.method === 'GET' && action === 'logs') {
+    const scheduleId = req.query?.scheduleId || new URL(req.url, 'http://localhost').searchParams.get('scheduleId');
+    if (!scheduleId) return res.status(400).json({ error: 'Missing scheduleId' });
+
+    const { data, error } = await supabase
+      .from('scheduler_logs')
+      .select('*')
+      .eq('schedule_id', scheduleId)
+      .eq('user_id', userId)
+      .order('triggered_at', { ascending: false })
+      .limit(10);
+
+    if (error) return res.status(500).json({ error: error.message });
+    return res.status(200).json({ logs: data || [] });
+  }
+
   // GET — list schedules
   if (req.method === 'GET') {
     const { data, error } = await supabase

@@ -100,14 +100,16 @@ function shouldFire(schedule) {
  * Process a single schedule: fetch data, generate report, send email.
  */
 export async function processSchedule(supabase, schedule) {
+  let status = 'success';
+  let errorMessage = null;
+  let email = null;
   try {
     // Get the user's email from auth
     const { data: authData, error: authErr } = await supabase.auth.admin.getUserById(schedule.user_id);
     if (authErr || !authData?.user?.email) {
-      console.error(`[Scheduler] Cannot find email for user ${schedule.user_id}:`, authErr?.message);
-      return;
+      throw new Error(authErr?.message || `Cannot find email for user ${schedule.user_id}`);
     }
-    const email = authData.user.email;
+    email = authData.user.email;
 
     // Fetch user's budget data
     const { data: rows, error: dataErr } = await supabase
@@ -117,8 +119,7 @@ export async function processSchedule(supabase, schedule) {
       .limit(1);
 
     if (dataErr || !rows?.length) {
-      console.error(`[Scheduler] No data for user ${schedule.user_id}:`, dataErr?.message);
-      return;
+      throw new Error(dataErr?.message || `No data found for user ${schedule.user_id}`);
     }
 
     const userData = rows[0];
@@ -136,7 +137,25 @@ export async function processSchedule(supabase, schedule) {
 
     console.log(`[Scheduler] ✅ Report sent to ${email} (schedule: ${schedule.id}, freq: ${schedule.frequency})`);
   } catch (err) {
+    status = 'failure';
+    errorMessage = err.message;
     console.error(`[Scheduler] ❌ Error processing schedule ${schedule.id}:`, err.message);
+  } finally {
+    // Write log entry to database
+    try {
+      await supabase
+        .from('scheduler_logs')
+        .insert({
+          user_id: schedule.user_id,
+          schedule_id: schedule.id,
+          status,
+          error_message: errorMessage,
+          frequency: schedule.frequency,
+          recipient_email: email
+        });
+    } catch (logErr) {
+      console.warn('[Scheduler] Failed to write to scheduler_logs table:', logErr.message);
+    }
   }
 }
 
