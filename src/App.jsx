@@ -208,7 +208,28 @@ const Divider=()=><div style={{borderTop:`1px solid ${C.border}`,margin:'12px 0'
 const Tag=({children,color})=><span style={{fontSize:11,padding:'2px 8px',borderRadius:10,background:`${color}22`,color,fontWeight:600}}>{children}</span>;
 const SecTitle=({children,style})=><div style={{fontSize:11,fontWeight:700,color:C.text,textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:12,...style}}>{children}</div>;
 const Card=({children,style})=><div style={{background:`linear-gradient(180deg, ${C.card2}, ${C.card})`,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:'0 18px 42px rgba(0,0,0,0.22)',padding:'16px 18px',marginBottom:14,...style}}>{children}</div>;
-const Inp=({style,...p})=><input style={{background:'#08111f',border:`1px solid ${C.border}`,borderRadius:6,padding:'8px 10px',color:C.text,fontSize:13,width:'100%',boxSizing:'border-box',...style}} {...p}/>;
+const Inp = ({ style, disabled, ...p }) => {
+  const activePerm = typeof window !== 'undefined' ? window.activePermission : null;
+  const isReadOnly = activePerm === 'read';
+  return (
+    <input 
+      disabled={disabled || isReadOnly} 
+      style={{
+        background: '#08111f',
+        border: `1px solid ${C.border}`,
+        borderRadius: 6,
+        padding: '8px 10px',
+        color: C.text,
+        fontSize: 13,
+        width: '100%',
+        boxSizing: 'border-box',
+        opacity: (disabled || isReadOnly) ? 0.6 : 1,
+        ...style
+      }} 
+      {...p}
+    />
+  );
+};
 const BtnG=({children,style,...p})=><button style={{padding:'8px 14px',borderRadius:7,border:`1px solid ${C.green}`,background:'rgba(63,185,80,0.15)',color:C.green,cursor:'pointer',fontSize:13,fontWeight:600,...style}} {...p}>{children}</button>;
 const Btn=({children,style,...p})=><button style={{padding:'7px 12px',borderRadius:6,border:`1px solid ${C.border}`,background:'transparent',color:C.muted,cursor:'pointer',fontSize:13,...style}} {...p}>{children}</button>;
 
@@ -1319,7 +1340,7 @@ function HistoryTab({budgetData,sm}) {
 }
 
 // ─── BUDGET ───────────────────────────────────────────────────────────────────
-function BudgetTab({budgetData,setBudgetData,sm}) {
+function BudgetTab({budgetData,setBudgetData,sm,readOnly,canWrite,canUpdate}) {
   const [selYear,setSelYear]=useState(CUR_YEAR);
   const [selMI,setSelMI]=useState(CUR_MONTH);
   const [period,setPeriod]=useState('5th');
@@ -1332,10 +1353,19 @@ function BudgetTab({budgetData,setBudgetData,sm}) {
   const hasData=!!budgetData[key];
 
   function upd(changes) {
+    if (readOnly) return;
     setBudgetData(prev=>({...prev,[key]:{...(prev[key]||makeMonthData()),[period]:{...(prev[key]?.[period]||makePeriod()),...changes}}}));
   }
-  function updOT(f,v){upd({ot:{...pData.ot,[f]:Number(v)||0}});}
-  function updExp(i,f,v){const exp=[...pData.expenses];exp[i]={...exp[i],[f]:(f==='amount'||f==='budget')?(Number(v)||0):v};upd({expenses:exp});}
+  function updOT(f,v){
+    if (readOnly) return;
+    upd({ot:{...pData.ot,[f]:Number(v)||0}});
+  }
+  function updExp(i,f,v){
+    if (readOnly) return;
+    const exp=[...pData.expenses];
+    exp[i]={...exp[i],[f]:(f==='amount'||f==='budget')?(Number(v)||0):v};
+    upd({expenses:exp});
+  }
 
   return(
     <div>
@@ -1357,12 +1387,12 @@ function BudgetTab({budgetData,setBudgetData,sm}) {
 
       <Card>
         <SecTitle>Income</SecTitle>
-        <div style={{marginBottom:12}}><div style={{fontSize:12,color:C.muted,marginBottom:5}}>Base Salary</div><Inp type="number" value={pData.salary} onChange={e=>upd({salary:Number(e.target.value)||0})}/></div>
+        <div style={{marginBottom:12}}><div style={{fontSize:12,color:C.muted,marginBottom:5}}>Base Salary</div><Inp type="number" value={pData.salary} onChange={e=>upd({salary:Number(e.target.value)||0})} disabled={readOnly}/></div>
         <Divider/>
         <SecTitle>Overtime Hours</SecTitle>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-          <div><div style={{fontSize:12,color:C.muted,marginBottom:5}}>Weekday (₱750/hr)</div><Inp type="number" value={pData.ot.weekday} onChange={e=>updOT('weekday',e.target.value)}/></div>
-          <div><div style={{fontSize:12,color:C.muted,marginBottom:5}}>Weekend (₱680/hr)</div><Inp type="number" value={pData.ot.weekend} onChange={e=>updOT('weekend',e.target.value)}/></div>
+          <div><div style={{fontSize:12,color:C.muted,marginBottom:5}}>Weekday (₱750/hr)</div><Inp type="number" value={pData.ot.weekday} onChange={e=>updOT('weekday',e.target.value)} disabled={readOnly}/></div>
+          <div><div style={{fontSize:12,color:C.muted,marginBottom:5}}>Weekend (₱680/hr)</div><Inp type="number" value={pData.ot.weekend} onChange={e=>updOT('weekend',e.target.value)} disabled={readOnly}/></div>
         </div>
         {otCalc.gross>0&&(<>
           <Divider/>
@@ -1383,22 +1413,30 @@ function BudgetTab({budgetData,setBudgetData,sm}) {
       <Card>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
           <SecTitle>Expenses — {paid}/{pData.expenses.length} paid</SecTitle>
-          <BtnG style={{padding:'6px 12px',fontSize:12}} onClick={()=>upd({expenses:[...pData.expenses,{name:'',budget:0,amount:0,done:false}]})}>+ Add</BtnG>
+          {canWrite && (
+            <BtnG style={{padding:'6px 12px',fontSize:12}} onClick={()=>upd({expenses:[...pData.expenses,{name:'',budget:0,amount:0,done:false}]})}>+ Add</BtnG>
+          )}
         </div>
         {pData.expenses.map((exp,i)=>(
           <div key={i} style={{padding:'8px 0',borderBottom:`1px solid ${C.border}22`}}>
             <div style={{display:'flex',gap:8,marginBottom:sm?6:0}}>
-              <Inp value={exp.name} onChange={e=>updExp(i,'name',e.target.value)} placeholder="Item name" style={{flex:1,opacity:exp.done?0.5:1}}/>
+              <Inp value={exp.name} onChange={e=>updExp(i,'name',e.target.value)} placeholder="Item name" style={{flex:1,opacity:exp.done?0.5:1}} disabled={readOnly}/>
               {!sm&&<div style={{display:'flex',gap:4}}>
-                <Inp type="number" value={exp.budget ?? exp.amount ?? ''} onChange={e=>updExp(i,'budget',e.target.value)} placeholder="Budget" style={{width:90,textAlign:'right',opacity:exp.done?0.5:1}}/>
-                <Inp type="number" value={exp.amount ?? ''} onChange={e=>updExp(i,'amount',e.target.value)} placeholder="Actual" style={{width:90,textAlign:'right',opacity:exp.done?0.5:1}}/>
+                <Inp type="number" value={exp.budget ?? exp.amount ?? ''} onChange={e=>updExp(i,'budget',e.target.value)} placeholder="Budget" style={{width:90,textAlign:'right',opacity:exp.done?0.5:1}} disabled={readOnly}/>
+                <Inp type="number" value={exp.amount ?? ''} onChange={e=>updExp(i,'amount',e.target.value)} placeholder="Actual" style={{width:90,textAlign:'right',opacity:exp.done?0.5:1}} disabled={readOnly}/>
               </div>}
-              <button onClick={() => updExp(i, 'done', !exp.done)} style={{ minWidth: 40, background: 'none', border: `1px solid ${exp.done ? C.green : C.border}`, borderRadius: 6, cursor: 'pointer', color: exp.done ? C.green : C.muted, fontSize: 14, padding: '0 8px' }}>{exp.done ? '✓' : '—'}</button>
-              <button onClick={() => upd({ expenses: pData.expenses.filter((_, j) => j !== i) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18, padding: '0 4px' }}>×</button>
+              {canUpdate && (
+                <button onClick={() => updExp(i, 'done', !exp.done)} style={{ minWidth: 40, background: 'none', border: `1px solid ${exp.done ? C.green : C.border}`, borderRadius: 6, cursor: 'pointer', color: exp.done ? C.green : C.muted, fontSize: 14, padding: '0 8px' }}>
+                  {exp.done ? '✓' : '—'}
+                </button>
+              )}
+              {canUpdate && (
+                <button onClick={() => upd({ expenses: pData.expenses.filter((_, j) => j !== i) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18, padding: '0 4px' }}>×</button>
+              )}
             </div>
             {sm && <div style={{display:'flex',gap:4,marginTop:4}}>
-              <Inp type="number" value={exp.budget ?? exp.amount ?? ''} onChange={e => updExp(i, 'budget', e.target.value)} placeholder="Budget (₱)" style={{ opacity: exp.done ? 0.5 : 1 }} />
-              <Inp type="number" value={exp.amount ?? ''} onChange={e => updExp(i, 'amount', e.target.value)} placeholder="Actual (₱)" style={{ opacity: exp.done ? 0.5 : 1 }} />
+              <Inp type="number" value={exp.budget ?? exp.amount ?? ''} onChange={e => updExp(i, 'budget', e.target.value)} placeholder="Budget (₱)" style={{ opacity: exp.done ? 0.5 : 1 }} disabled={readOnly}/>
+              <Inp type="number" value={exp.amount ?? ''} onChange={e => updExp(i, 'amount', e.target.value)} placeholder="Actual (₱)" style={{ opacity: exp.done ? 0.5 : 1 }} disabled={readOnly}/>
             </div>}
           </div>
         ))}
@@ -1406,14 +1444,14 @@ function BudgetTab({budgetData,setBudgetData,sm}) {
         {[['Paid', peso(summ.paidExpenses), C.green], ['Remaining', peso(summ.totalExpenses - summ.paidExpenses), C.amber]].map(([l, v, c]) => (
           <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}><span style={{ color: C.muted }}>{l}</span><span style={{ color: c }}>{v}</span></div>
         ))}
-        <div style={{ display: 'flex', justifyBetween: 'space-between', fontSize: 14, fontWeight: 700, marginTop: 4 }}><span style={{ color: C.muted }}>Total</span><span style={{ color: C.red }}>{peso(summ.totalExpenses)}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700, marginTop: 4 }}><span style={{ color: C.muted }}>Total</span><span style={{ color: C.red }}>{peso(summ.totalExpenses)}</span></div>
       </Card>
     </div>
   );
 }
 
 // ─── ACCOUNTS ─────────────────────────────────────────────────────────────────
-function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory, budgetData, setBudgetData, sm }) {
+function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory, budgetData, setBudgetData, sm, readOnly, canWrite, canUpdate }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState(null);
   const total = accounts.reduce((s, a) => s + a.balance, 0);
@@ -1611,7 +1649,7 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
           <div style={{ fontSize: 22, fontWeight: 700, color: C.green }}>₱{total.toLocaleString()}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <BtnG onClick={() => addNew('New Category')}>+ New Category</BtnG>
+          {canWrite && <BtnG onClick={() => addNew('New Category')}>+ New Category</BtnG>}
         </div>
         <datalist id="acc-types">
           {['Investment', 'Savings', 'Checking', 'Digital', ...new Set(accounts.map(a => a.type))].map(t => <option key={t} value={t} />)}
@@ -1663,7 +1701,7 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <BtnG onClick={handleSaveLog} style={{ padding: '6px 12px', fontSize: 12 }}>Save Log</BtnG>
+              {canWrite && <BtnG onClick={handleSaveLog} style={{ padding: '6px 12px', fontSize: 12 }}>Save Log</BtnG>}
               {successMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>{successMsg}</span>}
             </div>
           </Card>
@@ -1681,6 +1719,7 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
                 <select 
                   value={selectedAccId} 
                   onChange={e => setSelectedAccId(e.target.value)} 
+                  disabled={readOnly}
                   style={{
                     padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
                     background: C.bg, color: C.text, fontSize: 13, outline: 'none',
@@ -1732,6 +1771,7 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
                 <select 
                   value={debitPeriod} 
                   onChange={e => setDebitPeriod(e.target.value)} 
+                  disabled={readOnly}
                   style={{
                     padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
                     background: C.bg, color: C.text, fontSize: 13, outline: 'none',
@@ -1745,9 +1785,11 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <BtnG onClick={handleDebit} style={{ padding: '7px 14px', fontSize: 12, background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: '#fff', border: 'none' }}>
-                Deduct & Log Expense
-              </BtnG>
+              {canWrite && (
+                <BtnG onClick={handleDebit} style={{ padding: '7px 14px', fontSize: 12, background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: '#fff', border: 'none' }}>
+                  Deduct & Log Expense
+                </BtnG>
+              )}
               {debitSuccessMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>{debitSuccessMsg}</span>}
             </div>
           </Card>
@@ -1813,16 +1855,18 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
                           <td style={{ padding: '8px 6px', color: C.muted }}>{deb.accountName}</td>
                           <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 600, color: C.red }}>{peso(deb.amount)}</td>
                           <td style={{ padding: '8px 6px', textAlign: 'center' }}>
-                            <button 
-                              onClick={() => handleDeleteDebit(deb)}
-                              style={{ 
-                                background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, 
-                                color: C.red, padding: '2px 6px', cursor: 'pointer', fontSize: 10
-                              }}
-                              title="Delete & Refund balance"
-                            >
-                              🗑
-                            </button>
+                            {canUpdate && (
+                              <button 
+                                onClick={() => handleDeleteDebit(deb)}
+                                style={{ 
+                                  background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, 
+                                  color: C.red, padding: '2px 6px', cursor: 'pointer', fontSize: 10
+                                }}
+                                title="Delete & Refund balance"
+                              >
+                                🗑
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1899,7 +1943,9 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
                     <span style={{ width: 10, height: 10, borderRadius: 2, background: TYPE_CLR[type] || C.muted, display: 'inline-block' }} />
                     <SecTitle style={{ margin: 0 }}>{type}</SecTitle>
                   </div>
-                  <button title="Add to this category" onClick={() => addNew(type)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: '50%', color: C.muted, cursor: 'pointer', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>+</button>
+                  {canWrite && (
+                    <button title="Add to this category" onClick={() => addNew(type)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: '50%', color: C.muted, cursor: 'pointer', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>+</button>
+                  )}
                 </div>
                 <span style={{ color: TYPE_CLR[type] || C.muted, fontWeight: 700, fontSize: 14 }}>{peso(accs.reduce((s, a) => s + a.balance, 0))}</span>
               </div>
@@ -1925,8 +1971,10 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 14, fontWeight: 600 }}>{peso(acc.balance)}</span>
-                        <Btn style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => startEdit(acc)}>Edit</Btn>
-                        <button onClick={() => setAccounts(p => p.filter(a => a.id !== acc.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18 }}>×</button>
+                        {canUpdate && <Btn style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => startEdit(acc)}>Edit</Btn>}
+                        {canUpdate && (
+                          <button onClick={() => setAccounts(p => p.filter(a => a.id !== acc.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18 }}>×</button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1941,10 +1989,13 @@ function AccountsTab({ accounts, setAccounts, balanceHistory, setBalanceHistory,
 }
 
 // ─── MAJOR EXPENSES ───────────────────────────────────────────────────────────
-function MajorTab({majorExpenses,setMajorExpenses,sm}) {
+function MajorTab({majorExpenses,setMajorExpenses,sm,readOnly,canWrite,canUpdate}) {
   const tot=majorExpenses.reduce((s,e)=>s+e.budget,0);
   const spent=majorExpenses.reduce((s,e)=>s+e.actual,0);
-  function upd(id,f,v){setMajorExpenses(p=>p.map(e=>e.id===id?{...e,[f]:['budget','actual'].includes(f)?(Number(v)||0):v}:e));}
+  function upd(id,f,v){
+    if (readOnly) return;
+    setMajorExpenses(p=>p.map(e=>e.id===id?{...e,[f]:['budget','actual'].includes(f)?(Number(v)||0):v}:e));
+  }
   return(
     <div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:sm?8:12,marginBottom:14}}>
@@ -1955,20 +2006,22 @@ function MajorTab({majorExpenses,setMajorExpenses,sm}) {
       <Card>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
           <SecTitle>Major Expenses</SecTitle>
-          <BtnG style={{padding:'6px 12px',fontSize:12}} onClick={()=>setMajorExpenses(p=>[...p,{id:Date.now(),name:'New Expense',budget:0,actual:0,done:false}])}>+ Add</BtnG>
+          {canWrite && (
+            <BtnG style={{padding:'6px 12px',fontSize:12}} onClick={()=>setMajorExpenses(p=>[...p,{id:Date.now(),name:'New Expense',budget:0,actual:0,done:false}])}>+ Add</BtnG>
+          )}
         </div>
         {majorExpenses.map(e=>{
           const pct=e.budget>0?Math.min(100,Math.round(e.actual/e.budget*100)):0;
           return(
             <div key={e.id} style={{marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${C.border}22`}}>
               <div style={{display:'flex',gap:8,marginBottom:8,alignItems:'center'}}>
-                <Inp value={e.name} onChange={ev=>upd(e.id,'name',ev.target.value)} style={{flex:1,opacity:e.done?0.5:1}}/>
-                <button onClick={()=>upd(e.id,'done',!e.done)} style={{minWidth:60,background:'none',border:`1px solid ${e.done?C.green:C.border}`,borderRadius:6,padding:'8px 6px',cursor:'pointer',color:e.done?C.green:C.muted,fontSize:11,whiteSpace:'nowrap'}}>{e.done?'✓ Done':'Pending'}</button>
-                <button onClick={()=>setMajorExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:'none',border:'none',cursor:'pointer',color:C.muted,fontSize:18}}>×</button>
+                <Inp value={e.name} onChange={ev=>upd(e.id,'name',ev.target.value)} style={{flex:1,opacity:e.done?0.5:1}} disabled={readOnly}/>
+                {canUpdate && <button onClick={()=>upd(e.id,'done',!e.done)} style={{minWidth:60,background:'none',border:`1px solid ${e.done?C.green:C.border}`,borderRadius:6,padding:'8px 6px',cursor:'pointer',color:e.done?C.green:C.muted,fontSize:11,whiteSpace:'nowrap'}}>{e.done?'✓ Done':'Pending'}</button>}
+                {canUpdate && <button onClick={()=>setMajorExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:'none',border:'none',cursor:'pointer',color:C.muted,fontSize:18}}>×</button>}
               </div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
-                <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>Budget</div><Inp type="number" value={e.budget||''} onChange={ev=>upd(e.id,'budget',ev.target.value)} placeholder="0" style={{textAlign:'right'}}/></div>
-                <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>Actual Spent</div><Inp type="number" value={e.actual||''} onChange={ev=>upd(e.id,'actual',ev.target.value)} placeholder="0" style={{textAlign:'right'}}/></div>
+                <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>Budget</div><Inp type="number" value={e.budget||''} onChange={ev=>upd(e.id,'budget',ev.target.value)} placeholder="0" style={{textAlign:'right'}} disabled={readOnly}/></div>
+                <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>Actual Spent</div><Inp type="number" value={e.actual||''} onChange={ev=>upd(e.id,'actual',ev.target.value)} placeholder="0" style={{textAlign:'right'}} disabled={readOnly}/></div>
               </div>
               <div style={{background:C.border,borderRadius:4,height:5}}><div style={{width:`${pct}%`,height:'100%',background:e.done?C.green:pct>90?C.red:C.amber,borderRadius:4}}/></div>
               <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:C.muted,marginTop:3}}><span>{peso(e.actual)} spent</span><span>{pct}% of {peso(e.budget)}</span></div>
@@ -1981,10 +2034,13 @@ function MajorTab({majorExpenses,setMajorExpenses,sm}) {
 }
 
 // ─── CREDITS ──────────────────────────────────────────────────────────────────
-function CreditsTab({ credits, setCredits, sm }) {
+function CreditsTab({ credits, setCredits, sm, readOnly, canWrite, canUpdate }) {
   const tot = credits.filter(c => !c.done).reduce((s, c) => s + c.amount, 0);
   const collected = credits.filter(c => c.done).reduce((s, c) => s + c.amount, 0);
-  function upd(id, f, v) { setCredits(p => p.map(c => c.id === id ? { ...c, [f]: f === 'amount' ? (Number(v) || 0) : v } : c)); }
+  function upd(id, f, v) { 
+    if (readOnly) return;
+    setCredits(p => p.map(c => c.id === id ? { ...c, [f]: f === 'amount' ? (Number(v) || 0) : v } : c)); 
+  }
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: sm ? 8 : 12, marginBottom: 14 }}>
@@ -1994,17 +2050,19 @@ function CreditsTab({ credits, setCredits, sm }) {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <SecTitle>Money Owed to Me</SecTitle>
-          <BtnG style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => setCredits(p => [...p, { id: Date.now(), name: 'New Person', amount: 0, done: false }])}>+ Add Credit</BtnG>
+          {canWrite && (
+            <BtnG style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => setCredits(p => [...p, { id: Date.now(), name: 'New Person', amount: 0, done: false }])}>+ Add Credit</BtnG>
+          )}
         </div>
         {credits.map(c => (
           <div key={c.id} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.border}22` }}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-              <Inp value={c.name} onChange={ev => upd(c.id, 'name', ev.target.value)} style={{ flex: 1, opacity: c.done ? 0.5 : 1 }} placeholder="Who owes you?" />
-              <button onClick={() => upd(c.id, 'done', !c.done)} style={{ minWidth: 80, background: 'none', border: `1px solid ${c.done ? C.green : C.border}`, borderRadius: 6, padding: '8px 6px', cursor: 'pointer', color: c.done ? C.green : C.muted, fontSize: 11, whiteSpace: 'nowrap' }}>{c.done ? '✓ Paid' : 'Pending'}</button>
-              <button onClick={() => setCredits(p => p.filter(x => x.id !== c.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18 }}>×</button>
+              <Inp value={c.name} onChange={ev => upd(c.id, 'name', ev.target.value)} style={{ flex: 1, opacity: c.done ? 0.5 : 1 }} placeholder="Who owes you?" disabled={readOnly}/>
+              {canUpdate && <button onClick={() => upd(c.id, 'done', !c.done)} style={{ minWidth: 80, background: 'none', border: `1px solid ${c.done ? C.green : C.border}`, borderRadius: 6, padding: '8px 6px', cursor: 'pointer', color: c.done ? C.green : C.muted, fontSize: 11, whiteSpace: 'nowrap' }}>{c.done ? '✓ Paid' : 'Pending'}</button>}
+              {canUpdate && <button onClick={() => setCredits(p => p.filter(x => x.id !== c.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18 }}>×</button>}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <div style={{ flex: 1 }}><div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Amount</div><Inp type="number" value={c.amount || ''} onChange={ev => upd(c.id, 'amount', ev.target.value)} placeholder="0" /></div>
+              <div style={{ flex: 1 }}><div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Amount</div><Inp type="number" value={c.amount || ''} onChange={ev => upd(c.id, 'amount', ev.target.value)} placeholder="0" disabled={readOnly}/></div>
             </div>
           </div>
         ))}
@@ -2015,7 +2073,7 @@ function CreditsTab({ credits, setCredits, sm }) {
 }
 
 // ─── INVESTMENTS ──────────────────────────────────────────────────────────────
-function InvestmentsTab({ accounts, setAccounts, sm }) {
+function InvestmentsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState(null);
 
@@ -2072,12 +2130,14 @@ function InvestmentsTab({ accounts, setAccounts, sm }) {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <SecTitle>Investment Assets</SecTitle>
-          <BtnG onClick={() => {
-            const id = 'acc-' + Date.now();
-            const newItem = { id, name: 'New Investment Asset', balance: 0, type: 'Investment' };
-            setAccounts(p => [...p, newItem]);
-            startEdit(newItem);
-          }}>+ Add Asset</BtnG>
+          {canWrite && (
+            <BtnG onClick={() => {
+              const id = 'acc-' + Date.now();
+              const newItem = { id, name: 'New Investment Asset', balance: 0, type: 'Investment' };
+              setAccounts(p => [...p, newItem]);
+              startEdit(newItem);
+            }}>+ Add Asset</BtnG>
+          )}
         </div>
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -2093,8 +2153,8 @@ function InvestmentsTab({ accounts, setAccounts, sm }) {
               <tr key={inv.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
                 {editing === inv.id ? (
                   <>
-                    <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} /></td>
-                    <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} /></td>
+                    <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly}/></td>
+                    <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
                     <td style={{ padding: '6px', textAlign: 'center' }}>
                       <button onClick={saveEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.green, marginRight: 8, fontSize: 16 }}>✓</button>
                       <button onClick={() => setEditing(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 16 }}>×</button>
@@ -2105,8 +2165,8 @@ function InvestmentsTab({ accounts, setAccounts, sm }) {
                     <td style={{ padding: '8px 10px', fontWeight: 600 }}>{inv.name}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', color: C.green, fontWeight: 700 }}>{peso(inv.balance)}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                      <button onClick={() => startEdit(inv)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, padding: '2px 8px', fontSize: 11, marginRight: 4 }}>Edit</button>
-                      <button onClick={() => setAccounts(p => p.filter(x => x.id !== inv.id))} style={{ background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, cursor: 'pointer', color: C.red, padding: '2px 8px', fontSize: 11 }}>Delete</button>
+                      {canUpdate && <button onClick={() => startEdit(inv)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, padding: '2px 8px', fontSize: 11, marginRight: 4 }}>Edit</button>}
+                      {canUpdate && <button onClick={() => setAccounts(p => p.filter(x => x.id !== inv.id))} style={{ background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, cursor: 'pointer', color: C.red, padding: '2px 8px', fontSize: 11 }}>Delete</button>}
                     </td>
                   </>
                 )}
@@ -2120,7 +2180,7 @@ function InvestmentsTab({ accounts, setAccounts, sm }) {
 }
 
 // ─── DEBT MANAGER ─────────────────────────────────────────────────────────────
-function DebtsTab({ debts, setDebts, sm }) {
+function DebtsTab({ debts, setDebts, sm, readOnly, canWrite, canUpdate }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState(null);
 
@@ -2157,7 +2217,7 @@ function DebtsTab({ debts, setDebts, sm }) {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <SecTitle>Debts & Credit Cards</SecTitle>
-          <BtnG onClick={addNew}>+ Add Debt Account</BtnG>
+          {canWrite && <BtnG onClick={addNew}>+ Add Debt Account</BtnG>}
         </div>
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -2178,11 +2238,11 @@ function DebtsTab({ debts, setDebts, sm }) {
                 <tr key={d.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
                   {editing === d.id ? (
                     <>
-                      <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} /></td>
-                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} /></td>
-                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.limit} onChange={e => setEditData({ ...editData, limit: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} /></td>
-                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.apr} onChange={e => setEditData({ ...editData, apr: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} /></td>
-                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.minPayment} onChange={e => setEditData({ ...editData, minPayment: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} /></td>
+                      <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly}/></td>
+                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.limit} onChange={e => setEditData({ ...editData, limit: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.apr} onChange={e => setEditData({ ...editData, apr: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.minPayment} onChange={e => setEditData({ ...editData, minPayment: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
                       <td style={{ padding: '6px', textAlign: 'center' }}>
                         <button onClick={saveEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.green, marginRight: 8, fontSize: 16 }}>✓</button>
                         <button onClick={() => setEditing(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 16 }}>×</button>
@@ -2196,8 +2256,8 @@ function DebtsTab({ debts, setDebts, sm }) {
                       <td style={{ padding: '8px 10px', textAlign: 'right' }}>{d.apr}%</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', color: C.amber }}>{peso(d.minPayment)}</td>
                       <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                        <button onClick={() => startEdit(d)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, padding: '2px 8px', fontSize: 11, marginRight: 4 }}>Edit</button>
-                        <button onClick={() => setDebts(p => p.filter(x => x.id !== d.id))} style={{ background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, cursor: 'pointer', color: C.red, padding: '2px 8px', fontSize: 11 }}>Delete</button>
+                        {canUpdate && <button onClick={() => startEdit(d)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, padding: '2px 8px', fontSize: 11, marginRight: 4 }}>Edit</button>}
+                        {canUpdate && <button onClick={() => setDebts(p => p.filter(x => x.id !== d.id))} style={{ background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, cursor: 'pointer', color: C.red, padding: '2px 8px', fontSize: 11 }}>Delete</button>}
                       </td>
                     </>
                   )}
@@ -3570,11 +3630,11 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [syncStatus, setSyncStatus] = useState('saved');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState('user');
+  const [permissions, setPermissions] = useState({});
 
-  // Ref to prevent saving before initial load completes
-  const ready=useRef(false);
+  const ready = useRef(false);
 
-  // Monitor Authentication Session
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -3587,31 +3647,34 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Check if user is admin on session change
+  const fetchProfile = async () => {
+    if (!session?.access_token) return;
+    try {
+      const res = await fetch("/api/profile", {
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRole(data.role || 'user');
+        setPermissions(data.permissions || {});
+        setIsAdmin(data.role === 'admin');
+      }
+    } catch (err) {
+      console.error("Error fetching user profile permissions:", err);
+    }
+  };
+
+  // Check role & permissions on session change
   useEffect(() => {
     if (!session) {
       setIsAdmin(false);
+      setRole('user');
+      setPermissions({});
       return;
     }
-    async function checkAdminStatus() {
-      try {
-        const res = await fetch("/api/admin/check", {
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`
-          }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setIsAdmin(Boolean(data.isAdmin));
-        } else {
-          setIsAdmin(false);
-        }
-      } catch (err) {
-        console.error("Error checking admin status:", err);
-        setIsAdmin(false);
-      }
-    }
-    checkAdminStatus();
+    fetchProfile();
   }, [session]);
 
 
@@ -3737,6 +3800,14 @@ export default function App() {
   useEffect(() => { if (ready.current) safeSet('bujdet-debts', debts); }, [debts]);
   useEffect(() => { if (ready.current) safeSet('bujdet-balanceHistory', balanceHistory); }, [balanceHistory]);
 
+  const getPermission = (tabId) => {
+    if (permissions && permissions[tabId]) return permissions[tabId];
+    if (role === "admin") return "update";
+    if (role === "viewer") return "read";
+    if (role === "guest") return tabId === "dashboard" ? "read" : "none";
+    return tabId === "admin" ? "none" : "update";
+  };
+
   const TABS=[
     {id:'dashboard',label:sm?'📊':'📊 Dashboard'},
     {id:'history',  label:sm?'📋':'📋 History'},
@@ -3749,7 +3820,8 @@ export default function App() {
     {id:'calendar', label:sm?'📅':'📅 Calendar'},
     {id:'reports',  label:sm?'📊':'📊 Reports'},
     ...(isAdmin ? [{id:'admin', label:sm?'⚙️':'⚙️ Admin Panel'}] : []),
-  ];
+  ].filter(t => getPermission(t.id) !== 'none');
+
   const TLBL={
     dashboard:'Dashboard',
     history:'History',
@@ -3763,6 +3835,7 @@ export default function App() {
     reports:'Financial Reports',
     admin:'Admin Panel'
   };
+
   const NAV_TABS=[
     {id:'dashboard',label:'Dashboard',icon:'D',group:'main'},
     {id:'accounts', label:'Accounts',icon:'A',group:'manage'},
@@ -3775,7 +3848,8 @@ export default function App() {
     {id:'investments', label:'Investments',icon:'I',group:'analytics'},
     {id:'reports', label:'Reports',icon:'R',group:'analytics'},
     ...(isAdmin ? [{id:'admin', label:'Admin Panel',icon:'S',group:'admin'}] : []),
-  ];
+  ].filter(t => getPermission(t.id) !== 'none');
+
   const navGroups = [
     ['main', ''],
     ['manage', 'Manage'],
@@ -3879,16 +3953,32 @@ export default function App() {
       {sm&&<div style={{padding:'8px 16px 0',fontSize:13,fontWeight:600,color:C.muted}}>{TLBL[tab]}</div>}
 
       <div style={{padding:sm?'14px 14px 60px':'24px 28px 40px',maxWidth:sm?'none':1580,marginLeft:sm?0:250}}>
-        {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm}/>}
-        {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
-        {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm}/>}
-        {tab==='accounts' &&<AccountsTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm}/>}
-        {tab==='investments'&&<InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm}/>}
-        {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} sm={sm}/>}
-        {tab==='credits'  &&<CreditsTab credits={credits} setCredits={setCredits} sm={sm}/>}
-        {tab==='expenses' &&<MajorTab majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} sm={sm}/>}
-        {tab==='calendar'  &&<CalendarTab budgetData={budgetData} sm={sm}/>}
-        {tab==='reports'   &&<ReportTab budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session}/>}
+        {(() => {
+          const activePerm = getPermission(tab);
+          const readOnly = activePerm === 'read';
+          const canWrite = activePerm === 'write' || activePerm === 'update';
+          const canUpdate = activePerm === 'update';
+
+          // Expose to window global for Input and Button wrappers
+          if (typeof window !== 'undefined') {
+            window.activePermission = activePerm;
+          }
+
+          return (
+            <>
+              {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm}/>}
+              {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
+              {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='accounts' &&<AccountsTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='investments'&&<InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='credits'  &&<CreditsTab credits={credits} setCredits={setCredits} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='expenses' &&<MajorTab majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='calendar'  &&<CalendarTab budgetData={budgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='reports'   &&<ReportTab budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+            </>
+          );
+        })()}
         {tab==='admin'     &&<AdminTab sm={sm}/>}
       </div>
     </div>
@@ -3975,10 +4065,98 @@ function AdminTab({ sm }) {
     }
   };
 
+  const [rolePermissionsList, setRolePermissionsList] = useState([]);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
+
+  const fetchRolePermissions = async () => {
+    setLoadingPermissions(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch("/api/admin/permissions", {
+        headers: { "Authorization": `Bearer ${session.access_token}` }
+      });
+      const data = await res.json();
+      if (data.permissions) {
+        setRolePermissionsList(data.permissions);
+      }
+    } catch (err) {
+      console.error("Error fetching permissions:", err);
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+
+  const handleUpdateUserRole = async (userId, newRole) => {
+    setActionLoading(true);
+    setActionSuccess("");
+    setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/roles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ userId, role: newRole })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update user role");
+      setActionSuccess(`Successfully updated user role to '${newRole}'`);
+      fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdatePermission = async (roleName, moduleName, newAccessLevel) => {
+    setLoadingPermissions(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/permissions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ role: roleName, moduleName, accessLevel: newAccessLevel })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update permission");
+      setRolePermissionsList(prev => {
+        const index = prev.findIndex(p => p.role === roleName && p.module_name === moduleName);
+        if (index > -1) {
+          const next = [...prev];
+          next[index] = data.permission;
+          return next;
+        }
+        return [...prev, data.permission];
+      });
+      setActionSuccess(`Updated permission for role '${roleName}' on module '${moduleName}' to '${newAccessLevel}'`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+
+  const getCellPermission = (roleName, moduleName) => {
+    const entry = rolePermissionsList.find(p => p.role === roleName && p.module_name === moduleName);
+    if (entry) return entry.access_level;
+    if (roleName === "admin") return "update";
+    if (roleName === "viewer") return "read";
+    if (roleName === "guest") return moduleName === "dashboard" ? "read" : "none";
+    return moduleName === "admin" ? "none" : "update";
+  };
+
   useEffect(() => {
     if (isSupabaseConfigured) {
       fetchUsers();
       fetchTestLogs();
+      fetchRolePermissions();
     }
   }, []);
 
@@ -3999,7 +4177,7 @@ function AdminTab({ sm }) {
       setAdminConfigured(Boolean(checkData.adminConfigured));
 
       if (checkData.adminConfigured) {
-        const res = await fetch("/api/admin/users", {
+        const res = await fetch("/api/admin/roles", {
           headers: {
             "Authorization": `Bearer ${session.access_token}`
           }
@@ -4223,6 +4401,7 @@ function AdminTab({ sm }) {
               <thead>
                 <tr style={{ background: "#08111f", borderBottom: `1px solid ${C.border}` }}>
                   <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted }}>User Info</th>
+                  <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted }}>Role</th>
                   <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted, display: sm ? "none" : "table-cell" }}>Created At</th>
                   <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted, display: sm ? "none" : "table-cell" }}>Last Sign In</th>
                   <th style={{ padding: "10px 8px", textAlign: "center", color: C.muted }}>Actions</th>
@@ -4256,6 +4435,28 @@ function AdminTab({ sm }) {
                             <div style={{ fontSize: 11, color: C.muted }}>{user.email}</div>
                           </div>
                         </div>
+                      </td>
+                      <td style={{ padding: "10px 8px" }}>
+                        <select
+                          value={user.role || 'user'}
+                          onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
+                          disabled={actionLoading}
+                          style={{
+                            background: C.bg,
+                            color: C.text,
+                            border: `1px solid ${C.border}`,
+                            borderRadius: 4,
+                            padding: "2px 6px",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer"
+                          }}
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="user">User</option>
+                          <option value="viewer">Viewer</option>
+                          <option value="guest">Guest</option>
+                        </select>
                       </td>
                       <td style={{ padding: "10px 8px", color: C.muted, display: sm ? "none" : "table-cell" }}>
                         {formatDate(user.created_at)}
@@ -4496,6 +4697,78 @@ function AdminTab({ sm }) {
               </div>
             );
           })}
+        </div>
+      </Card>
+
+      {/* Role Permissions Manager Card */}
+      <Card style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div>
+            <SecTitle style={{ margin: 0 }}>🔑 Role Permissions Manager</SecTitle>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Configure access levels for each module per role. Changes are saved automatically.</div>
+          </div>
+          {loadingPermissions && <span style={{ fontSize: 12, color: C.muted }}>⏳ Saving...</span>}
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: "#08111f", borderBottom: `1px solid ${C.border}` }}>
+                <th style={{ padding: "8px", textAlign: "left", color: C.muted }}>Module</th>
+                <th style={{ padding: "8px", textAlign: "center", color: C.muted }}>Admin</th>
+                <th style={{ padding: "8px", textAlign: "center", color: C.muted }}>User</th>
+                <th style={{ padding: "8px", textAlign: "center", color: C.muted }}>Viewer</th>
+                <th style={{ padding: "8px", textAlign: "center", color: C.muted }}>Guest</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { id: "dashboard", label: "Dashboard", icon: "📊" },
+                { id: "history", label: "History Logs", icon: "📋" },
+                { id: "budget", label: "Monthly Budget", icon: "📅" },
+                { id: "accounts", label: "Accounts", icon: "🏦" },
+                { id: "investments", label: "Investments", icon: "📈" },
+                { id: "debts", label: "Debt Manager", icon: "💳" },
+                { id: "credits", label: "Credits", icon: "🤝" },
+                { id: "expenses", label: "Major Goals", icon: "🎯" },
+                { id: "calendar", label: "Calendar Bills", icon: "📅" },
+                { id: "reports", label: "Reports", icon: "📊" },
+                { id: "admin", label: "Admin Panel", icon: "⚙️" }
+              ].map(m => (
+                <tr key={m.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                  <td style={{ padding: "8px", fontWeight: 600 }}>
+                    {m.icon} {m.label}
+                  </td>
+                  {["admin", "user", "viewer", "guest"].map(roleName => {
+                    const level = getCellPermission(roleName, m.id);
+                    return (
+                      <td key={roleName} style={{ padding: "8px", textAlign: "center" }}>
+                        <select
+                          value={level}
+                          onChange={(e) => handleUpdatePermission(roleName, m.id, e.target.value)}
+                          disabled={loadingPermissions || (roleName === "admin" && m.id === "admin")}
+                          style={{
+                            background: C.bg,
+                            color: level === "none" ? C.red : level === "read" ? C.amber : level === "write" ? C.blue : C.green,
+                            border: `1px solid ${C.border}`,
+                            borderRadius: 4,
+                            padding: "2px 4px",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: "pointer"
+                          }}
+                        >
+                          <option value="none">No Access</option>
+                          <option value="read">Read-Only</option>
+                          <option value="write">Write-Only</option>
+                          <option value="update">Full Control</option>
+                        </select>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </Card>
 
