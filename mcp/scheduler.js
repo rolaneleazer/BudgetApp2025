@@ -30,7 +30,7 @@ function shouldFire(schedule) {
     timeZone: schedule.timezone || 'Asia/Manila',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hourCycle: 'h23',
     weekday: 'short',
   });
   const parts = formatter.formatToParts(now);
@@ -120,7 +120,7 @@ export async function processSchedule(supabase, schedule) {
 /**
  * The main tick — runs every minute.
  */
-async function tick() {
+export async function tick() {
   const supabase = getSupabase();
   if (!supabase) return;
 

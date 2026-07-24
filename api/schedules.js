@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
-import { processSchedule } from "../mcp/scheduler.js";
+import { processSchedule, tick } from "../mcp/scheduler.js";
 
 function getSupabase() {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -39,6 +39,30 @@ export default async function handler(req, res) {
   const supabase = getSupabase();
   if (!supabase) {
     return res.status(500).json({ error: 'Supabase not configured on server.' });
+  }
+
+  const action = req.query?.action || new URL(req.url, 'http://localhost').searchParams.get('action');
+
+  // GET or POST — Run cron tick (does not require standard user auth)
+  if ((req.method === 'POST' || req.method === 'GET') && action === 'tick') {
+    const vercelCronHeader = req.headers['x-vercel-cron'];
+    const cronSecret = process.env.CRON_SECRET;
+    const authHeader = req.headers.authorization;
+    
+    const isCronAuthorized = vercelCronHeader === '1' || 
+                             (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
+                             !cronSecret; // fallback if no secret set
+                             
+    if (!isCronAuthorized) {
+      return res.status(401).json({ error: 'Unauthorized cron request.' });
+    }
+
+    try {
+      await tick();
+      return res.status(200).json({ success: true, message: 'Cron tick processed.' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
 
   const userId = await getUserId(req);
