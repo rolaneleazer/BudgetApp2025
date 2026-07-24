@@ -1026,6 +1026,10 @@ export function createBudgetMcpServer() {
     {
       title: "Select budget rows",
       description: "Read rows from the Supabase user_data table. Requires Supabase env vars on the MCP server.",
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: false,
+      },
       inputSchema: {
         userId: z.string().optional(),
         limit: z.number().int().min(1).max(25).default(5),
