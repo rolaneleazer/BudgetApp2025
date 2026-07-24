@@ -50,8 +50,27 @@ function shouldFire(schedule) {
   const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
   const currentDayOfWeek = dayMap[currentWeekday] ?? now.getDay();
 
-  // Prevent sending twice in the same minute
-  if (schedule.last_sent_at) {
+  // Prevent sending twice in the same day for daily/weekly/monthly schedules
+  if (schedule.frequency !== 'minutes' && schedule.last_sent_at) {
+    const lastSent = new Date(schedule.last_sent_at);
+    const tz = schedule.timezone || 'Asia/Manila';
+    const lastSentDateString = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(lastSent);
+    
+    const nowDateString = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now);
+    
+    if (lastSentDateString === nowDateString) return false; // Already sent today!
+  } else if (schedule.last_sent_at) {
+    // For minutes schedule: prevent sending twice in the same minute
     const lastSent = new Date(schedule.last_sent_at);
     const diffMs = now.getTime() - lastSent.getTime();
     if (diffMs < 120_000) return false; // Skip if sent less than 2 minutes ago
@@ -64,7 +83,11 @@ function shouldFire(schedule) {
     return currentMin % interval === 0;
   }
 
-  if (currentTime !== schedule.time) return false;
+  const isVercel = Boolean(process.env.VERCEL);
+
+  // In local environments, check the exact configured time.
+  // In Vercel, since the cron runs only once a day, bypass exact time checking.
+  if (!isVercel && currentTime !== schedule.time) return false;
 
   if (schedule.frequency === 'daily') return true;
   if (schedule.frequency === 'weekly') return currentDayOfWeek === (schedule.day_of_week ?? 1);
