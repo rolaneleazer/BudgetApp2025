@@ -3657,9 +3657,12 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
+        console.log("[App Client] fetchProfile API response:", data);
         setRole(data.role || 'user');
         setPermissions(data.permissions || {});
         setIsAdmin(data.role === 'admin');
+      } else {
+        console.warn("[App Client] fetchProfile API failed with status:", res.status);
       }
     } catch (err) {
       console.error("Error fetching user profile permissions:", err);
@@ -3668,6 +3671,7 @@ export default function App() {
 
   // Check role & permissions on session change
   useEffect(() => {
+    console.log("[App Client] Auth session changed:", session ? session.user.email : "null");
     if (!session) {
       setIsAdmin(false);
       setRole('user');
@@ -3858,6 +3862,8 @@ export default function App() {
   ];
   const displayName = (session?.user?.user_metadata?.full_name || session?.user?.email || 'Rolan Eleazer').split('@')[0];
 
+  console.log("[App Client] Rendering navigation panel - isAdmin:", isAdmin, "role:", role, "navGroups:", navGroups);
+
   if (!session && isSupabaseConfigured) {
     return <Auth />;
   }
@@ -3869,6 +3875,9 @@ export default function App() {
           <div style={{height:58,display:'flex',alignItems:'center',gap:10,padding:'0 18px',borderBottom:`1px solid ${C.border}`}}>
             <div style={{width:24,height:24,borderRadius:7,background:`linear-gradient(135deg, ${C.amber}, ${C.orange})`,display:'flex',alignItems:'center',justifyContent:'center',color:'#08111f',fontWeight:900,fontSize:13}}>B</div>
             <div style={{fontSize:15,fontWeight:800}}>Budget App 2026</div>
+          </div>
+          <div style={{ padding: '6px 18px', fontSize: 10, color: C.amber, background: `${C.bg}dd`, borderBottom: `1px solid ${C.border}33`, fontFamily: 'monospace' }}>
+            Role: {role} | Admin: {isAdmin ? "YES" : "NO"}
           </div>
           <nav style={{padding:12,display:'flex',flexDirection:'column',gap:14,flex:1,overflowY:'auto'}}>
             {navGroups.map(([group,label]) => (
