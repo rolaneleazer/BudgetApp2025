@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
+import { supabaseAdmin } from "../mcp/admin.js";
 
 function getSupabase() {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -12,23 +13,43 @@ function getSupabase() {
   });
 }
 
-async function getUserId(req) {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!token) return null;
+function decodeJwt(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = Buffer.from(parts[1], "base64url").toString("utf8");
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
+}
 
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return null;
+async function getUser(req) {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!token) return null;
 
-  const client = createClient(url, anonKey, {
-    realtime: {
-      transport: ws
+    if (supabaseAdmin) {
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+      if (!error && user) {
+        return user;
+      }
     }
-  });
-  const { data, error } = await client.auth.getUser(token);
-  if (error || !data?.user) return null;
-  return data.user.id;
+
+    // Fallback: decode JWT locally
+    const payload = decodeJwt(token);
+    if (payload) {
+      return {
+        id: payload.sub,
+        email: payload.email,
+        app_metadata: payload.app_metadata || {}
+      };
+    }
+  } catch (err) {
+    console.error("Error in getUser profile resolver:", err);
+  }
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -45,21 +66,37 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Supabase not configured." });
   }
 
-  const userId = await getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ error: "Not authenticated." });
-  }
-
   try {
-    const { data: roleEntry, error: roleErr } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .maybeSingle();
+    const user = await getUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "Not authenticated." });
+    }
 
-    if (roleErr) throw roleErr;
+    const userId = user.id;
+    const email = user.email || "";
+    const adminEmailsStr = process.env.ADMIN_EMAILS || "";
+    const adminEmails = adminEmailsStr
+      .split(",")
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
 
-    const role = roleEntry?.role || "user";
+    let role = "user";
+    if (adminEmails.includes(email.toLowerCase()) || user.app_metadata?.role === "admin") {
+      role = "admin";
+    } else {
+      const { data: roleEntry, error: roleErr } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (roleErr) throw roleErr;
+      if (roleEntry?.role) {
+        role = roleEntry.role;
+      }
+    }
+
+    console.log(`[Profile Resolver] Resolved user: "${email}" (ID: ${userId}) -> Role: "${role}"`);
 
     const { data: permissions, error: permErr } = await supabase
       .from("role_permissions")
