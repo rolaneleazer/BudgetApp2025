@@ -2210,6 +2210,128 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
   const [ccSuccessMsg, setCcSuccessMsg] = useState('');
   const [ccFilterDate, setCcFilterDate] = useState('');
 
+  // Editing CC Transactions States & Logic
+  const [editingTxId, setEditingTxId] = useState(null);
+  const [editTxData, setEditTxData] = useState(null);
+
+  const startEditTx = (tx) => {
+    setEditingTxId(tx.id);
+    setEditTxData({
+      cardId: tx.cardId,
+      amount: tx.amount,
+      category: tx.category || 'Others',
+      description: tx.description,
+      date: tx.date,
+      period: tx.period
+    });
+  };
+
+  const cancelEditTx = () => {
+    setEditingTxId(null);
+    setEditTxData(null);
+  };
+
+  const handleEditTxDateChange = (val) => {
+    const day = Number(val.split('-')[2]) || 1;
+    const period = day <= 15 ? '5th' : '20th';
+    setEditTxData(prev => ({ ...prev, date: val, period }));
+  };
+
+  const saveEditTx = () => {
+    if (!editTxData.cardId) return alert('Please select a credit card account');
+    if (!editTxData.amount || Number(editTxData.amount) <= 0) return alert('Please enter a valid amount');
+    if (!editTxData.description.trim()) return alert('Please enter a description');
+
+    const originalTx = budgetData.ccHistory?.find(t => t.id === editingTxId);
+    if (!originalTx) return cancelEditTx();
+
+    const oldCardId = originalTx.cardId;
+    const oldAmount = originalTx.amount;
+    const oldKey = originalTx.date.slice(0, 7);
+    const oldPeriod = originalTx.period;
+    const oldExpenseName = `[${originalTx.category || 'Others'}] ${originalTx.description} (${originalTx.cardName})`;
+
+    const newCardId = editTxData.cardId;
+    const newCard = debts.find(d => d.id === newCardId);
+    if (!newCard) return alert('Card not found');
+    const newAmount = Number(editTxData.amount);
+    const newKey = editTxData.date.slice(0, 7);
+    const newPeriod = editTxData.period;
+    const newExpenseName = `[${editTxData.category}] ${editTxData.description.trim()} (${newCard.name})`;
+
+    // 1. Adjust card outstanding balances
+    setDebts(prev => {
+      return prev.map(d => {
+        let bal = d.balance;
+        if (d.id === oldCardId) {
+          bal = Math.max(0, bal - oldAmount);
+        }
+        if (d.id === newCardId) {
+          bal = bal + newAmount;
+        }
+        return { ...d, balance: bal };
+      });
+    });
+
+    // 2. Adjust budget expenses & ccHistory
+    setBudgetData(prev => {
+      let updatedData = { ...prev };
+
+      // Step A: Remove old expense
+      const oldMonthData = updatedData[oldKey];
+      if (oldMonthData) {
+        const oldPeriodData = oldMonthData[oldPeriod];
+        if (oldPeriodData) {
+          updatedData[oldKey] = {
+            ...oldMonthData,
+            [oldPeriod]: {
+              ...oldPeriodData,
+              expenses: oldPeriodData.expenses.filter(e => !(e.name === oldExpenseName && e.amount === oldAmount))
+            }
+          };
+        }
+      }
+
+      // Step B: Insert new expense
+      const targetMonthData = updatedData[newKey] || makeMonthData();
+      const targetPeriodData = targetMonthData[newPeriod] || makePeriod();
+      const newExpense = {
+        name: newExpenseName,
+        budget: newAmount,
+        amount: newAmount,
+        done: true
+      };
+      updatedData[newKey] = {
+        ...targetMonthData,
+        [newPeriod]: {
+          ...targetPeriodData,
+          expenses: [...targetPeriodData.expenses, newExpense]
+        }
+      };
+
+      // Step C: Update history entry
+      updatedData.ccHistory = (prev.ccHistory || []).map(tx => {
+        if (tx.id === editingTxId) {
+          return {
+            ...tx,
+            cardId: newCardId,
+            cardName: newCard.name,
+            amount: newAmount,
+            category: editTxData.category,
+            description: editTxData.description.trim(),
+            date: editTxData.date,
+            period: newPeriod
+          };
+        }
+        return tx;
+      });
+
+      return updatedData;
+    });
+
+    cancelEditTx();
+  };
+
   const CAT_COLORS = {
     Food: '#388bfd',
     Grocery: '#56d364',
@@ -2662,33 +2784,113 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
                     <tbody>
                       {filteredTxs.map(tx => (
                         <tr key={tx.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
-                          <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>{tx.date}</td>
-                          <td style={{ padding: '8px 6px' }}>
-                            <span style={{ 
-                              padding: '2px 6px', borderRadius: 4, 
-                              fontSize: 10, fontWeight: 700, 
-                              color: '#fff', background: CAT_COLORS[tx.category || 'Others'] || '#7d8590'
-                            }}>
-                              {tx.category || 'Others'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '8px 6px', fontWeight: 600 }}>{tx.description}</td>
-                          <td style={{ padding: '8px 6px', color: C.muted }}>{tx.cardName}</td>
-                          <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 600, color: C.red }}>{peso(tx.amount)}</td>
-                          <td style={{ padding: '8px 6px', textAlign: 'center' }}>
-                            {canUpdate && (
-                              <button 
-                                onClick={() => handleDeleteCCTransaction(tx)}
-                                style={{ 
-                                  background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, 
-                                  color: C.red, padding: '2px 6px', cursor: 'pointer', fontSize: 10
-                                }}
-                                title="Delete & Deduct balance"
-                              >
-                                🗑
-                              </button>
-                            )}
-                          </td>
+                          {editingTxId === tx.id ? (
+                            <>
+                              <td style={{ padding: '4px' }}>
+                                <Inp 
+                                  type="date" 
+                                  value={editTxData.date} 
+                                  onChange={e => handleEditTxDateChange(e.target.value)} 
+                                  disabled={readOnly}
+                                  style={{ padding: '4px 6px', fontSize: 11 }}
+                                />
+                              </td>
+                              <td style={{ padding: '4px' }}>
+                                <select 
+                                  value={editTxData.category} 
+                                  onChange={e => setEditTxData({ ...editTxData, category: e.target.value })} 
+                                  disabled={readOnly}
+                                  style={{
+                                    padding: '4px 6px', borderRadius: 4, border: `1px solid ${C.border}`,
+                                    background: C.bg, color: C.text, fontSize: 11, outline: 'none',
+                                    fontFamily: 'inherit', cursor: 'pointer', width: '100%'
+                                  }}
+                                >
+                                  {['Food', 'Grocery', 'Utilities', 'Shopping', 'Travel', 'Entertainment', 'Health', 'Others'].map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td style={{ padding: '4px' }}>
+                                <Inp 
+                                  value={editTxData.description} 
+                                  onChange={e => setEditTxData({ ...editTxData, description: e.target.value })} 
+                                  disabled={readOnly}
+                                  style={{ padding: '4px 6px', fontSize: 11 }}
+                                />
+                              </td>
+                              <td style={{ padding: '4px' }}>
+                                <select 
+                                  value={editTxData.cardId} 
+                                  onChange={e => setEditTxData({ ...editTxData, cardId: e.target.value })} 
+                                  disabled={readOnly}
+                                  style={{
+                                    padding: '4px 6px', borderRadius: 4, border: `1px solid ${C.border}`,
+                                    background: C.bg, color: C.text, fontSize: 11, outline: 'none',
+                                    fontFamily: 'inherit', cursor: 'pointer', width: '100%'
+                                  }}
+                                >
+                                  {debts.map(d => (
+                                    <option key={d.id} value={d.id}>{d.name}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td style={{ padding: '4px' }}>
+                                <Inp 
+                                  type="number" 
+                                  value={editTxData.amount} 
+                                  onChange={e => setEditTxData({ ...editTxData, amount: Number(e.target.value) || 0 })} 
+                                  disabled={readOnly}
+                                  style={{ textAlign: 'right', padding: '4px 6px', fontSize: 11 }}
+                                />
+                              </td>
+                              <td style={{ padding: '4px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                <button onClick={saveEditTx} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.green, marginRight: 8, fontSize: 14 }}>✓</button>
+                                <button onClick={cancelEditTx} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 14 }}>×</button>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>{tx.date}</td>
+                              <td style={{ padding: '8px 6px' }}>
+                                <span style={{ 
+                                  padding: '2px 6px', borderRadius: 4, 
+                                  fontSize: 10, fontWeight: 700, 
+                                  color: '#fff', background: CAT_COLORS[tx.category || 'Others'] || '#7d8590'
+                                }}>
+                                  {tx.category || 'Others'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 6px', fontWeight: 600 }}>{tx.description}</td>
+                              <td style={{ padding: '8px 6px', color: C.muted }}>{tx.cardName}</td>
+                              <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 600, color: C.red }}>{peso(tx.amount)}</td>
+                              <td style={{ padding: '8px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                {canUpdate && (
+                                  <button 
+                                    onClick={() => startEditTx(tx)}
+                                    style={{ 
+                                      background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, 
+                                      color: C.muted, padding: '2px 6px', cursor: 'pointer', fontSize: 10, marginRight: 4
+                                    }}
+                                  >
+                                    Edit
+                                  </button>
+                                )}
+                                {canUpdate && (
+                                  <button 
+                                    onClick={() => handleDeleteCCTransaction(tx)}
+                                    style={{ 
+                                      background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, 
+                                      color: C.red, padding: '2px 6px', cursor: 'pointer', fontSize: 10
+                                    }}
+                                    title="Delete & Deduct balance"
+                                  >
+                                    🗑
+                                  </button>
+                                )}
+                              </td>
+                            </>
+                          )}
                         </tr>
                       ))}
                     </tbody>
