@@ -228,6 +228,60 @@ export async function adminHandler(req, res) {
       return;
     }
 
+    // Endpoint: GET /api/admin/user-data (Fetch another user's data)
+    if (pathname === "/api/admin/user-data" && req.method === "GET") {
+      const userId = url.searchParams.get("userId");
+      if (!userId) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "User ID is required." }));
+        return;
+      }
+
+      const { data, error: fetchErr } = await supabaseAdmin
+        .from("user_data")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (fetchErr) throw fetchErr;
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ userData: data }));
+      return;
+    }
+
+    // Endpoint: POST/PATCH /api/admin/user-data (Update another user's data)
+    if (pathname === "/api/admin/user-data" && (req.method === "POST" || req.method === "PATCH")) {
+      const body = await getRequestBody(req);
+      const userId = url.searchParams.get("userId") || body.userId;
+      const { budgetData, accounts, majorExpenses, credits, debts, balanceHistory } = body;
+
+      if (!userId) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "User ID is required." }));
+        return;
+      }
+
+      const { error: upsertErr } = await supabaseAdmin
+        .from("user_data")
+        .upsert({
+          user_id: userId,
+          budget_data: budgetData,
+          accounts: accounts,
+          major_expenses: majorExpenses,
+          credits: credits,
+          debts: debts,
+          balance_history: balanceHistory,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "user_id" });
+
+      if (upsertErr) throw upsertErr;
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true }));
+      return;
+    }
+
     // Fallthrough route not matched
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: `Not Found: ${req.method} ${pathname}` }));

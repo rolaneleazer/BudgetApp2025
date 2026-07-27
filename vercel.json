@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/api/admin/:path*", "destination": "/api/admin.js" }
+  ],
   "crons": [
     {
       "path": "/api/schedules?action=tick",
