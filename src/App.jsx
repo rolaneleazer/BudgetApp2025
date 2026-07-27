@@ -3595,6 +3595,13 @@ function ScheduleManager({ session, sm }) {
 
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
+const checkSessionAdmin = (sess) => {
+  if (!sess || !sess.user) return false;
+  const email = sess.user.email || "";
+  const role = sess.user.app_metadata?.role;
+  return role === "admin" || email.toLowerCase() === "rolanmolano_77@yahoo.com";
+};
+
 export default function App() {
   const width=useWidth();
   const sm=width<640;
@@ -3620,10 +3627,10 @@ export default function App() {
 
   const [loaded,setLoaded]=useState(false);
   const [budgetData,setBudgetData]=useState({});
-  const [accounts,setAccounts]=useState(DEF_ACCOUNTS);
-  const [majorExpenses,setMajorExpenses]=useState(DEF_MAJOR);
+  const [accounts,setAccounts]=useState(() => isSupabaseConfigured ? [] : DEF_ACCOUNTS);
+  const [majorExpenses,setMajorExpenses]=useState(() => isSupabaseConfigured ? [] : DEF_MAJOR);
   const [credits, setCredits] = useState([]);
-  const [debts, setDebts] = useState(DEF_DEBTS);
+  const [debts, setDebts] = useState(() => isSupabaseConfigured ? [] : DEF_DEBTS);
   const [balanceHistory, setBalanceHistory] = useState([]);
 
   // Supabase Auth and Sync States
@@ -3735,20 +3742,27 @@ export default function App() {
       if (!res.ok) throw new Error(data.error || "Failed to fetch user data.");
       
       const userData = data.userData;
+      const targetUser = users.find(u => u.id === targetUserId);
+      const isTargetAdmin = targetUser && (targetUser.role === 'admin' || targetUser.email?.toLowerCase() === "rolanmolano_77@yahoo.com");
+      
+      const fallbackAccounts = isTargetAdmin ? DEF_ACCOUNTS : [];
+      const fallbackMajor = isTargetAdmin ? DEF_MAJOR : [];
+      const fallbackDebts = isTargetAdmin ? DEF_DEBTS : [];
+
       if (userData) {
         setBudgetData(userData.budget_data || {});
-        setAccounts(userData.accounts || DEF_ACCOUNTS);
-        setMajorExpenses(userData.major_expenses || DEF_MAJOR);
+        setAccounts(userData.accounts || fallbackAccounts);
+        setMajorExpenses(userData.major_expenses || fallbackMajor);
         setCredits(userData.credits || []);
-        setDebts(userData.debts || DEF_DEBTS);
+        setDebts(userData.debts || fallbackDebts);
         setBalanceHistory(userData.balance_history || []);
       } else {
         setBudgetData({});
-        setAccounts(DEF_ACCOUNTS);
-        setMajorExpenses(DEF_MAJOR);
+        setAccounts(fallbackAccounts);
+        setMajorExpenses(fallbackMajor);
         setCredits([]);
-        setDebts(DEF_DEBTS);
-        setBalanceHistory(generateMockBalanceHistory(DEF_ACCOUNTS));
+        setDebts(fallbackDebts);
+        setBalanceHistory(fallbackAccounts.length > 0 ? generateMockBalanceHistory(fallbackAccounts) : []);
       }
     } catch (err) {
       console.error("Error loading user data for impersonation:", err);
@@ -3790,13 +3804,50 @@ export default function App() {
           throw error;
         }
 
+        const sessIsAdmin = checkSessionAdmin(session);
+        const fallbackAccounts = sessIsAdmin ? DEF_ACCOUNTS : [];
+        const fallbackMajor = sessIsAdmin ? DEF_MAJOR : [];
+        const fallbackDebts = sessIsAdmin ? DEF_DEBTS : [];
+
         if (data) {
-          setBudgetData(data.budget_data || {});
-          setAccounts(data.accounts || DEF_ACCOUNTS);
-          setMajorExpenses(data.major_expenses || DEF_MAJOR);
+          let loadedAccounts = data.accounts || fallbackAccounts;
+          let loadedMajor = data.major_expenses || fallbackMajor;
+          let loadedDebts = data.debts || fallbackDebts;
+          let loadedBudget = data.budget_data || {};
+          let loadedHistory = data.balance_history || [];
+
+          // WIPE TEMPLATE DATA FOR STANDARD USERS
+          if (!sessIsAdmin) {
+            const hasDefaultAccounts = loadedAccounts.some(a => a.id === 'sla-c' && a.balance === 507000);
+            if (hasDefaultAccounts) {
+              loadedAccounts = [];
+              loadedMajor = [];
+              loadedDebts = [];
+              loadedBudget = {};
+              loadedHistory = [];
+              
+              // Sync the cleared state back to the database immediately to save it
+              supabase.from('user_data').upsert({
+                user_id: session.user.id,
+                budget_data: loadedBudget,
+                accounts: loadedAccounts,
+                major_expenses: loadedMajor,
+                credits: [],
+                debts: loadedDebts,
+                balance_history: loadedHistory,
+                updated_at: new Date().toISOString()
+              }).then(({ error }) => {
+                if (error) console.error("Error clearing standard user template data:", error);
+              });
+            }
+          }
+
+          setBudgetData(loadedBudget);
+          setAccounts(loadedAccounts);
+          setMajorExpenses(loadedMajor);
           setCredits(data.credits || []);
-          setDebts(data.debts || DEF_DEBTS);
-          setBalanceHistory(data.balance_history || []);
+          setDebts(loadedDebts);
+          setBalanceHistory(loadedHistory);
         } else {
           // No cloud data yet (first login).
           // Attempt migration from user-partitioned local storage fallback.
@@ -3809,11 +3860,11 @@ export default function App() {
           const bh = await safeGet('bujdet-balanceHistory' + userIdSuffix);
 
           const initialBudget = bd && Object.keys(bd).length > 0 ? bd : {};
-          const initialAccounts = acc || DEF_ACCOUNTS;
-          const initialMajor = me || DEF_MAJOR;
+          const initialAccounts = acc || fallbackAccounts;
+          const initialMajor = me || fallbackMajor;
           const initialCredits = cr || [];
-          const initialDebts = db || DEF_DEBTS;
-          const initialHistory = (bh && bh.length > 0) ? bh : generateMockBalanceHistory(initialAccounts);
+          const initialDebts = db || fallbackDebts;
+          const initialHistory = (bh && bh.length > 0) ? bh : (initialAccounts.length > 0 ? generateMockBalanceHistory(initialAccounts) : []);
 
           setBudgetData(initialBudget);
           setAccounts(initialAccounts);
