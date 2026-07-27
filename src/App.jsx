@@ -3633,6 +3633,12 @@ export default function App() {
   const [role, setRole] = useState('user');
   const [permissions, setPermissions] = useState({});
 
+  // Admin Impersonation and User States (raised to root level)
+  const [viewingUserId, setViewingUserId] = useState(null);
+  const [viewingUserEmail, setViewingUserEmail] = useState('');
+  const [users, setUsers] = useState([]);
+  const [adminConfigured, setAdminConfigured] = useState(false);
+
   const ready = useRef(false);
 
   useEffect(() => {
@@ -3681,8 +3687,77 @@ export default function App() {
     fetchProfile();
   }, [session]);
 
+  async function fetchUsers() {
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession) return;
+      
+      const checkRes = await fetch("/api/admin/check", {
+        headers: {
+          "Authorization": `Bearer ${currentSession.access_token}`
+        }
+      });
+      const checkData = await checkRes.json();
+      setAdminConfigured(Boolean(checkData.adminConfigured));
 
-  // Fetch data on session change
+      if (checkData.adminConfigured) {
+        const res = await fetch("/api/admin/roles", {
+          headers: {
+            "Authorization": `Bearer ${currentSession.access_token}`
+          }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setUsers(data.users || []);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching users at App root:", err);
+    }
+  }
+
+  // Fetch users list automatically when admin is logged in
+  useEffect(() => {
+    if (session && isAdmin && isSupabaseConfigured) {
+      fetchUsers();
+    }
+  }, [session, isAdmin]);
+
+  async function loadTargetUserData(targetUserId) {
+    setLoaded(false);
+    try {
+      const res = await fetch(`/api/admin/user-data?userId=${targetUserId}`, {
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch user data.");
+      
+      const userData = data.userData;
+      if (userData) {
+        setBudgetData(userData.budget_data || {});
+        setAccounts(userData.accounts || DEF_ACCOUNTS);
+        setMajorExpenses(userData.major_expenses || DEF_MAJOR);
+        setCredits(userData.credits || []);
+        setDebts(userData.debts || DEF_DEBTS);
+        setBalanceHistory(userData.balance_history || []);
+      } else {
+        setBudgetData({});
+        setAccounts(DEF_ACCOUNTS);
+        setMajorExpenses(DEF_MAJOR);
+        setCredits([]);
+        setDebts(DEF_DEBTS);
+        setBalanceHistory(generateMockBalanceHistory(DEF_ACCOUNTS));
+      }
+    } catch (err) {
+      console.error("Error loading user data for impersonation:", err);
+    } finally {
+      setLoaded(true);
+    }
+  }
+
+  // Fetch data on session change or impersonation target change
   useEffect(() => {
     if (!isSupabaseConfigured) {
       ready.current = true;
@@ -3695,6 +3770,11 @@ export default function App() {
     if (!session) {
       ready.current = false;
       setLoaded(false);
+      return;
+    }
+
+    if (viewingUserId && viewingUserId !== session.user.id) {
+      loadTargetUserData(viewingUserId);
       return;
     }
 
@@ -3719,13 +3799,14 @@ export default function App() {
           setBalanceHistory(data.balance_history || []);
         } else {
           // No cloud data yet (first login).
-          // Attempt migration from local storage fallback.
-          const bd = await safeGet('bujdet-v2-budgetData');
-          const acc = await safeGet('bujdet-accounts');
-          const me = await safeGet('bujdet-majorExpenses');
-          const cr = await safeGet('bujdet-credits');
-          const db = await safeGet('bujdet-debts');
-          const bh = await safeGet('bujdet-balanceHistory');
+          // Attempt migration from user-partitioned local storage fallback.
+          const userIdSuffix = '-' + session.user.id;
+          const bd = await safeGet('bujdet-v2-budgetData' + userIdSuffix);
+          const acc = await safeGet('bujdet-accounts' + userIdSuffix);
+          const me = await safeGet('bujdet-majorExpenses' + userIdSuffix);
+          const cr = await safeGet('bujdet-credits' + userIdSuffix);
+          const db = await safeGet('bujdet-debts' + userIdSuffix);
+          const bh = await safeGet('bujdet-balanceHistory' + userIdSuffix);
 
           const initialBudget = bd && Object.keys(bd).length > 0 ? bd : {};
           const initialAccounts = acc || DEF_ACCOUNTS;
@@ -3761,9 +3842,9 @@ export default function App() {
     }
 
     loadCloudData();
-  }, [session]);
+  }, [session, viewingUserId]);
 
-  // Debounced Cloud Sync to Supabase
+  // Debounced Cloud Sync to Supabase (supporting admin impersonated sync)
   useEffect(() => {
     if (!isSupabaseConfigured) {
       return;
@@ -3773,19 +3854,41 @@ export default function App() {
     setSyncStatus('syncing');
     const timer = setTimeout(async () => {
       try {
-        const { error } = await supabase
-          .from('user_data')
-          .upsert({
-            user_id: session.user.id,
-            budget_data: budgetData,
-            accounts: accounts,
-            major_expenses: majorExpenses,
-            credits: credits,
-            debts: debts,
-            balance_history: balanceHistory,
-            updated_at: new Date().toISOString()
+        if (viewingUserId && viewingUserId !== session.user.id) {
+          // Sync impersonated user's data via Admin API
+          const res = await fetch(`/api/admin/user-data?userId=${viewingUserId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              budgetData,
+              accounts,
+              majorExpenses,
+              credits,
+              debts,
+              balanceHistory
+            })
           });
-        if (error) throw error;
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to sync target user data');
+        } else {
+          // Sync own data directly
+          const { error } = await supabase
+            .from('user_data')
+            .upsert({
+              user_id: session.user.id,
+              budget_data: budgetData,
+              accounts: accounts,
+              major_expenses: majorExpenses,
+              credits: credits,
+              debts: debts,
+              balance_history: balanceHistory,
+              updated_at: new Date().toISOString()
+            });
+          if (error) throw error;
+        }
         setSyncStatus('saved');
       } catch (err) {
         console.error('Error syncing budget data to cloud:', err);
@@ -3794,15 +3897,15 @@ export default function App() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [budgetData, accounts, majorExpenses, credits, debts, balanceHistory, session]);
+  }, [budgetData, accounts, majorExpenses, credits, debts, balanceHistory, session, viewingUserId]);
 
-  // Keep local storage updated as a secondary fallback/offline cache
-  useEffect(() => { if (ready.current) safeSet('bujdet-v2-budgetData', budgetData); }, [budgetData]);
-  useEffect(() => { if (ready.current) safeSet('bujdet-accounts', accounts); }, [accounts]);
-  useEffect(() => { if (ready.current) safeSet('bujdet-majorExpenses', majorExpenses); }, [majorExpenses]);
-  useEffect(() => { if (ready.current) safeSet('bujdet-credits', credits); }, [credits]);
-  useEffect(() => { if (ready.current) safeSet('bujdet-debts', debts); }, [debts]);
-  useEffect(() => { if (ready.current) safeSet('bujdet-balanceHistory', balanceHistory); }, [balanceHistory]);
+  // Keep local storage updated as a secondary fallback/offline cache (partitioned by user id, only for own account)
+  useEffect(() => { if (ready.current && session && (!viewingUserId || viewingUserId === session.user.id)) safeSet('bujdet-v2-budgetData-' + session.user.id, budgetData); }, [budgetData, session, viewingUserId]);
+  useEffect(() => { if (ready.current && session && (!viewingUserId || viewingUserId === session.user.id)) safeSet('bujdet-accounts-' + session.user.id, accounts); }, [accounts, session, viewingUserId]);
+  useEffect(() => { if (ready.current && session && (!viewingUserId || viewingUserId === session.user.id)) safeSet('bujdet-majorExpenses-' + session.user.id, majorExpenses); }, [majorExpenses, session, viewingUserId]);
+  useEffect(() => { if (ready.current && session && (!viewingUserId || viewingUserId === session.user.id)) safeSet('bujdet-credits-' + session.user.id, credits); }, [credits, session, viewingUserId]);
+  useEffect(() => { if (ready.current && session && (!viewingUserId || viewingUserId === session.user.id)) safeSet('bujdet-debts-' + session.user.id, debts); }, [debts, session, viewingUserId]);
+  useEffect(() => { if (ready.current && session && (!viewingUserId || viewingUserId === session.user.id)) safeSet('bujdet-balanceHistory-' + session.user.id, balanceHistory); }, [balanceHistory, session, viewingUserId]);
 
   const getPermission = (tabId) => {
     if (permissions && permissions[tabId]) return permissions[tabId];
@@ -3879,6 +3982,43 @@ export default function App() {
           <div style={{ padding: '6px 18px', fontSize: 10, color: C.amber, background: `${C.bg}dd`, borderBottom: `1px solid ${C.border}33`, fontFamily: 'monospace' }}>
             Role: {role} | Admin: {isAdmin ? "YES" : "NO"}
           </div>
+          {isAdmin && (
+            <div style={{ padding: '10px 18px', borderBottom: `1px solid ${C.border}33`, background: `${C.panel}44` }}>
+              <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 5, fontWeight: 700, textTransform: 'uppercase' }}>Viewing User Account:</label>
+              <select
+                value={viewingUserId || session.user.id}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val === session.user.id) {
+                    setViewingUserId(null);
+                    setViewingUserEmail('');
+                  } else {
+                    setViewingUserId(val);
+                    const selectedUser = users.find(u => u.id === val);
+                    setViewingUserEmail(selectedUser ? selectedUser.email : '');
+                  }
+                }}
+                style={{
+                  background: C.bg,
+                  color: C.text,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 6,
+                  padding: '6px 8px',
+                  fontSize: 12,
+                  width: '100%',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value={session.user.id}>Yourself ({session.user.email})</option>
+                {users.filter(u => u.id !== session.user.id).map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.fullName ? `${u.fullName} (${u.email})` : u.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <nav style={{padding:12,display:'flex',flexDirection:'column',gap:14,flex:1,overflowY:'auto'}}>
             {navGroups.map(([group,label]) => (
               <div key={group}>
@@ -3958,10 +4098,83 @@ export default function App() {
           </button>
         ))}
       </div>
+      {sm && isAdmin && (
+        <div style={{ padding: '8px 16px', background: C.card, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: C.muted, whiteSpace: 'nowrap' }}>Viewing User:</span>
+          <select
+            value={viewingUserId || session.user.id}
+            onChange={e => {
+              const val = e.target.value;
+              if (val === session.user.id) {
+                setViewingUserId(null);
+                setViewingUserEmail('');
+              } else {
+                setViewingUserId(val);
+                const selectedUser = users.find(u => u.id === val);
+                setViewingUserEmail(selectedUser ? selectedUser.email : '');
+              }
+            }}
+            style={{
+              background: C.bg,
+              color: C.text,
+              border: `1px solid ${C.border}`,
+              borderRadius: 5,
+              padding: '4px 6px',
+              fontSize: 11,
+              flex: 1,
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <option value={session.user.id}>Yourself ({session.user.email})</option>
+            {users.filter(u => u.id !== session.user.id).map(u => (
+              <option key={u.id} value={u.id}>
+                {u.fullName ? `${u.fullName} (${u.email})` : u.email}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {sm&&<div style={{padding:'8px 16px 0',fontSize:13,fontWeight:600,color:C.muted}}>{TLBL[tab]}</div>}
 
       <div style={{padding:sm?'14px 14px 60px':'24px 28px 40px',maxWidth:sm?'none':1580,marginLeft:sm?0:250}}>
+        {viewingUserId && (
+          <div style={{
+            background: `rgba(242, 167, 27, 0.15)`,
+            border: `1px solid ${C.amber}66`,
+            borderRadius: 8,
+            padding: '12px 16px',
+            marginBottom: 16,
+            color: C.amber,
+            fontSize: 13,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12
+          }}>
+            <span>⚠️ VIEWING MODE: You are currently viewing and editing financial data for user <strong>{viewingUserEmail}</strong>.</span>
+            <button
+              onClick={() => {
+                setViewingUserId(null);
+                setViewingUserEmail('');
+              }}
+              style={{
+                background: 'rgba(242, 167, 27, 0.2)',
+                border: `1px solid ${C.amber}`,
+                borderRadius: 5,
+                color: C.text,
+                padding: '4px 8px',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: 700
+              }}
+            >
+              Exit View
+            </button>
+          </div>
+        )}
         {(() => {
           const activePerm = getPermission(tab);
           const readOnly = activePerm === 'read';
@@ -3988,17 +4201,15 @@ export default function App() {
             </>
           );
         })()}
-        {tab==='admin'     &&<AdminTab sm={sm}/>}
+        {tab==='admin'     &&<AdminTab sm={sm} users={users} setUsers={setUsers} adminConfigured={adminConfigured} fetchUsers={fetchUsers}/>}
       </div>
     </div>
   );
 }
 
 // ─── ADMIN PANEL ─────────────────────────────────────────────────────────────
-function AdminTab({ sm }) {
-  const [users, setUsers] = useState([]);
+function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
   const [loading, setLoading] = useState(true);
-  const [adminConfigured, setAdminConfigured] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -4163,46 +4374,21 @@ function AdminTab({ sm }) {
 
   useEffect(() => {
     if (isSupabaseConfigured) {
-      fetchUsers();
-      fetchTestLogs();
-      fetchRolePermissions();
+      const runInit = async () => {
+        setLoading(true);
+        try {
+          await fetchUsers();
+          await fetchTestLogs();
+          await fetchRolePermissions();
+        } catch (err) {
+          console.error("Error initializing Admin tab data:", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      runInit();
     }
   }, []);
-
-  async function fetchUsers() {
-    setLoading(true);
-    setError("");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("No active session.");
-      
-      // Check configuration status first
-      const checkRes = await fetch("/api/admin/check", {
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`
-        }
-      });
-      const checkData = await checkRes.json();
-      setAdminConfigured(Boolean(checkData.adminConfigured));
-
-      if (checkData.adminConfigured) {
-        const res = await fetch("/api/admin/roles", {
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`
-          }
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to fetch users");
-        setUsers(data.users || []);
-      } else {
-        setUsers([]);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function handleAdd(e) {
     e.preventDefault();

@@ -39,6 +39,10 @@ app.all("/api/admin/users", async (req, res) => {
   await adminHandler(req, res);
 });
 
+app.all("/api/admin/user-data", async (req, res) => {
+  await adminHandler(req, res);
+});
+
 app.post("/api/send-report", async (req, res) => {
   await sendReportHandler(req, res);
 });
