@@ -99,8 +99,20 @@ function generateMockBalanceHistory(accList) {
 }
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
+let activeUserIsAdmin = false;
+
+const getIsAdminOrDemo = () => {
+  if (!isSupabaseConfigured) return true; // Local Demo Mode acts as Admin
+  return activeUserIsAdmin;
+};
+
 function makePeriod() {
-  return {salary:27000, ot:{weekday:0,weekend:0}, expenses:EXPENSE_TPL.map(e=>({...e,done:false}))};
+  const isAdmin = getIsAdminOrDemo();
+  return {
+    salary: isAdmin ? 27000 : 0,
+    ot: { weekday: 0, weekend: 0 },
+    expenses: isAdmin ? EXPENSE_TPL.map(e => ({ ...e, done: false })) : []
+  };
 }
 function makeMonthData() { return {'5th':makePeriod(),'20th':makePeriod()}; }
 function getOrMake(budgetData, key) { return budgetData[key] || makeMonthData(); }
@@ -3689,8 +3701,10 @@ export default function App() {
       setIsAdmin(false);
       setRole('user');
       setPermissions({});
+      activeUserIsAdmin = false;
       return;
     }
+    activeUserIsAdmin = checkSessionAdmin(session);
     fetchProfile();
   }, [session]);
 
@@ -3819,12 +3833,41 @@ export default function App() {
           // WIPE TEMPLATE DATA FOR STANDARD USERS
           if (!sessIsAdmin) {
             const hasDefaultAccounts = loadedAccounts.some(a => a.id === 'sla-c' && a.balance === 507000);
-            if (hasDefaultAccounts) {
-              loadedAccounts = [];
-              loadedMajor = [];
-              loadedDebts = [];
-              loadedBudget = {};
-              loadedHistory = [];
+            
+            // Also check if budget data has default templates
+            let budgetUpdated = false;
+            const cleanBudget = { ...loadedBudget };
+            for (const key in cleanBudget) {
+              const monthData = cleanBudget[key];
+              if (monthData) {
+                ['5th', '20th'].forEach(payday => {
+                  const p = monthData[payday];
+                  if (p) {
+                    const hasDefaultSalary = p.salary === 27000;
+                    const hasDefaultExpenses = p.expenses && p.expenses.some(e => e.name === 'Rent' && e.budget === 18000);
+                    if (hasDefaultSalary || hasDefaultExpenses) {
+                      monthData[payday] = {
+                        salary: 0,
+                        ot: { weekday: 0, weekend: 0 },
+                        expenses: []
+                      };
+                      budgetUpdated = true;
+                    }
+                  }
+                });
+              }
+            }
+
+            if (hasDefaultAccounts || budgetUpdated) {
+              if (hasDefaultAccounts) {
+                loadedAccounts = [];
+                loadedMajor = [];
+                loadedDebts = [];
+                loadedHistory = [];
+              }
+              if (budgetUpdated) {
+                loadedBudget = cleanBudget;
+              }
               
               // Sync the cleared state back to the database immediately to save it
               supabase.from('user_data').upsert({
