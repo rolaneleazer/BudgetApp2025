@@ -2192,13 +2192,192 @@ function InvestmentsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpda
 }
 
 // ─── DEBT MANAGER ─────────────────────────────────────────────────────────────
-function DebtsTab({ debts, setDebts, sm, readOnly, canWrite, canUpdate }) {
+function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, canWrite, canUpdate }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState(null);
 
   const totalOwed = debts.reduce((sum, d) => sum + d.balance, 0);
   const totalLimit = debts.reduce((sum, d) => sum + d.limit, 0);
   const avgUtilization = totalLimit > 0 ? (totalOwed / totalLimit) * 100 : 0;
+
+  // Credit Card Transaction States
+  const [selectedCardId, setSelectedCardId] = useState(debts[0]?.id || '');
+  const [ccAmount, setCcAmount] = useState('');
+  const [ccDesc, setCcDesc] = useState('');
+  const [ccCategory, setCcCategory] = useState('Food');
+  const [ccDate, setCcDate] = useState(new Date().toISOString().slice(0, 10));
+  const [ccPeriod, setCcPeriod] = useState(new Date().getDate() <= 15 ? '5th' : '20th');
+  const [ccSuccessMsg, setCcSuccessMsg] = useState('');
+  const [ccFilterDate, setCcFilterDate] = useState('');
+
+  const CAT_COLORS = {
+    Food: '#388bfd',
+    Grocery: '#56d364',
+    Utilities: '#d29922',
+    Shopping: '#f85149',
+    Travel: '#bc8cff',
+    Entertainment: '#ff7b72',
+    Health: '#3fb950',
+    Others: '#7d8590'
+  };
+
+  // Keep selectedCardId updated if debts array changes
+  useEffect(() => {
+    if (debts.length > 0 && !selectedCardId) {
+      setSelectedCardId(debts[0].id);
+    }
+  }, [debts, selectedCardId]);
+
+  const handleCcDateChange = (val) => {
+    setCcDate(val);
+    const day = Number(val.split('-')[2]) || 1;
+    setCcPeriod(day <= 15 ? '5th' : '20th');
+  };
+
+  const handleCCTransaction = () => {
+    const cardId = selectedCardId || debts[0]?.id;
+    if (!cardId) return alert('Please select a credit card account');
+    if (!ccAmount || Number(ccAmount) <= 0) return alert('Please enter a valid amount');
+    if (!ccDesc.trim()) return alert('Please enter a description');
+
+    const card = debts.find(d => d.id === cardId);
+    if (!card) return;
+
+    const amount = Number(ccAmount);
+    const dateStr = ccDate;
+    const period = ccPeriod;
+    const key = dateStr.slice(0, 7);
+
+    // 1. Increase outstanding balance on card
+    setDebts(prev => prev.map(d => d.id === cardId ? { ...d, balance: d.balance + amount } : d));
+
+    // 2. Add expense and log history to budgetData
+    setBudgetData(prev => {
+      const monthData = prev[key] || makeMonthData();
+      const periodData = monthData[period] || makePeriod();
+
+      const newExpense = {
+        name: `[${ccCategory}] ${ccDesc.trim()} (${card.name})`,
+        budget: amount,
+        amount: amount,
+        done: true
+      };
+
+      const updatedExpenses = [...periodData.expenses, newExpense];
+      const prevHistory = prev.ccHistory || [];
+      const newHistoryItem = {
+        id: 'cctx-' + Date.now(),
+        cardId: cardId,
+        cardName: card.name,
+        amount,
+        category: ccCategory,
+        description: ccDesc.trim(),
+        date: dateStr,
+        period,
+        timestamp: new Date().toISOString()
+      };
+
+      return {
+        ...prev,
+        [key]: {
+          ...monthData,
+          [period]: {
+            ...periodData,
+            expenses: updatedExpenses
+          }
+        },
+        ccHistory: [newHistoryItem, ...prevHistory]
+      };
+    });
+
+    setCcAmount('');
+    setCcDesc('');
+    setCcSuccessMsg('Transaction logged!');
+    setTimeout(() => setCcSuccessMsg(''), 3000);
+  };
+
+  const handleDeleteCCTransaction = (tx) => {
+    if (!confirm(`Refund ₱${tx.amount.toLocaleString()} from ${tx.cardName} balance and delete the logged expense?`)) return;
+
+    // 1. Deduct balance from outstanding card balance
+    setDebts(prev => prev.map(d => d.id === tx.cardId ? { ...d, balance: Math.max(0, d.balance - tx.amount) } : d));
+
+    // 2. Remove expense & history log
+    const key = tx.date.slice(0, 7);
+    const period = tx.period;
+    const expenseName = `[${tx.category}] ${tx.description} (${tx.cardName})`;
+
+    setBudgetData(prev => {
+      const monthData = prev[key] || makeMonthData();
+      const periodData = monthData[period] || makePeriod();
+
+      const updatedExpenses = periodData.expenses.filter(e => e.name !== expenseName || e.amount !== tx.amount);
+      const prevHistory = prev.ccHistory || [];
+      const updatedHistory = prevHistory.filter(h => h.id !== tx.id);
+
+      return {
+        ...prev,
+        [key]: {
+          ...monthData,
+          [period]: {
+            ...periodData,
+            expenses: updatedExpenses
+          }
+        },
+        ccHistory: updatedHistory
+      };
+    });
+  };
+
+  const handleBulkClearTransactions = (filteredList) => {
+    if (filteredList.length === 0) return;
+    const confirmText = prompt(`Are you sure you want to delete all ${filteredList.length} filtered transactions and adjust card balances? This action cannot be undone.\n\nType "WIPE" to confirm:`);
+    if (confirmText !== "WIPE") return;
+
+    // 1. Rollback card balances
+    setDebts(prev => {
+      return prev.map(card => {
+        const txsForCard = filteredList.filter(tx => tx.cardId === card.id);
+        const sumToDeduct = txsForCard.reduce((sum, tx) => sum + tx.amount, 0);
+        return {
+          ...card,
+          balance: Math.max(0, card.balance - sumToDeduct)
+        };
+      });
+    });
+
+    // 2. Clear from budgets and history
+    setBudgetData(prev => {
+      let updatedData = { ...prev };
+      
+      // Group filtered transactions by month (key) and payroll period
+      filteredList.forEach(tx => {
+        const key = tx.date.slice(0, 7);
+        const period = tx.period;
+        const expenseName = `[${tx.category}] ${tx.description} (${tx.cardName})`;
+
+        const monthData = updatedData[key];
+        if (monthData) {
+          const periodData = monthData[period];
+          if (periodData) {
+            updatedData[key] = {
+              ...monthData,
+              [period]: {
+                ...periodData,
+                expenses: periodData.expenses.filter(e => e.name !== expenseName || e.amount !== tx.amount)
+              }
+            };
+          }
+        }
+      });
+
+      // Clear from ccHistory list
+      const idsToRemove = new Set(filteredList.map(tx => tx.id));
+      updatedData.ccHistory = (prev.ccHistory || []).filter(tx => !idsToRemove.has(tx.id));
+
+      return updatedData;
+    });
+  };
 
   function startEdit(d) {
     setEditData({ ...d });
@@ -2296,6 +2475,230 @@ function DebtsTab({ debts, setDebts, sm, readOnly, canWrite, canUpdate }) {
           </div>
         </div>
       </Card>
+
+      {/* Transaction Logging Sections */}
+      {debts.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1.5fr', gap: 14, marginTop: 14 }}>
+          {/* Log CC Transaction Form */}
+          <Card style={{ marginBottom: 0 }}>
+            <SecTitle>Log Credit Card Transaction</SecTitle>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
+              Add a transaction. It will increase your card balance and automatically log it as a paid expense in your budget.
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Credit Card / Debt Account</label>
+                <select 
+                  value={selectedCardId} 
+                  onChange={e => setSelectedCardId(e.target.value)} 
+                  disabled={readOnly}
+                  style={{
+                    padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
+                    background: C.bg, color: C.text, fontSize: 13, outline: 'none',
+                    fontFamily: 'inherit', width: '100%', cursor: 'pointer'
+                  }}
+                >
+                  <option value="" disabled>Select Card</option>
+                  {debts.map(d => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} (Bal: {peso(d.balance)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Category</label>
+                  <select 
+                    value={ccCategory} 
+                    onChange={e => setCcCategory(e.target.value)} 
+                    disabled={readOnly}
+                    style={{
+                      padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
+                      background: C.bg, color: C.text, fontSize: 13, outline: 'none',
+                      fontFamily: 'inherit', width: '100%', cursor: 'pointer'
+                    }}
+                  >
+                    {['Food', 'Grocery', 'Utilities', 'Shopping', 'Travel', 'Entertainment', 'Health', 'Others'].map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Amount (₱)</label>
+                  <Inp 
+                    type="number" 
+                    value={ccAmount} 
+                    onChange={e => setCcAmount(e.target.value)} 
+                    placeholder="0" 
+                    style={{ textAlign: 'right' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
+                <Inp 
+                  type="text" 
+                  value={ccDesc} 
+                  onChange={e => setCcDesc(e.target.value)} 
+                  placeholder="e.g. Starbucks, Grocery shopping" 
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Date</label>
+                  <Inp 
+                    type="date" 
+                    value={ccDate} 
+                    onChange={e => handleCcDateChange(e.target.value)} 
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Payroll Period</label>
+                  <select 
+                    value={ccPeriod} 
+                    onChange={e => setCcPeriod(e.target.value)} 
+                    disabled={readOnly}
+                    style={{
+                      padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
+                      background: C.bg, color: C.text, fontSize: 13, outline: 'none',
+                      fontFamily: 'inherit', width: '100%', cursor: 'pointer'
+                    }}
+                  >
+                    <option value="5th">5th Payroll (1st half of month)</option>
+                    <option value="20th">20th Payroll (2nd half of month)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {canWrite && (
+                <BtnG onClick={handleCCTransaction} style={{ padding: '7px 14px', fontSize: 12, background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`, color: '#fff', border: 'none' }}>
+                  Add Transaction
+                </BtnG>
+              )}
+              {ccSuccessMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>{ccSuccessMsg}</span>}
+            </div>
+          </Card>
+
+          {/* CC Transaction History Log */}
+          <Card style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 6 }}>
+              <SecTitle style={{ margin: 0 }}>CC Transactions Ledger</SecTitle>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, color: C.muted }}>Filter:</span>
+                <input 
+                  type="date" 
+                  value={ccFilterDate} 
+                  onChange={e => setCcFilterDate(e.target.value)} 
+                  style={{
+                    padding: '4px 8px', borderRadius: 4, border: `1px solid ${C.border}`,
+                    background: C.bg, color: C.text, fontSize: 11, outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                />
+                {ccFilterDate && (
+                  <button 
+                    onClick={() => setCcFilterDate('')}
+                    style={{
+                      background: 'none', border: `1px solid ${C.border}`, borderRadius: 4,
+                      color: C.muted, padding: '4px 8px', fontSize: 11, cursor: 'pointer'
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {(!budgetData.ccHistory || budgetData.ccHistory.length === 0) ? (
+              <div style={{ color: C.muted, fontSize: 12, padding: '10px 0', textAlign: 'center' }}>No card transactions logged yet.</div>
+            ) : (() => {
+              const filteredTxs = ccFilterDate 
+                ? budgetData.ccHistory.filter(t => t.date === ccFilterDate)
+                : budgetData.ccHistory;
+
+              if (filteredTxs.length === 0) {
+                return (
+                  <div>
+                    <div style={{ color: C.muted, fontSize: 12, padding: '10px 0', textAlign: 'center' }}>No transactions on this date.</div>
+                  </div>
+                );
+              }
+
+              return (
+                <div style={{ overflowX: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                    {canUpdate && (
+                      <button 
+                        onClick={() => handleBulkClearTransactions(filteredTxs)}
+                        style={{
+                          background: 'none', border: `1px solid ${C.red}66`, borderRadius: 6,
+                          color: C.red, padding: '4px 10px', fontSize: 11, cursor: 'pointer',
+                          fontWeight: 700
+                        }}
+                      >
+                        🗑 Clear Filtered ({filteredTxs.length})
+                      </button>
+                    )}
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.muted }}>
+                        <th style={{ textAlign: 'left', padding: '6px' }}>Date</th>
+                        <th style={{ textAlign: 'left', padding: '6px' }}>Category</th>
+                        <th style={{ textAlign: 'left', padding: '6px' }}>Description</th>
+                        <th style={{ textAlign: 'left', padding: '6px' }}>Account</th>
+                        <th style={{ textAlign: 'right', padding: '6px' }}>Amount</th>
+                        <th style={{ textAlign: 'center', padding: '6px' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTxs.map(tx => (
+                        <tr key={tx.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                          <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>{tx.date}</td>
+                          <td style={{ padding: '8px 6px' }}>
+                            <span style={{ 
+                              padding: '2px 6px', borderRadius: 4, 
+                              fontSize: 10, fontWeight: 700, 
+                              color: '#fff', background: CAT_COLORS[tx.category || 'Others'] || '#7d8590'
+                            }}>
+                              {tx.category || 'Others'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 6px', fontWeight: 600 }}>{tx.description}</td>
+                          <td style={{ padding: '8px 6px', color: C.muted }}>{tx.cardName}</td>
+                          <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 600, color: C.red }}>{peso(tx.amount)}</td>
+                          <td style={{ padding: '8px 6px', textAlign: 'center' }}>
+                            {canUpdate && (
+                              <button 
+                                onClick={() => handleDeleteCCTransaction(tx)}
+                                style={{ 
+                                  background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, 
+                                  color: C.red, padding: '2px 6px', cursor: 'pointer', fontSize: 10
+                                }}
+                                title="Delete & Deduct balance"
+                              >
+                                🗑
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
@@ -4287,7 +4690,7 @@ export default function App() {
               {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='accounts' &&<AccountsTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='investments'&&<InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='credits'  &&<CreditsTab credits={credits} setCredits={setCredits} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='expenses' &&<MajorTab majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='calendar'  &&<CalendarTab budgetData={budgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
