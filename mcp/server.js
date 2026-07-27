@@ -13,8 +13,8 @@ import { adminHandler } from "./admin.js";
 import sendReportHandler from "../api/send-report.js";
 import schedulesHandler from "../api/schedules.js";
 import adminTestsHandler from "../api/admin-tests.js";
-import rolesHandler from "../api/admin/roles.js";
-import permissionsHandler from "../api/admin/permissions.js";
+import rolesHandler from "./roles.js";
+import permissionsHandler from "./permissions.js";
 import profileHandler from "../api/profile.js";
 import { startScheduler } from "./scheduler.js";
 

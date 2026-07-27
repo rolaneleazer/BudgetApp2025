@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
-import { getMcpConfig } from "../../mcp/core.js";
-import { verifyAdmin, getRequestBody } from "../../mcp/admin.js";
+import { getMcpConfig } from "./core.js";
+import { verifyAdmin, getRequestBody } from "./admin.js";
 
 function getSupabase() {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -35,13 +35,26 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      const { data, error: fetchErr } = await supabase
-        .from("role_permissions")
+      const { data: userRoles, error: rolesErr } = await supabase
+        .from("user_roles")
         .select("*");
 
-      if (fetchErr) throw fetchErr;
+      if (rolesErr) throw rolesErr;
 
-      return res.status(200).json({ permissions: data || [] });
+      const { data: { users }, error: authErr } = await supabase.auth.admin.listUsers();
+      if (authErr) throw authErr;
+
+      const usersWithRoles = users.map(u => {
+        const roleEntry = userRoles?.find(r => r.user_id === u.id);
+        return {
+          id: u.id,
+          email: u.email,
+          fullName: u.user_metadata?.full_name || "",
+          role: roleEntry ? roleEntry.role : "user"
+        };
+      });
+
+      return res.status(200).json({ users: usersWithRoles });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -50,20 +63,27 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const body = await getRequestBody(req);
-      const { role, moduleName, accessLevel } = body;
-      if (!role || !moduleName || !accessLevel) {
-        return res.status(400).json({ error: "Missing role, moduleName, or accessLevel parameters." });
+      const { userId, role } = body;
+      if (!userId || !role) {
+        return res.status(400).json({ error: "Missing userId or role." });
       }
 
       const { data, error: upsertErr } = await supabase
-        .from("role_permissions")
-        .upsert({ role, module_name: moduleName, access_level: accessLevel }, { onConflict: "role,module_name" })
+        .from("user_roles")
+        .upsert({ user_id: userId, role }, { onConflict: "user_id" })
         .select()
         .single();
 
       if (upsertErr) throw upsertErr;
 
-      return res.status(200).json({ success: true, permission: data });
+      const { error: updateAuthErr } = await supabase.auth.admin.updateUserById(userId, {
+        app_metadata: { role }
+      });
+      if (updateAuthErr) {
+        console.warn("Failed to update user app_metadata:", updateAuthErr.message);
+      }
+
+      return res.status(200).json({ success: true, userRole: data });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
