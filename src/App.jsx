@@ -2877,87 +2877,93 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
 
 
 
+
 // ─── FINANCIAL KNOWLEDGE GRAPH (ENGRAPHIS INSPIRED) ───────────────────────────
-function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [], credits = [], sm }) {
+function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpenses = [], credits = [], sm }) {
   const canvasRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [filterType, setFilterType] = useState('all');
   const [nodeSizeScale, setNodeSizeScale] = useState(1);
-  const [repelForce, setRepelForce] = useState(120);
+  const [repelForce, setRepelForce] = useState(80);
   const [labelDensity, setLabelDensity] = useState('all'); // 'all' | 'hubs' | 'hover'
   const [searchTerm, setSearchTerm] = useState('');
   const [hoveredNode, setHoveredNode] = useState(null);
+  const [draggingNode, setDraggingNode] = useState(null);
 
-  // Generate Graph Nodes and Edges from live financial state
+  // Initialize Nodes with clean radial offsets around center
   const nodes = useMemo(() => {
     const list = [];
+    const totalNetWorth = accounts.reduce((s, a) => s + (a.balance || 0), 0);
 
     // Central Core Hub
-    const totalNetWorth = accounts.reduce((s, a) => s + a.balance, 0);
-    list.push({ id: 'core-user', label: '👤 User Financial Hub', type: 'core', val: totalNetWorth || 100000, color: '#7257ff', x: 400, y: 300, vx: 0, vy: 0 });
+    list.push({ id: 'core-user', label: '👤 User Financial Hub', type: 'core', val: totalNetWorth || 100000, color: '#7257ff', x: 400, y: 320, vx: 0, vy: 0 });
 
-    // Account Nodes
+    // Accounts
     accounts.forEach((acc, i) => {
+      const angle = (i / Math.max(accounts.length, 1)) * Math.PI * 2;
       list.push({
         id: `acc-${acc.id}`,
         label: `🏦 ${acc.name}`,
         sub: acc.type,
         type: 'account',
-        val: Math.max(acc.balance, 5000),
+        val: Math.max(acc.balance || 0, 5000),
         color: TYPE_CLR[acc.type] || C.blue,
-        x: 400 + Math.cos(i) * 180,
-        y: 300 + Math.sin(i) * 180,
+        x: 400 + Math.cos(angle) * 140,
+        y: 320 + Math.sin(angle) * 140,
         vx: 0, vy: 0,
-        amount: acc.balance
+        amount: acc.balance || 0
       });
     });
 
-    // Expense Category Nodes
+    // Expense Categories
     const categories = ['Fixed', 'Variable', 'Debt', 'Investment'];
     const catColors = { Fixed: C.red, Variable: C.orange, Debt: C.amber, Investment: C.purple };
     categories.forEach((cat, i) => {
+      const angle = (i / categories.length) * Math.PI * 2 + 0.5;
       list.push({
         id: `cat-${cat}`,
         label: `💸 ${cat} Expenses`,
         sub: 'Category',
         type: 'expense',
-        val: 25000,
-        color: catColors[cat],
-        x: 400 + Math.cos(i + 2) * 280,
-        y: 300 + Math.sin(i + 2) * 280,
+        val: 20000,
+        color: catColors[cat] || C.orange,
+        x: 400 + Math.cos(angle) * 220,
+        y: 320 + Math.sin(angle) * 220,
         vx: 0, vy: 0
       });
     });
 
-    // Debt / Credit Card Nodes
+    // Credit Cards / Debts
     debts.forEach((d, i) => {
+      const angle = (i / Math.max(debts.length, 1)) * Math.PI * 2 + 1.2;
       list.push({
         id: `debt-${d.id}`,
         label: `💳 ${d.name}`,
-        sub: `Bal: ₱${d.balance.toLocaleString()}`,
+        sub: `Bal: ₱${(d.balance || 0).toLocaleString()}`,
         type: 'debt',
-        val: Math.max(d.balance, 8000),
+        val: Math.max(d.balance || 0, 8000),
         color: C.red,
-        x: 400 + Math.cos(i + 4) * 240,
-        y: 300 + Math.sin(i + 4) * 240,
+        x: 400 + Math.cos(angle) * 190,
+        y: 320 + Math.sin(angle) * 190,
         vx: 0, vy: 0,
-        amount: d.balance
+        amount: d.balance || 0
       });
     });
 
     // Goals / Major Expenses
     majorExpenses.forEach((m, i) => {
+      const angle = (i / Math.max(majorExpenses.length, 1)) * Math.PI * 2 + 2.1;
       list.push({
         id: `goal-${m.id}`,
         label: `🎯 ${m.name}`,
-        sub: `Target: ₱${m.budget.toLocaleString()}`,
+        sub: `Target: ₱${(m.budget || 0).toLocaleString()}`,
         type: 'goal',
-        val: Math.max(m.budget, 10000),
+        val: Math.max(m.budget || 0, 10000),
         color: C.amber,
-        x: 400 + Math.cos(i + 1) * 320,
-        y: 300 + Math.sin(i + 1) * 320,
+        x: 400 + Math.cos(angle) * 250,
+        y: 320 + Math.sin(angle) * 250,
         vx: 0, vy: 0,
-        amount: m.actual
+        amount: m.actual || 0
       });
     });
 
@@ -2968,17 +2974,10 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
   const links = useMemo(() => {
     const edges = [];
     nodes.forEach(n => {
-      if (n.type === 'account') {
-        edges.push({ source: 'core-user', target: n.id });
-      }
-      if (n.type === 'debt') {
-        edges.push({ source: 'core-user', target: n.id });
-      }
-      if (n.type === 'expense') {
+      if (n.type === 'account' || n.type === 'debt' || n.type === 'expense') {
         edges.push({ source: 'core-user', target: n.id });
       }
       if (n.type === 'goal') {
-        // Connect goals to investment/savings accounts
         const sav = nodes.find(a => a.sub === 'Savings' || a.sub === 'Investment');
         edges.push({ source: sav ? sav.id : 'core-user', target: n.id });
       }
@@ -2986,7 +2985,7 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
     return edges;
   }, [nodes]);
 
-  // Canvas Force Physics Loop & Renderer
+  // Force Physics Loop with Center Gravity & Mouse Dragging
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -2995,79 +2994,87 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
 
     const width = canvas.width = canvas.parentElement.clientWidth || 800;
     const height = canvas.height = 650;
+    const centerX = width / 2;
+    const centerY = height / 2;
 
-    let particles = Array.from({ length: 40 }, () => ({
-      linkIndex: Math.floor(Math.random() * links.length),
+    let particles = Array.from({ length: 30 }, () => ({
+      linkIndex: Math.floor(Math.random() * Math.max(links.length, 1)),
       progress: Math.random(),
-      speed: 0.005 + Math.random() * 0.008
+      speed: 0.003 + Math.random() * 0.005
     }));
 
     function step() {
-      // Force Physics simulation simulation loop
+      // 1. Center Gravity Force (keeps graph centered and prevents corner sticking)
+      nodes.forEach(n => {
+        if (n.isDragging) return;
+        const dx = centerX - n.x;
+        const dy = centerY - n.y;
+        n.vx += dx * 0.002;
+        n.vy += dy * 0.002;
+      });
+
+      // 2. Node Repulsion Force
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const a = nodes[i], b = nodes[j];
           const dx = b.x - a.x;
           const dy = b.y - a.y;
           const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          if (dist < repelForce * 2) {
-            const force = (repelForce * 2 - dist) / dist * 0.02;
-            a.vx -= dx * force;
-            a.vy -= dy * force;
-            b.vx += dx * force;
-            b.vy += dy * force;
+          const targetDist = repelForce * 1.5;
+          if (dist < targetDist) {
+            const force = (targetDist - dist) / dist * 0.03;
+            if (!a.isDragging) { a.vx -= dx * force; a.vy -= dy * force; }
+            if (!b.isDragging) { b.vx += dx * force; b.vy += dy * force; }
           }
         }
       }
 
-      // Link attraction forces
-      links.forEach(link => {
-        const s = nodes.find(n => n.id === link.source);
-        const t = nodes.find(n => n.id === link.target);
-        if (s && t) {
-          const dx = t.x - s.x;
-          const dy = t.y - s.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          const force = (dist - 140) * 0.003;
-          s.vx += dx * force;
-          s.vy += dy * force;
-          t.vx -= dx * force;
-          t.vy -= dy * force;
-        }
-      });
-
-      // Update positions with dampening
-      nodes.forEach(n => {
-        n.vx *= 0.88;
-        n.vy *= 0.88;
-        n.x += n.vx;
-        n.y += n.vy;
-        // Keep in bounds
-        n.x = Math.max(50, Math.min(width - 50, n.x));
-        n.y = Math.max(50, Math.min(height - 50, n.y));
-      });
-
-      // Render Canvas Background
-      ctx.clearRect(0, 0, width, height);
-
-      // Draw Grid overlay
-      ctx.strokeStyle = 'rgba(28, 43, 66, 0.25)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < width; x += 40) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-      }
-      for (let y = 0; y < height; y += 40) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-      }
-
-      // Draw Edges
+      // 3. Link Spring Attraction
       links.forEach(l => {
         const s = nodes.find(n => n.id === l.source);
         const t = nodes.find(n => n.id === l.target);
         if (s && t) {
-          const isHighlighted = selectedNode && (selectedNode.id === s.id || selectedNode.id === t.id);
-          ctx.strokeStyle = isHighlighted ? '#30d6b0' : 'rgba(75, 141, 255, 0.25)';
-          ctx.lineWidth = isHighlighted ? 2.5 : 1.2;
+          const dx = t.x - s.x;
+          const dy = t.y - s.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const force = (dist - 130) * 0.003;
+          if (!s.isDragging) { s.vx += dx * force; s.vy += dy * force; }
+          if (!t.isDragging) { t.vx -= dx * force; t.vy -= dy * force; }
+        }
+      });
+
+      // 4. Update Position with Velocity Dampening
+      nodes.forEach(n => {
+        if (n.isDragging) return;
+        n.vx *= 0.82;
+        n.vy *= 0.82;
+        n.x += n.vx;
+        n.y += n.vy;
+
+        // Soft Inner Bounds (keep inside viewport padding)
+        n.x = Math.max(60, Math.min(width - 60, n.x));
+        n.y = Math.max(60, Math.min(height - 60, n.y));
+      });
+
+      // 5. Render Canvas
+      ctx.clearRect(0, 0, width, height);
+
+      // Render Grid Overlay
+      ctx.strokeStyle = 'rgba(28, 43, 66, 0.2)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
+      for (let y = 0; y < height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
+
+      // Render Edges
+      links.forEach(l => {
+        const s = nodes.find(n => n.id === l.source);
+        const t = nodes.find(n => n.id === l.target);
+        if (s && t) {
+          const isSelected = selectedNode && (selectedNode.id === s.id || selectedNode.id === t.id);
+          const isFiltered = filterType === 'all' || s.type === filterType || t.type === filterType || s.type === 'core';
+          
+          ctx.strokeStyle = isSelected ? '#30d6b0' : isFiltered ? 'rgba(75, 141, 255, 0.35)' : 'rgba(75, 141, 255, 0.08)';
+          ctx.lineWidth = isSelected ? 2.5 : 1.2;
           ctx.beginPath();
           ctx.moveTo(s.x, s.y);
           ctx.lineTo(t.x, t.y);
@@ -3075,8 +3082,9 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
         }
       });
 
-      // Draw Flowing Particles along links (Engraphis style)
+      // Render Flowing Particles
       particles.forEach(p => {
+        if (links.length === 0) return;
         const link = links[p.linkIndex % links.length];
         if (link) {
           const s = nodes.find(n => n.id === link.source);
@@ -3094,22 +3102,25 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
         }
       });
 
-      // Draw Nodes
+      // Render Nodes
       nodes.forEach(n => {
-        if (filterType !== 'all' && n.type !== filterType && n.type !== 'core') return;
-
         const isSelected = selectedNode?.id === n.id;
         const isHovered = hoveredNode?.id === n.id;
         const isMatchingSearch = searchTerm && n.label.toLowerCase().includes(searchTerm.toLowerCase());
-        const baseRadius = (n.type === 'core' ? 24 : 12 + Math.log10(Math.max(n.val, 100)) * 2.5) * nodeSizeScale;
+        const isFiltered = filterType === 'all' || n.type === filterType || n.type === 'core';
 
-        // Glowing node outer ring
+        const alpha = isFiltered ? 1 : 0.2;
+        const baseRadius = (n.type === 'core' ? 24 : 12 + Math.log10(Math.max(n.val, 100)) * 2.2) * nodeSizeScale;
+
+        ctx.globalAlpha = alpha;
+
+        // Outer Glow Ring
         ctx.fillStyle = isSelected ? `${n.color}55` : isHovered ? `${n.color}44` : `${n.color}22`;
         ctx.beginPath();
         ctx.arc(n.x, n.y, baseRadius + 6, 0, Math.PI * 2);
         ctx.fill();
 
-        // Solid Node Circle
+        // Main Node Circle
         ctx.fillStyle = n.color;
         ctx.beginPath();
         ctx.arc(n.x, n.y, baseRadius, 0, Math.PI * 2);
@@ -3121,19 +3132,27 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
           ctx.stroke();
         }
 
-        // Draw Node Text Labels
+        // Draw Labels cleanly below node with background pill for legibility
         const showLabel = labelDensity === 'all' || (labelDensity === 'hubs' && (n.type === 'core' || baseRadius > 18)) || (labelDensity === 'hover' && (isSelected || isHovered));
-        if (showLabel) {
+        if (showLabel && isFiltered) {
+          ctx.font = `${n.type === 'core' ? '700 12px' : '600 11px'} Inter, sans-serif`;
+          const textWidth = ctx.measureText(n.label).width;
+          const labelY = n.y + baseRadius + 14;
+
+          // Label Pill Background
+          ctx.fillStyle = 'rgba(7, 17, 31, 0.85)';
+          ctx.fillRect(n.x - textWidth / 2 - 6, labelY - 11, textWidth + 12, 16);
+          ctx.strokeStyle = `${C.border}66`;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(n.x - textWidth / 2 - 6, labelY - 11, textWidth + 12, 16);
+
+          // Label Text
           ctx.fillStyle = isSelected ? '#ffffff' : C.text;
-          ctx.font = `${n.type === 'core' ? '700 12px' : '500 11px'} Inter, sans-serif`;
           ctx.textAlign = 'center';
-          ctx.fillText(n.label, n.x, n.y + baseRadius + 14);
-          if (n.sub) {
-            ctx.fillStyle = C.muted;
-            ctx.font = '400 9px Inter, sans-serif';
-            ctx.fillText(n.sub, n.x, n.y + baseRadius + 25);
-          }
+          ctx.fillText(n.label, n.x, labelY);
         }
+
+        ctx.globalAlpha = 1;
       });
 
       animId = requestAnimationFrame(step);
@@ -3143,36 +3162,55 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
     return () => cancelAnimationFrame(animId);
   }, [nodes, links, selectedNode, hoveredNode, filterType, nodeSizeScale, repelForce, labelDensity, searchTerm]);
 
-  // Click & Hover interaction handler
-  const handleCanvasClick = (e) => {
+  // Mouse Dragging & Click Handlers
+  const handleMouseDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
 
-    const clicked = nodes.find(n => {
+    const target = nodes.find(n => {
       const dx = n.x - mx, dy = n.y - my;
-      return Math.sqrt(dx * dx + dy * dy) < 26;
+      return Math.sqrt(dx * dx + dy * dy) < 28;
     });
 
-    setSelectedNode(clicked || null);
+    if (target) {
+      target.isDragging = true;
+      setDraggingNode(target);
+      setSelectedNode(target);
+    } else {
+      setSelectedNode(null);
+    }
   };
 
-  const handleCanvasMouseMove = (e) => {
+  const handleMouseMove = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
 
-    const hover = nodes.find(n => {
-      const dx = n.x - mx, dy = n.y - my;
-      return Math.sqrt(dx * dx + dy * dy) < 26;
-    });
+    if (draggingNode) {
+      draggingNode.x = mx;
+      draggingNode.y = my;
+      draggingNode.vx = 0;
+      draggingNode.vy = 0;
+    } else {
+      const hover = nodes.find(n => {
+        const dx = n.x - mx, dy = n.y - my;
+        return Math.sqrt(dx * dx + dy * dy) < 28;
+      });
+      setHoveredNode(hover || null);
+      canvas.style.cursor = hover ? 'pointer' : 'default';
+    }
+  };
 
-    setHoveredNode(hover || null);
-    canvas.style.cursor = hover ? 'pointer' : 'default';
+  const handleMouseUp = () => {
+    if (draggingNode) {
+      draggingNode.isDragging = false;
+      setDraggingNode(null);
+    }
   };
 
   return (
@@ -3221,7 +3259,7 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
 
             <div>
               <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 6 }}>Cluster Repel Force ({repelForce})</label>
-              <input type="range" min="40" max="250" step="10" value={repelForce} onChange={e => setRepelForce(Number(e.target.value))} style={{ width: '100%', accentColor: C.teal }} />
+              <input type="range" min="30" max="200" step="10" value={repelForce} onChange={e => setRepelForce(Number(e.target.value))} style={{ width: '100%', accentColor: C.teal }} />
             </div>
 
             <div>
@@ -3238,9 +3276,16 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
 
         {/* ── Center Canvas Graph ── */}
         <Card style={{ marginBottom: 0, padding: 0, overflow: 'hidden', position: 'relative', background: '#040b17', border: `1px solid ${C.border}`, borderRadius: 10 }}>
-          <canvas ref={canvasRef} onClick={handleCanvasClick} onMouseMove={handleCanvasMouseMove} style={{ display: 'block', width: '100%', height: 650 }} />
+          <canvas
+            ref={canvasRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            style={{ display: 'block', width: '100%', height: 650 }}
+          />
           <div style={{ position: 'absolute', bottom: 12, left: 16, fontSize: 10, color: C.muted, background: 'rgba(7,17,31,0.85)', padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.border}` }}>
-            💡 Drag nodes to rearrange • Click node to inspect details
+            💡 Click and drag any node to move • Dimmed nodes represent unselected categories
           </div>
         </Card>
 
@@ -3249,7 +3294,7 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
           <SecTitle>🔍 Node Inspector</SecTitle>
           {!selectedNode ? (
             <div style={{ color: C.muted, fontSize: 12, textAlign: 'center', padding: '40px 0', lineHeight: 1.6 }}>
-              👈 Click any node on the graph to inspect its connected accounts, volume, and details.
+              👈 Click or drag any node on the graph to inspect its connected accounts, volume, and details.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -3296,7 +3341,6 @@ function FinancialGraphTab({ budgetData, accounts, debts = [], majorExpenses = [
     </div>
   );
 }
-
 
 
 // ─── FINANCIAL CALENDAR ───────────────────────────────────────────────────────
