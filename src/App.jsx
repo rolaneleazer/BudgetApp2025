@@ -2875,6 +2875,7 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
   );
 }
 
+
 // ─── FINANCIAL CALENDAR ───────────────────────────────────────────────────────
 function CalendarTab({ budgetData, sm }) {
   const [year, setYear] = useState(CUR_YEAR);
