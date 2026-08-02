@@ -2879,20 +2879,28 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
 
 
 
+
 // ─── FINANCIAL KNOWLEDGE GRAPH (ENGRAPHIS INSPIRED) ───────────────────────────
-function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpenses = [], credits = [], sm }) {
+function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorExpenses = [], credits = [], sm }) {
   const canvasRef = useRef(null);
   const nodesRef = useRef([]);
-  const alphaRef = useRef(1.0); // Simulation energy cooling (1.0 -> 0)
+  const alphaRef = useRef(1.0);
+
+  const [graphYear, setGraphYear] = useState(CUR_YEAR);
+  const [graphMonth, setGraphMonth] = useState(CUR_MONTH);
 
   const [selectedNode, setSelectedNode] = useState(null);
   const [filterType, setFilterType] = useState('all');
   const [nodeSizeScale, setNodeSizeScale] = useState(1);
-  const [repelForce, setRepelForce] = useState(60);
+  const [repelForce, setRepelForce] = useState(55);
   const [labelDensity, setLabelDensity] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [hoveredNode, setHoveredNode] = useState(null);
   const [draggingNode, setDraggingNode] = useState(null);
+
+  const selectedKey = makeKey(graphYear, graphMonth);
+  const monthData = budgetData[selectedKey] || { expenses: [] };
+  const monthlyExpenses = monthData.expenses || [];
 
   // Initialize & Persist Node Positions across renders
   useEffect(() => {
@@ -2902,7 +2910,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
     const list = [];
     const cx = 400, cy = 320;
 
-    // Core Hub
+    // 1. Core Hub
     const oldCore = existing.get('core-user');
     list.push({
       id: 'core-user', label: '👤 User Financial Hub', type: 'core',
@@ -2911,7 +2919,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
       vx: 0, vy: 0
     });
 
-    // Accounts
+    // 2. Accounts
     accounts.forEach((acc, i) => {
       const id = `acc-${acc.id}`;
       const old = existing.get(id);
@@ -2925,7 +2933,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
       });
     });
 
-    // Expense Categories
+    // 3. Expense Categories
     const categories = ['Fixed', 'Variable', 'Debt', 'Investment'];
     const catColors = { Fixed: C.red, Variable: C.orange, Debt: C.amber, Investment: C.purple };
     categories.forEach((cat, i) => {
@@ -2933,7 +2941,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
       const old = existing.get(id);
       const angle = (i / categories.length) * Math.PI * 2 + 0.5;
       list.push({
-        id, label: `💸 ${cat} Expenses`, sub: 'Category', type: 'expense',
+        id, label: `💸 ${cat} Category`, sub: 'Category Hub', type: 'expense',
         val: 20000, color: catColors[cat] || C.orange,
         x: old ? old.x : cx + Math.cos(angle) * 220,
         y: old ? old.y : cy + Math.sin(angle) * 220,
@@ -2941,7 +2949,31 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
       });
     });
 
-    // Credit Cards / Debts
+    // 4. Itemized Monthly Expenses for Selected Month
+    monthlyExpenses.forEach((exp, i) => {
+      const id = `mexp-${exp.id || i}`;
+      const old = existing.get(id);
+      const parentCat = exp.category || 'Variable';
+      const catAngleIdx = categories.indexOf(parentCat);
+      const baseAngle = (catAngleIdx >= 0 ? catAngleIdx : 1) * (Math.PI / 2);
+      const angle = baseAngle + (i * 0.4);
+
+      list.push({
+        id,
+        label: `📌 ${exp.description || 'Expense'}`,
+        sub: `₱${(exp.amount || 0).toLocaleString()} (${exp.period || 'Monthly'})`,
+        type: 'monthly_item',
+        category: parentCat,
+        val: Math.max(exp.amount || 0, 1500),
+        color: catColors[parentCat] || C.orange,
+        x: old ? old.x : cx + Math.cos(angle) * 280,
+        y: old ? old.y : cy + Math.sin(angle) * 280,
+        vx: 0, vy: 0,
+        amount: exp.amount || 0
+      });
+    });
+
+    // 5. Credit Cards / Debts
     debts.forEach((d, i) => {
       const id = `debt-${d.id}`;
       const old = existing.get(id);
@@ -2955,7 +2987,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
       });
     });
 
-    // Goals / Major Expenses
+    // 6. Goals / Major Expenses
     majorExpenses.forEach((m, i) => {
       const id = `goal-${m.id}`;
       const old = existing.get(id);
@@ -2970,16 +3002,22 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
     });
 
     nodesRef.current = list;
-    alphaRef.current = 1.0; // Re-warm physics briefly when data updates
-  }, [accounts, debts, majorExpenses]);
+    alphaRef.current = 1.0;
+  }, [accounts, debts, majorExpenses, monthlyExpenses, graphYear, graphMonth]);
 
-  // Edges connecting graph hubs
+  // Edges connecting graph hubs and monthly expense items
   const links = useMemo(() => {
     const edges = [];
     const nodes = nodesRef.current;
     nodes.forEach(n => {
       if (n.type === 'account' || n.type === 'debt' || n.type === 'expense') {
         edges.push({ source: 'core-user', target: n.id });
+      }
+      if (n.type === 'monthly_item') {
+        // Connect itemized monthly expense to its category hub
+        const parentCatId = `cat-${n.category}`;
+        const parentNode = nodes.find(c => c.id === parentCatId);
+        edges.push({ source: parentNode ? parentNode.id : 'core-user', target: n.id });
       }
       if (n.type === 'goal') {
         const sav = nodes.find(a => a.sub === 'Savings' || a.sub === 'Investment');
@@ -2989,12 +3027,12 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
     return edges;
   }, [nodesRef.current.length]);
 
-  // Re-warm physics when sliders/controls change
+  // Re-warm physics when controls change
   useEffect(() => {
     alphaRef.current = 0.4;
-  }, [filterType, repelForce, nodeSizeScale]);
+  }, [filterType, repelForce, nodeSizeScale, graphYear, graphMonth]);
 
-  // Canvas Physics Loop with Alpha Cooling & Freeze Threshold
+  // Canvas Physics Loop with Alpha Cooling
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -3006,7 +3044,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
     const centerX = width / 2;
     const centerY = height / 2;
 
-    let particles = Array.from({ length: 25 }, () => ({
+    let particles = Array.from({ length: 30 }, () => ({
       linkIndex: Math.floor(Math.random() * Math.max(links.length, 1)),
       progress: Math.random(),
       speed: 0.003 + Math.random() * 0.004
@@ -3016,9 +3054,8 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
       const nodes = nodesRef.current;
       const alpha = alphaRef.current;
 
-      // Only calculate physics if alpha > 0.005 (stops simulation completely when settled)
       if (alpha > 0.005) {
-        // 1. Center Gravity Force
+        // 1. Center Gravity
         nodes.forEach(n => {
           if (n.isDragging) return;
           const dx = centerX - n.x;
@@ -3027,7 +3064,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
           n.vy += dy * 0.004 * alpha;
         });
 
-        // 2. Repulsion Force
+        // 2. Repulsion
         for (let i = 0; i < nodes.length; i++) {
           for (let j = i + 1; j < nodes.length; j++) {
             const a = nodes[i], b = nodes[j];
@@ -3043,7 +3080,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
           }
         }
 
-        // 3. Link Attraction
+        // 3. Link Spring Attraction
         links.forEach(l => {
           const s = nodes.find(n => n.id === l.source);
           const t = nodes.find(n => n.id === l.target);
@@ -3057,10 +3094,10 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
           }
         });
 
-        // 4. Update Position with High Friction Dampening (0.50)
+        // 4. Friction (0.50)
         nodes.forEach(n => {
           if (n.isDragging) return;
-          n.vx *= 0.50; // Strong friction
+          n.vx *= 0.50;
           n.vy *= 0.50;
           n.x += n.vx;
           n.y += n.vy;
@@ -3069,17 +3106,14 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
           n.y = Math.max(70, Math.min(height - 70, n.y));
         });
 
-        // 5. Decay Alpha Energy (Cooling)
         alphaRef.current *= 0.94;
       } else {
-        // Simulation Cooled & Frozen! Zero out all residual velocities
         nodes.forEach(n => { n.vx = 0; n.vy = 0; });
       }
 
-      // Render Canvas
       ctx.clearRect(0, 0, width, height);
 
-      // Render Grid Overlay
+      // Render Grid
       ctx.strokeStyle = 'rgba(28, 43, 66, 0.2)';
       ctx.lineWidth = 1;
       for (let x = 0; x < width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
@@ -3102,7 +3136,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
         }
       });
 
-      // Render Flowing Particles
+      // Flowing Particles
       particles.forEach(p => {
         if (links.length === 0) return;
         const link = links[p.linkIndex % links.length];
@@ -3130,7 +3164,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
         const isFiltered = filterType === 'all' || n.type === filterType || n.type === 'core';
 
         const alphaOpacity = isFiltered ? 1 : 0.2;
-        const baseRadius = (n.type === 'core' ? 24 : 12 + Math.log10(Math.max(n.val, 100)) * 2.2) * nodeSizeScale;
+        const baseRadius = (n.type === 'core' ? 24 : 10 + Math.log10(Math.max(n.val, 100)) * 2.2) * nodeSizeScale;
 
         ctx.globalAlpha = alphaOpacity;
 
@@ -3152,7 +3186,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
           ctx.stroke();
         }
 
-        // Draw Labels cleanly below node with background pill for legibility
+        // Draw Labels
         const showLabel = labelDensity === 'all' || (labelDensity === 'hubs' && (n.type === 'core' || baseRadius > 18)) || (labelDensity === 'hover' && (isSelected || isHovered));
         if (showLabel && isFiltered) {
           ctx.font = `${n.type === 'core' ? '700 12px' : '600 11px'} Inter, sans-serif`;
@@ -3180,7 +3214,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
     return () => cancelAnimationFrame(animId);
   }, [links, selectedNode, hoveredNode, filterType, nodeSizeScale, repelForce, labelDensity, searchTerm]);
 
-  // Mouse Dragging & Click Handlers
+  // Mouse Handlers
   const handleMouseDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -3197,7 +3231,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
       target.isDragging = true;
       setDraggingNode(target);
       setSelectedNode(target);
-      alphaRef.current = 0.3; // Re-warm physics for smooth dragging
+      alphaRef.current = 0.3;
     } else {
       setSelectedNode(null);
     }
@@ -3233,16 +3267,31 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
     }
   };
 
+  const totalMonthlyOutflow = monthlyExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+
   return (
     <div>
-      {/* ── Top Header ── */}
+      {/* ── Top Header with Month/Year Picker ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>🕸 Financial Knowledge Graph</div>
-          <div style={{ fontSize: 12, color: C.muted }}>Interactive force-directed graph of your financial accounts, categories, credit cards, and goals.</div>
+          <div style={{ fontSize: 12, color: C.muted }}>Interactive force-directed graph of accounts, categories, monthly expenses, credit cards, and goals.</div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Inp type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="🔍 Find node in graph…" style={{ width: 180, padding: '6px 10px', fontSize: 12 }} />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Month / Year Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.card, padding: '4px 10px', borderRadius: 8, border: `1px solid ${C.border}` }}>
+            <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>📅 Month:</span>
+            <select value={graphMonth} onChange={e => setGraphMonth(Number(e.target.value))}
+              style={{ background: 'none', border: 'none', color: C.text, fontSize: 12, fontWeight: 700, outline: 'none', cursor: 'pointer' }}>
+              {MONTH_NAMES.map((m, idx) => <option key={m} value={idx}>{m}</option>)}
+            </select>
+            <select value={graphYear} onChange={e => setGraphYear(Number(e.target.value))}
+              style={{ background: 'none', border: 'none', color: C.text, fontSize: 12, fontWeight: 700, outline: 'none', cursor: 'pointer' }}>
+              {[CUR_YEAR - 2, CUR_YEAR - 1, CUR_YEAR, CUR_YEAR + 1].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+
+          <Inp type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="🔍 Find node in graph…" style={{ width: 170, padding: '6px 10px', fontSize: 12 }} />
         </div>
       </div>
 
@@ -3257,7 +3306,8 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
                 {[
                   ['all', '🔀 All Entities', C.blue],
                   ['account', '🏦 Accounts', C.green],
-                  ['expense', '💸 Outflow Categories', C.orange],
+                  ['expense', '💸 Category Hubs', C.purple],
+                  ['monthly_item', '📌 Monthly Expenses', C.orange],
                   ['debt', '💳 Credit Cards', C.red],
                   ['goal', '🎯 Savings Goals', C.amber],
                 ].map(([val, label, color]) => (
@@ -3271,6 +3321,12 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
             </div>
 
             <Divider />
+
+            <div style={{ background: C.card2, padding: '10px 12px', borderRadius: 8, border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{MONTH_NAMES[graphMonth]} {graphYear} Outflow</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: C.red }}>{peso(totalMonthlyOutflow)}</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{monthlyExpenses.length} itemized outflow nodes</div>
+            </div>
 
             <div>
               <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 6 }}>Node Size Scale ({nodeSizeScale.toFixed(1)}x)</label>
@@ -3305,7 +3361,7 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
             style={{ display: 'block', width: '100%', height: 650 }}
           />
           <div style={{ position: 'absolute', bottom: 12, left: 16, fontSize: 10, color: C.muted, background: 'rgba(7,17,31,0.85)', padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.border}` }}>
-            💡 Click and drag any node to position • Physics freezes automatically within 1s
+            💡 Select month at top right • Drag expense nodes to custom position
           </div>
         </Card>
 
@@ -3322,14 +3378,14 @@ function FinancialGraphTab({ budgetData, accounts = [], debts = [], majorExpense
                 <div style={{ width: 12, height: 12, borderRadius: '50%', background: selectedNode.color }} />
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{selectedNode.label}</div>
-                  <div style={{ fontSize: 10, color: selectedNode.color, fontWeight: 700, textTransform: 'uppercase' }}>{selectedNode.type} Node</div>
+                  <div style={{ fontSize: 10, color: selectedNode.color, fontWeight: 700, textTransform: 'uppercase' }}>{selectedNode.type.replace('_', ' ')} Node</div>
                 </div>
               </div>
 
               {selectedNode.amount !== undefined && (
                 <div style={{ background: C.card2, borderRadius: 8, padding: '10px 12px', border: `1px solid ${C.border}` }}>
-                  <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Current Value</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: C.green }}>{peso(selectedNode.amount)}</div>
+                  <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Monthly Amount</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: C.red }}>{peso(selectedNode.amount)}</div>
                 </div>
               )}
 
