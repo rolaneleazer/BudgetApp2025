@@ -2881,10 +2881,12 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
 
 
 
+
 // ─── FINANCIAL KNOWLEDGE GRAPH (ENGRAPHIS INSPIRED) ───────────────────────────
 function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorExpenses = [], credits = [], sm }) {
   const canvasRef = useRef(null);
   const nodesRef = useRef([]);
+  const draggingNodeRef = useRef(null); // Ref to avoid React state closure stale references during mousemove
   const alphaRef = useRef(1.0);
 
   const [graphYear, setGraphYear] = useState(CUR_YEAR);
@@ -2897,7 +2899,6 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
   const [labelDensity, setLabelDensity] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [hoveredNode, setHoveredNode] = useState(null);
-  const [draggingNode, setDraggingNode] = useState(null);
 
   // Zoom & Viewport Matrix State
   const [zoomScale, setZoomScale] = useState(1.0);
@@ -3045,12 +3046,52 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
     return () => canvas.removeEventListener('wheel', onWheel);
   }, []);
 
+  // Global Mouse Up & Move listeners to catch fast drags
+  useEffect(() => {
+    const onGlobalMouseMove = (e) => {
+      if (!draggingNodeRef.current || !canvasRef.current) return;
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      const rawX = (e.clientX - rect.left) * scaleX;
+      const rawY = (e.clientY - rect.top) * scaleY;
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      const mx = (rawX - centerX) / zoomScale + centerX;
+      const my = (rawY - centerY) / zoomScale + centerY;
+
+      draggingNodeRef.current.x = mx;
+      draggingNodeRef.current.y = my;
+      draggingNodeRef.current.vx = 0;
+      draggingNodeRef.current.vy = 0;
+      alphaRef.current = 0.4;
+    };
+
+    const onGlobalMouseUp = () => {
+      if (draggingNodeRef.current) {
+        draggingNodeRef.current.isDragging = false;
+        draggingNodeRef.current = null;
+      }
+    };
+
+    window.addEventListener('mousemove', onGlobalMouseMove);
+    window.addEventListener('mouseup', onGlobalMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onGlobalMouseMove);
+      window.removeEventListener('mouseup', onGlobalMouseUp);
+    };
+  }, [zoomScale]);
+
   // Re-warm physics when controls change
   useEffect(() => {
     alphaRef.current = 0.4;
   }, [filterType, repelForce, nodeSizeScale, graphYear, graphMonth]);
 
-  // Canvas Physics & Render Loop with Zoom Transformation
+  // Canvas Physics & Render Loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -3254,29 +3295,28 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
-    // Inverse transform for zoom around center
     const mx = (rawX - centerX) / zoomScale + centerX;
     const my = (rawY - centerY) / zoomScale + centerY;
 
     return { mx, my };
   };
 
-  // Mouse Handlers with Scale & Zoom Precision
+  // Canvas Mouse Down Handler with Ref Lock
   const handleMouseDown = (e) => {
     const { mx, my } = getCanvasMousePos(e);
 
     const target = nodesRef.current.find(n => {
       const baseRadius = (n.type === 'core' ? 24 : 10 + Math.log10(Math.max(n.val, 100)) * 2.2) * nodeSizeScale;
-      const hitRadius = baseRadius + 14;
+      const hitRadius = baseRadius + 18;
       const dx = n.x - mx, dy = n.y - my;
       return Math.sqrt(dx * dx + dy * dy) <= hitRadius;
     });
 
     if (target) {
       target.isDragging = true;
-      setDraggingNode(target);
+      draggingNodeRef.current = target;
       setSelectedNode(target);
-      alphaRef.current = 0.3;
+      alphaRef.current = 0.4;
     } else {
       setSelectedNode(null);
     }
@@ -3285,28 +3325,21 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
   const handleMouseMove = (e) => {
     const { mx, my } = getCanvasMousePos(e);
 
-    if (draggingNode) {
-      draggingNode.x = mx;
-      draggingNode.y = my;
-      draggingNode.vx = 0;
-      draggingNode.vy = 0;
-      alphaRef.current = 0.3;
+    if (draggingNodeRef.current) {
+      draggingNodeRef.current.x = mx;
+      draggingNodeRef.current.y = my;
+      draggingNodeRef.current.vx = 0;
+      draggingNodeRef.current.vy = 0;
+      alphaRef.current = 0.4;
     } else {
       const hover = nodesRef.current.find(n => {
         const baseRadius = (n.type === 'core' ? 24 : 10 + Math.log10(Math.max(n.val, 100)) * 2.2) * nodeSizeScale;
-        const hitRadius = baseRadius + 14;
+        const hitRadius = baseRadius + 18;
         const dx = n.x - mx, dy = n.y - my;
         return Math.sqrt(dx * dx + dy * dy) <= hitRadius;
       });
       setHoveredNode(hover || null);
       if (canvasRef.current) canvasRef.current.style.cursor = hover ? 'pointer' : 'default';
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (draggingNode) {
-      draggingNode.isDragging = false;
-      setDraggingNode(null);
     }
   };
 
@@ -3399,8 +3432,6 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
             ref={canvasRef}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
             style={{ display: 'block', width: '100%', height: 650 }}
           />
 
