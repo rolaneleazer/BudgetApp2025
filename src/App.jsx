@@ -1462,92 +1462,269 @@ function BudgetTab({budgetData,setBudgetData,sm,readOnly,canWrite,canUpdate}) {
   );
 }
 
-// ─── ACCOUNTS ─────────────────────────────────────────────────────────────────
-function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate }) {
-  const [editing, setEditing] = useState(null);
-  const [editData, setEditData] = useState(null);
+// ─── ACCOUNTS (Clean Read-Only View) ─────────────────────────────────────────
+function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate, setTab }) {
   const total = accounts.reduce((s, a) => s + a.balance, 0);
   const grouped = accounts.reduce((g, a) => { (g[a.type] = g[a.type] || []).push(a); return g; }, {});
 
-  function startEdit(acc) {
-    setEditData({ ...acc });
-    setEditing(acc.id);
-  }
-  function saveEdit() {
-    setAccounts(p => p.map(a => a.id === editing ? editData : a));
-    setEditing(null); setEditData(null);
-  }
-  function addNew(type = 'Investment') {
-    const id = 'acc-' + Date.now();
-    const newItem = { id, name: 'New Account', balance: 0, type };
-    setAccounts(p => [...p, newItem]);
-    startEdit(newItem);
-  }
+  const typeColors = { Investment: C.purple, Savings: C.green, Checking: C.blue, Digital: C.teal, Cash: C.amber };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ background: `linear-gradient(135deg, ${C.card2}, ${C.card})`, borderRadius: 12, border: `1px solid ${C.border}`, padding: '14px 20px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
-          <div style={{ fontSize: 11, color: C.muted, marginBottom: 3, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>Total Net Worth</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: C.green }}>₱{total.toLocaleString()}</div>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>🏦 My Accounts</div>
+          <div style={{ fontSize: 12, color: C.muted }}>Overview of all account balances grouped by category.</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {canWrite && <BtnG onClick={() => addNew('New Category')}>+ New Category</BtnG>}
+          {canUpdate && (
+            <button onClick={() => setTab('account-manager')}
+              style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.amber}55`, background: `${C.amber}18`, color: C.amber, cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+              🗂️ Manage Accounts →
+            </button>
+          )}
         </div>
-        <datalist id="acc-types">
-          {['Investment', 'Savings', 'Checking', 'Digital', ...new Set(accounts.map(a => a.type))].map(t => <option key={t} value={t} />)}
-        </datalist>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-        {Object.entries(grouped).map(([type, accs]) => (
-          <Card key={type} style={{ marginBottom: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 3, background: TYPE_CLR[type] || C.muted, display: 'inline-block' }} />
-                <SecTitle style={{ margin: 0 }}>{type}</SecTitle>
-                {canWrite && (
-                  <button title="Add account to this category" onClick={() => addNew(type)}
-                    style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: '50%', color: C.muted, cursor: 'pointer', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>+</button>
-                )}
-              </div>
-              <span style={{ color: TYPE_CLR[type] || C.muted, fontWeight: 700, fontSize: 14 }}>{peso(accs.reduce((s, a) => s + a.balance, 0))}</span>
+      {/* ── Summary Banner ── */}
+      <div style={{ background: `linear-gradient(135deg, ${C.purple}22, ${C.green}18)`, borderRadius: 14, border: `1px solid ${C.border}`, padding: '18px 24px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em', marginBottom: 4 }}>Total Net Worth</div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: C.green }}>₱{total.toLocaleString()}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          {Object.entries(grouped).map(([type, accs]) => (
+            <div key={type} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: typeColors[type] || C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{type}</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: C.text }}>{peso(accs.reduce((s, a) => s + a.balance, 0))}</div>
+              <div style={{ fontSize: 10, color: C.muted }}>{accs.length} account{accs.length !== 1 ? 's' : ''}</div>
             </div>
-            {accs.map(acc => (
-              <div key={acc.id} style={{ padding: '8px 0', borderTop: `1px solid ${C.border}22` }}>
-                {editing === acc.id ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} placeholder="Account Name" />
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <Inp list="acc-types" value={editData.type} onChange={e => setEditData({ ...editData, type: e.target.value })} placeholder="Category" />
-                      <Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <BtnG style={{ flex: 1 }} onClick={saveEdit}>Save Changes</BtnG>
-                      <Btn onClick={() => { setEditing(null); setEditData(null); }}>Cancel</Btn>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500 }}>{acc.name}</div>
-                      <Tag color={TYPE_CLR[acc.type] || C.muted}>{acc.type}</Tag>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700 }}>{peso(acc.balance)}</span>
-                      {canUpdate && <Btn style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => startEdit(acc)}>Edit</Btn>}
-                      {canUpdate && (
-                        <button onClick={() => setAccounts(p => p.filter(a => a.id !== acc.id))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18, lineHeight: 1, padding: '0 2px' }}>×</button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </Card>
-        ))}
+          ))}
+        </div>
       </div>
+
+      {/* ── Category Card Grid ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+        {Object.entries(grouped).map(([type, accs]) => {
+          const catTotal = accs.reduce((s, a) => s + a.balance, 0);
+          const color = typeColors[type] || C.muted;
+          return (
+            <Card key={type} style={{ marginBottom: 0, border: `1px solid ${color}33` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 8, height: 32, borderRadius: 4, background: color }} />
+                  <div>
+                    <SecTitle style={{ margin: 0, fontSize: 13 }}>{type}</SecTitle>
+                    <div style={{ fontSize: 10, color: C.muted }}>{accs.length} account{accs.length !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color }}>{peso(catTotal)}</div>
+                  <div style={{ fontSize: 10, color: C.muted }}>{total > 0 ? Math.round(catTotal / total * 100) : 0}% of total</div>
+                </div>
+              </div>
+
+              {/* Balance Bar */}
+              <div style={{ height: 4, borderRadius: 2, background: `${C.border}44`, marginBottom: 12, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${total > 0 ? (catTotal / total * 100) : 0}%`, background: color, borderRadius: 2, transition: 'width 0.6s ease' }} />
+              </div>
+
+              {accs.map(acc => (
+                <div key={acc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: `1px solid ${C.border}22` }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{acc.name}</div>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: acc.balance >= 0 ? C.text : C.red }}>{peso(acc.balance)}</div>
+                </div>
+              ))}
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── ACCOUNT MANAGER (Edit / Add / Delete Module) ─────────────────────────────
+function AccountManagerTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate }) {
+  const [editing, setEditing]     = useState(null);
+  const [editData, setEditData]   = useState({});
+  const [showAdd, setShowAdd]     = useState(false);
+  const [newAcc, setNewAcc]       = useState({ name: '', type: 'Savings', balance: 0 });
+  const [filterType, setFilterType] = useState('all');
+  const [search, setSearch]       = useState('');
+
+  const total   = accounts.reduce((s, a) => s + a.balance, 0);
+  const highest = accounts.reduce((a, b) => (b.balance > (a?.balance ?? -Infinity) ? b : a), null);
+  const lowest  = accounts.reduce((a, b) => (b.balance < (a?.balance ?? Infinity) ? b : a), null);
+  const cats    = [...new Set(accounts.map(a => a.type))];
+
+  const filtered = accounts
+    .filter(a => filterType === 'all' || a.type === filterType)
+    .filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()));
+
+  function startEdit(acc) { setEditData({ ...acc }); setEditing(acc.id); }
+  function saveEdit() {
+    setAccounts(p => p.map(a => a.id === editing ? { ...a, ...editData, balance: Number(editData.balance) || 0 } : a));
+    setEditing(null);
+  }
+  function deleteAcc(id) {
+    if (window.confirm('Delete this account? This cannot be undone.')) {
+      setAccounts(p => p.filter(a => a.id !== id));
+    }
+  }
+  function addAccount() {
+    if (!newAcc.name.trim()) return;
+    setAccounts(p => [...p, { id: 'acc-' + Date.now(), name: newAcc.name.trim(), type: newAcc.type, balance: Number(newAcc.balance) || 0 }]);
+    setNewAcc({ name: '', type: 'Savings', balance: 0 });
+    setShowAdd(false);
+  }
+
+  const typeColors = { Investment: C.purple, Savings: C.green, Checking: C.blue, Digital: C.teal, Cash: C.amber };
+
+  return (
+    <div>
+      {/* ── Header ── */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>🗂️ Account Manager</div>
+        <div style={{ fontSize: 12, color: C.muted }}>Add, edit, and manage all your financial accounts in one place.</div>
+      </div>
+
+      {/* ── 4 Metric Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 22 }}>
+        <MetricCard icon="💰" label="Total Net Worth"  value={peso(total)}                       color={C.green}  sm={sm} />
+        <MetricCard icon="🏦" label="Total Accounts"   value={accounts.length.toString()}        color={C.blue}   sm={sm} sub={`${cats.length} categories`} />
+        <MetricCard icon="📈" label="Highest Balance"  value={highest ? peso(highest.balance) : '—'} color={C.purple} sm={sm} sub={highest?.name || '—'} />
+        <MetricCard icon="📉" label="Lowest Balance"   value={lowest ? peso(lowest.balance) : '—'}  color={C.red}    sm={sm} sub={lowest?.name || '—'} />
+      </div>
+
+      {/* ── Add New Account Panel ── */}
+      {canWrite && (
+        <Card style={{ marginBottom: 16, border: `1px solid ${C.amber}33` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showAdd ? 14 : 0 }}>
+            <SecTitle style={{ margin: 0 }}>➕ Add New Account</SecTitle>
+            <button onClick={() => setShowAdd(p => !p)}
+              style={{ background: showAdd ? `${C.amber}22` : 'none', border: `1px solid ${C.amber}55`, borderRadius: 6, color: C.amber, padding: '5px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+              {showAdd ? 'Cancel' : '+ Add Account'}
+            </button>
+          </div>
+          {showAdd && (
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '2fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end' }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Account Name</label>
+                <Inp value={newAcc.name} onChange={e => setNewAcc(p => ({ ...p, name: e.target.value }))} placeholder="e.g. BDO Savings, GCash…" />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Account Type</label>
+                <select value={newAcc.type} onChange={e => setNewAcc(p => ({ ...p, type: e.target.value }))}
+                  style={{ padding: '8px 10px', borderRadius: 7, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 13, outline: 'none', width: '100%' }}>
+                  {['Investment','Savings','Checking','Digital','Cash'].map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Starting Balance</label>
+                <Inp type="number" value={newAcc.balance} onChange={e => setNewAcc(p => ({ ...p, balance: e.target.value }))} style={{ textAlign: 'right' }} placeholder="₱0" />
+              </div>
+              <BtnG onClick={addAccount} style={{ padding: '8px 18px', whiteSpace: 'nowrap' }}>💾 Save</BtnG>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── Filter Bar ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Inp value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search accounts…" style={{ flex: 1, minWidth: 180, padding: '7px 10px', fontSize: 12 }} />
+        <div style={{ display: 'flex', gap: 6 }}>
+          {['all', ...cats].map(t => (
+            <button key={t} onClick={() => setFilterType(t)}
+              style={{ padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${filterType === t ? (typeColors[t] || C.blue) : C.border}`, background: filterType === t ? `${typeColors[t] || C.blue}22` : 'transparent', color: filterType === t ? (typeColors[t] || C.blue) : C.muted }}>
+              {t === 'all' ? '🔀 All' : t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Account Table ── */}
+      <Card style={{ marginBottom: 0, padding: 0, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: `${C.card2}`, borderBottom: `1px solid ${C.border}` }}>
+                <th style={{ textAlign: 'left',  padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACCOUNT NAME</th>
+                <th style={{ textAlign: 'left',  padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>TYPE</th>
+                <th style={{ textAlign: 'right', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>BALANCE</th>
+                <th style={{ textAlign: 'right', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>% OF TOTAL</th>
+                {canUpdate && <th style={{ textAlign: 'center', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACTIONS</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: C.muted, fontSize: 12 }}>No accounts found.</td></tr>
+              )}
+              {filtered.map(acc => {
+                const color = typeColors[acc.type] || C.muted;
+                const pct   = total > 0 ? (acc.balance / total * 100) : 0;
+                return (
+                  <tr key={acc.id} style={{ borderBottom: `1px solid ${C.border}22`, transition: 'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = `${C.card2}88`}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <td style={{ padding: '12px 16px' }}>
+                      {editing === acc.id ? (
+                        <Inp value={editData.name} onChange={e => setEditData(p => ({ ...p, name: e.target.value }))} style={{ width: '100%', padding: '5px 8px' }} />
+                      ) : (
+                        <div style={{ fontWeight: 600, color: C.text }}>{acc.name}</div>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {editing === acc.id ? (
+                        <select value={editData.type} onChange={e => setEditData(p => ({ ...p, type: e.target.value }))}
+                          style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12 }}>
+                          {['Investment','Savings','Checking','Digital','Cash'].map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      ) : (
+                        <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, background: `${color}22`, color }}>{acc.type}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      {editing === acc.id ? (
+                        <Inp type="number" value={editData.balance} onChange={e => setEditData(p => ({ ...p, balance: e.target.value }))} style={{ width: 130, textAlign: 'right', padding: '5px 8px' }} />
+                      ) : (
+                        <span style={{ fontWeight: 700, fontSize: 14, color: acc.balance >= 0 ? C.green : C.red }}>{peso(acc.balance)}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                        <div style={{ width: 60, height: 4, borderRadius: 2, background: `${C.border}44`, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2 }} />
+                        </div>
+                        <span style={{ fontSize: 11, color: C.muted, minWidth: 32 }}>{pct.toFixed(1)}%</span>
+                      </div>
+                    </td>
+                    {canUpdate && (
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        {editing === acc.id ? (
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                            <BtnG onClick={saveEdit} style={{ padding: '4px 12px', fontSize: 11 }}>✓ Save</BtnG>
+                            <Btn onClick={() => setEditing(null)} style={{ padding: '4px 10px', fontSize: 11 }}>Cancel</Btn>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                            <button onClick={() => startEdit(acc)}
+                              style={{ background: `${C.blue}18`, border: `1px solid ${C.blue}44`, borderRadius: 5, color: C.blue, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>✏️ Edit</button>
+                            <button onClick={() => deleteAcc(acc.id)}
+                              style={{ background: `${C.red}18`, border: `1px solid ${C.red}44`, borderRadius: 5, color: C.red, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>🗑 Delete</button>
+                          </div>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -1970,50 +2147,362 @@ function BalanceLogTab({ accounts, setAccounts, balanceHistory, setBalanceHistor
   );
 }
 
-// ─── MAJOR EXPENSES ───────────────────────────────────────────────────────────
-function MajorTab({majorExpenses,setMajorExpenses,sm,readOnly,canWrite,canUpdate}) {
-  const tot=majorExpenses.reduce((s,e)=>s+e.budget,0);
-  const spent=majorExpenses.reduce((s,e)=>s+e.actual,0);
-  function upd(id,f,v){
-    if (readOnly) return;
-    setMajorExpenses(p=>p.map(e=>e.id===id?{...e,[f]:['budget','actual'].includes(f)?(Number(v)||0):v}:e));
-  }
-  return(
+
+// ─── RECONCILE & AUDIT TAB ───────────────────────────────────────────────────
+function ReconcileTab({ accounts, setAccounts, balanceHistory, setBalanceHistory, sm, canWrite, canUpdate }) {
+  const [logDate,     setLogDate]     = useState(new Date().toISOString().slice(0, 10));
+  const [logBalances, setLogBalances] = useState({});
+  const [updateCurr,  setUpdateCurr]  = useState(true);
+  const [successMsg,  setSuccessMsg]  = useState('');
+  const [filterSearch, setFilterSearch] = useState('');
+
+  useEffect(() => {
+    const existing = balanceHistory.find(h => h.date === logDate);
+    if (existing) {
+      setLogBalances(existing.balances);
+    } else {
+      const curr = {};
+      accounts.forEach(a => { curr[a.id] = a.balance; });
+      setLogBalances(curr);
+    }
+  }, [logDate, balanceHistory, accounts]);
+
+  const handleBalChange = (id, val) => setLogBalances(prev => ({ ...prev, [id]: val === '' ? '' : Number(val) }));
+
+  const handleSave = () => {
+    const newBals = { ...logBalances };
+    accounts.forEach(a => { newBals[a.id] = (newBals[a.id] === undefined || newBals[a.id] === '') ? 0 : Number(newBals[a.id]); });
+    setBalanceHistory(prev => {
+      const idx = prev.findIndex(h => h.date === logDate);
+      if (idx >= 0) { const u = [...prev]; u[idx] = { date: logDate, balances: newBals }; return u; }
+      return [...prev, { date: logDate, balances: newBals }];
+    });
+    if (updateCurr) setAccounts(prev => prev.map(a => ({ ...a, balance: newBals[a.id] ?? a.balance })));
+    setSuccessMsg('Audit snapshot saved!');
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
+  // Metrics
+  const sorted     = [...balanceHistory].sort((a, b) => b.date.localeCompare(a.date));
+  const lastLog    = sorted[0];
+  const prevLog    = sorted[1];
+  const auditedNet = lastLog ? Object.values(lastLog.balances).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+  const prevNet    = prevLog ? Object.values(prevLog.balances).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+  const liveTotal  = accounts.reduce((s, a) => s + a.balance, 0);
+  const variance   = liveTotal - auditedNet;
+  const diff       = auditedNet - prevNet;
+
+  // Chart data
+  const chartData = [...balanceHistory]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(h => ({ date: h.date.slice(5), total: Math.round(Object.values(h.balances).reduce((s, v) => s + (Number(v) || 0), 0) / 1000) }));
+
+  const filteredHistory = sorted.filter(h => !filterSearch || h.date.includes(filterSearch));
+
+  return (
     <div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:sm?8:12,marginBottom:14}}>
-        <MetricCard label="Budget" value={fmtK(tot)} color={C.amber} sm={sm}/>
-        <MetricCard label="Spent" value={fmtK(spent)} color={C.red} sm={sm}/>
-        <MetricCard label="Left" value={fmtK(tot-spent)} color={tot-spent>=0?C.green:C.red} sm={sm}/>
+      {/* ── Header ── */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>🔍 Reconcile & Audit</div>
+        <div style={{ fontSize: 12, color: C.muted }}>Verify account balances against physical bank statements and track your net worth over time.</div>
       </div>
-      <Card>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-          <SecTitle>Major Expenses</SecTitle>
-          {canWrite && (
-            <BtnG style={{padding:'6px 12px',fontSize:12}} onClick={()=>setMajorExpenses(p=>[...p,{id:Date.now(),name:'New Expense',budget:0,actual:0,done:false}])}>+ Add</BtnG>
-          )}
-        </div>
-        {majorExpenses.map(e=>{
-          const pct=e.budget>0?Math.min(100,Math.round(e.actual/e.budget*100)):0;
-          return(
-            <div key={e.id} style={{marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${C.border}22`}}>
-              <div style={{display:'flex',gap:8,marginBottom:8,alignItems:'center'}}>
-                <Inp value={e.name} onChange={ev=>upd(e.id,'name',ev.target.value)} style={{flex:1,opacity:e.done?0.5:1}} disabled={readOnly}/>
-                {canUpdate && <button onClick={()=>upd(e.id,'done',!e.done)} style={{minWidth:60,background:'none',border:`1px solid ${e.done?C.green:C.border}`,borderRadius:6,padding:'8px 6px',cursor:'pointer',color:e.done?C.green:C.muted,fontSize:11,whiteSpace:'nowrap'}}>{e.done?'✓ Done':'Pending'}</button>}
-                {canUpdate && <button onClick={()=>setMajorExpenses(p=>p.filter(x=>x.id!==e.id))} style={{background:'none',border:'none',cursor:'pointer',color:C.muted,fontSize:18}}>×</button>}
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
-                <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>Budget</div><Inp type="number" value={e.budget||''} onChange={ev=>upd(e.id,'budget',ev.target.value)} placeholder="0" style={{textAlign:'right'}} disabled={readOnly}/></div>
-                <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>Actual Spent</div><Inp type="number" value={e.actual||''} onChange={ev=>upd(e.id,'actual',ev.target.value)} placeholder="0" style={{textAlign:'right'}} disabled={readOnly}/></div>
-              </div>
-              <div style={{background:C.border,borderRadius:4,height:5}}><div style={{width:`${pct}%`,height:'100%',background:e.done?C.green:pct>90?C.red:C.amber,borderRadius:4}}/></div>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:C.muted,marginTop:3}}><span>{peso(e.actual)} spent</span><span>{pct}% of {peso(e.budget)}</span></div>
+
+      {/* ── 4 Metric Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 22 }}>
+        <MetricCard icon="📅" label="Last Audit Date"      value={lastLog?.date || '—'}                                        color={C.blue}                        sm={sm} />
+        <MetricCard icon="💰" label="Audited Net Assets"   value={auditedNet ? peso(auditedNet) : '₱0'}                        color={C.green}                       sm={sm} sub={diff !== 0 ? (diff > 0 ? '+' : '') + peso(diff) + ' vs prev' : 'First snapshot'} />
+        <MetricCard icon="📊" label="Live Ledger Total"    value={peso(liveTotal)}                                              color={C.purple}                      sm={sm} sub={`${accounts.length} accounts`} />
+        <MetricCard icon="⚖️"  label="Reconciliation Variance" value={(variance > 0 ? '+' : '') + peso(variance)}              color={Math.abs(variance) < 100 ? C.green : C.red} sm={sm} sub={Math.abs(variance) < 100 ? 'Balanced ✓' : 'Review needed'} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 16 }}>
+        {/* ── Left: Snapshot Form + History ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Snapshot Form */}
+          <Card style={{ marginBottom: 0, border: `1px solid ${C.green}33` }}>
+            <SecTitle>📷 Record Audit Snapshot</SecTitle>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 14, lineHeight: 1.6 }}>
+              Enter the actual balances from your physical bank statements for this date. This creates a verifiable audit point.
             </div>
-          );
-        })}
-      </Card>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Snapshot Date</label>
+              <Inp type="date" value={logDate} onChange={e => setLogDate(e.target.value)} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14, maxHeight: 300, overflowY: 'auto', paddingRight: 4 }}>
+              {accounts.map(acc => (
+                <div key={acc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.name}</div>
+                    <div style={{ fontSize: 10, color: C.muted }}>Current: {peso(acc.balance)}</div>
+                  </div>
+                  <Inp type="number" value={logBalances[acc.id] ?? ''} onChange={e => handleBalChange(acc.id, e.target.value)}
+                    style={{ width: 130, textAlign: 'right', padding: '6px 8px' }} placeholder="₱0" />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <input type="checkbox" id="chk-upd-rec" checked={updateCurr} onChange={e => setUpdateCurr(e.target.checked)} style={{ accentColor: C.green, cursor: 'pointer' }} />
+              <label htmlFor="chk-upd-rec" style={{ fontSize: 11, color: C.muted, cursor: 'pointer', userSelect: 'none' }}>Also update current live account balances</label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {canWrite && <BtnG onClick={handleSave} style={{ padding: '8px 20px', fontSize: 12 }}>💾 Save Audit Snapshot</BtnG>}
+              {successMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>✓ {successMsg}</span>}
+            </div>
+          </Card>
+
+          {/* Snapshot History Table */}
+          <Card style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <SecTitle style={{ margin: 0 }}>📋 Audit History</SecTitle>
+              <Inp value={filterSearch} onChange={e => setFilterSearch(e.target.value)} placeholder="Filter by date…" style={{ width: 140, padding: '5px 8px', fontSize: 11 }} />
+            </div>
+            {filteredHistory.length === 0 ? (
+              <div style={{ color: C.muted, fontSize: 12, textAlign: 'center', padding: '20px 0' }}>No audit snapshots yet. Record your first snapshot above.</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.muted }}>
+                      <th style={{ textAlign: 'left', padding: '8px 8px' }}>Date</th>
+                      <th style={{ textAlign: 'right', padding: '8px 8px' }}>Net Worth</th>
+                      <th style={{ textAlign: 'right', padding: '8px 8px' }}>Change</th>
+                      <th style={{ textAlign: 'center', padding: '8px 8px' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHistory.slice(0, 15).map((log, i) => {
+                      const tot  = Object.values(log.balances).reduce((s, v) => s + (Number(v) || 0), 0);
+                      const prev = filteredHistory[i + 1];
+                      const prevTot = prev ? Object.values(prev.balances).reduce((s, v) => s + (Number(v) || 0), 0) : null;
+                      const chg   = prevTot !== null ? tot - prevTot : null;
+                      return (
+                        <tr key={log.date} style={{ borderBottom: `1px solid ${C.border}18` }}>
+                          <td style={{ padding: '9px 8px', fontWeight: 600 }}>{log.date}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 700, color: C.green }}>{peso(tot)}</td>
+                          <td style={{ padding: '9px 8px', textAlign: 'right', fontSize: 11 }}>
+                            {chg !== null ? (
+                              <span style={{ color: chg >= 0 ? C.green : C.red, fontWeight: 600 }}>{chg >= 0 ? '+' : ''}{peso(chg)}</span>
+                            ) : <span style={{ color: C.muted }}>—</span>}
+                          </td>
+                          <td style={{ padding: '9px 8px', textAlign: 'center' }}>
+                            <button onClick={() => { setLogDate(log.date); setLogBalances({ ...log.balances }); }}
+                              style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, color: C.muted, padding: '2px 7px', cursor: 'pointer', fontSize: 10, marginRight: 4 }}>Load</button>
+                            {canUpdate && (
+                              <button onClick={() => { if (confirm(`Delete audit snapshot for ${log.date}?`)) setBalanceHistory(p => p.filter(h => h.date !== log.date)); }}
+                                style={{ background: 'none', border: `1px solid ${C.red}44`, borderRadius: 4, color: C.red, padding: '2px 7px', cursor: 'pointer', fontSize: 10 }}>Del</button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* ── Right: Area Chart ── */}
+        <Card style={{ marginBottom: 0 }}>
+          <SecTitle>📈 Net Worth Over Time (₱k)</SecTitle>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>
+            Historical net worth trend based on all recorded audit snapshots.
+          </div>
+          {chartData.length < 2 ? (
+            <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '80px 0', lineHeight: 1.7 }}>
+              📊 Log at least 2 snapshots<br/>to see your net worth trend chart.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={340}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="recGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor={C.green} stopOpacity={0.45}/>
+                    <stop offset="95%" stopColor={C.green} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={`${C.border}44`} />
+                <XAxis dataKey="date" tick={{ fill: C.muted, fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: C.muted, fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={ttip} formatter={v => [`₱${(v * 1000).toLocaleString()}`, 'Net Worth']} />
+                <Area type="monotone" dataKey="total" stroke={C.green} strokeWidth={2.5} fill="url(#recGrad)" dot={{ fill: C.green, r: 4 }} activeDot={{ r: 6 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
+
+// ─── MAJOR EXPENSES / GOALS ────────────────────────────────────────────
+function MajorTab({majorExpenses,setMajorExpenses,sm,readOnly,canWrite,canUpdate}) {
+  const [activeView, setActiveView] = useState('active');
+  const [histYear,   setHistYear]   = useState('all');
+
+  const active  = majorExpenses.filter(e => !e.done);
+  const history = majorExpenses.filter(e => e.done);
+  const histFiltered = histYear === 'all' ? history : history.filter(e => (e.doneDate || '').startsWith(histYear));
+
+  const totBudget  = active.reduce((s, e) => s + (e.budget || 0), 0);
+  const onTrack    = active.filter(e => e.budget > 0 && e.actual <= e.budget).length;
+  const onTrackPct = active.length > 0 ? Math.round(onTrack / active.length * 100) : 100;
+  const histYears  = [...new Set(history.map(e => (e.doneDate || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+
+  function upd(id, f, v) {
+    if (readOnly) return;
+    setMajorExpenses(p => p.map(e => e.id === id ? { ...e, [f]: ['budget','actual'].includes(f) ? (Number(v) || 0) : v } : e));
+  }
+  function markDone(id) {
+    setMajorExpenses(p => p.map(e => e.id === id ? { ...e, done: true, doneDate: new Date().toISOString().slice(0, 10) } : e));
+  }
+  function reopen(id) {
+    setMajorExpenses(p => p.map(e => e.id === id ? { ...e, done: false, doneDate: null } : e));
+  }
+  function addGoal() {
+    setMajorExpenses(p => [...p, { id: Date.now(), name: 'New Goal', budget: 0, actual: 0, done: false, doneDate: null }]);
+  }
+
+  return (
+    <div>
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>🎯 Goals & Major Expenses</div>
+          <div style={{ fontSize: 12, color: C.muted }}>Track saving goals and major expense milestones.</div>
+        </div>
+        {canWrite && activeView === 'active' && (
+          <BtnG onClick={addGoal} style={{ padding: '8px 16px', fontSize: 12 }}>+ Add Goal</BtnG>
+        )}
+      </div>
+
+      {/* ── 4 Metric Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+        <MetricCard icon="🎯" label="Active Goals"    value={active.length.toString()}  color={C.amber} sm={sm} sub={active.length === 0 ? 'All done! 🎉' : `${active.length} pending`} />
+        <MetricCard icon="💰" label="Total Budgeted"  value={peso(totBudget)}            color={C.blue}  sm={sm} />
+        <MetricCard icon="✅" label="Completed Goals" value={history.length.toString()}  color={C.green} sm={sm} sub="all time" />
+        <MetricCard icon="📊" label="Goals On-Track"  value={`${onTrackPct}%`}           color={onTrackPct >= 80 ? C.green : C.red} sm={sm} sub={`${onTrack} of ${active.length} active`} />
+      </div>
+
+      {/* ── View Toggle ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+        {[['active', `🎯 Active Goals (${active.length})`], ['history', `✅ Completed / History (${history.length})`]].map(([v, label]) => (
+          <button key={v} onClick={() => setActiveView(v)}
+            style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              border: `1px solid ${activeView === v ? C.amber : C.border}`,
+              background: activeView === v ? `${C.amber}22` : 'transparent',
+              color: activeView === v ? C.amber : C.muted, transition: 'all 0.15s' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── ACTIVE GOALS VIEW ── */}
+      {activeView === 'active' && (
+        <div>
+          {active.length === 0 ? (
+            <Card style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>🎉</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.green, marginBottom: 6 }}>All Goals Completed!</div>
+              <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>No active goals. Add a new one to get started.</div>
+              {canWrite && <BtnG onClick={addGoal} style={{ padding: '8px 20px', fontSize: 12 }}>+ Add New Goal</BtnG>}
+            </Card>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
+              {active.map(e => {
+                const pct = e.budget > 0 ? Math.min(100, Math.round(e.actual / e.budget * 100)) : 0;
+                const rem = (e.budget || 0) - (e.actual || 0);
+                return (
+                  <Card key={e.id} style={{ marginBottom: 0, border: `1px solid ${rem >= 0 ? C.green : C.red}33` }}>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'flex-start' }}>
+                      <Inp value={e.name} onChange={ev => upd(e.id, 'name', ev.target.value)}
+                        style={{ flex: 1, fontWeight: 700, fontSize: 13 }} disabled={readOnly} />
+                      {canUpdate && (
+                        <button onClick={() => setMajorExpenses(p => p.filter(x => x.id !== e.id))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18, lineHeight: 1 }}>×</button>
+                      )}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Budget</div>
+                        <Inp type="number" value={e.budget || ''} onChange={ev => upd(e.id, 'budget', ev.target.value)} placeholder="₱0" style={{ textAlign: 'right' }} disabled={readOnly} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Actual Spent</div>
+                        <Inp type="number" value={e.actual || ''} onChange={ev => upd(e.id, 'actual', ev.target.value)} placeholder="₱0" style={{ textAlign: 'right' }} disabled={readOnly} />
+                      </div>
+                    </div>
+                    <div style={{ height: 8, borderRadius: 4, background: `${C.border}44`, overflow: 'hidden', marginBottom: 6 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: pct > 90 ? C.red : pct > 70 ? C.amber : C.blue, borderRadius: 4, transition: 'width 0.4s ease' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, marginBottom: 12 }}>
+                      <span style={{ color: C.text, fontWeight: 600 }}>{peso(e.actual || 0)} spent</span>
+                      <span>{pct}% · <span style={{ color: rem >= 0 ? C.green : C.red }}>{rem >= 0 ? peso(rem) + ' left' : peso(Math.abs(rem)) + ' over'}</span></span>
+                    </div>
+                    {canUpdate && (
+                      <button onClick={() => markDone(e.id)}
+                        style={{ width: '100%', padding: '7px', borderRadius: 6, border: `1px solid ${C.green}55`, background: `${C.green}18`, color: C.green, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                        ✓ Mark as Completed → Move to History
+                      </button>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── HISTORY / COMPLETED VIEW ── */}
+      {activeView === 'history' && (
+        <Card style={{ marginBottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+            <SecTitle style={{ margin: 0 }}>✅ Completed Goals History</SecTitle>
+            {histYears.length > 0 && (
+              <select value={histYear} onChange={e => setHistYear(e.target.value)}
+                style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12 }}>
+                <option value="all">All Years</option>
+                {histYears.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            )}
+          </div>
+          {histFiltered.length === 0 ? (
+            <div style={{ textAlign: 'center', color: C.muted, padding: '32px 0', fontSize: 13 }}>No completed goals yet. Mark active goals as done to see them here.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {histFiltered.map(e => {
+                const pct = e.budget > 0 ? Math.min(100, Math.round(e.actual / e.budget * 100)) : 0;
+                return (
+                  <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: `${C.green}08`, border: `1px solid ${C.green}22` }}>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>✅</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>
+                        Spent {peso(e.actual || 0)} of {peso(e.budget || 0)} · {pct}%
+                        {e.doneDate && <span style={{ marginLeft: 8, color: C.green }}>· Completed: {e.doneDate}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      {canUpdate && (
+                        <button onClick={() => reopen(e.id)}
+                          style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 5, color: C.muted, padding: '3px 10px', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>↩ Reopen</button>
+                      )}
+                      {canUpdate && (
+                        <button onClick={() => setMajorExpenses(p => p.filter(x => x.id !== e.id))}
+                          style={{ background: 'none', border: `1px solid ${C.red}44`, borderRadius: 5, color: C.red, padding: '3px 10px', cursor: 'pointer', fontSize: 10 }}>Delete</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
 
 // ─── CREDITS ──────────────────────────────────────────────────────────────────
 function CreditsTab({ credits, setCredits, sm, readOnly, canWrite, canUpdate }) {
@@ -2169,6 +2658,37 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
   const totalOwed = debts.reduce((sum, d) => sum + d.balance, 0);
   const totalLimit = debts.reduce((sum, d) => sum + d.limit, 0);
   const avgUtilization = totalLimit > 0 ? (totalOwed / totalLimit) * 100 : 0;
+
+  // ── Installment Plan Tracker ───────────────────────────────────────────
+  const [instPlans, setInstPlans] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; }
+  });
+  const [showInstForm, setShowInstForm]     = useState(false);
+  const [newInst, setNewInst]               = useState({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7) });
+  const [instSuccessMsg, setInstSuccessMsg] = useState('');
+
+  const saveInstPlans = (plans) => {
+    setInstPlans(plans);
+    try { localStorage.setItem('bg_installments', JSON.stringify(plans)); } catch {}
+  };
+  const addInstPlan = () => {
+    if (!newInst.cardId) return alert('Select a credit card');
+    if (!newInst.item.trim()) return alert('Enter the item description');
+    if (!newInst.total || Number(newInst.total) <= 0) return alert('Enter the total amount');
+    const card = debts.find(d => d.id === newInst.cardId);
+    const plan = { id: 'inst-' + Date.now(), cardId: newInst.cardId, cardName: card?.name || 'Unknown', item: newInst.item.trim(), total: Number(newInst.total), months: Number(newInst.months) || 12, startMonth: newInst.startMonth, paidMonths: 0, createdAt: new Date().toISOString().slice(0,10) };
+    saveInstPlans([...instPlans, plan]);
+    setNewInst({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7) });
+    setShowInstForm(false);
+    setInstSuccessMsg('Plan added!');
+    setTimeout(() => setInstSuccessMsg(''), 3000);
+  };
+  const payInstMonth   = (id) => saveInstPlans(instPlans.map(p => p.id === id ? { ...p, paidMonths: Math.min(p.paidMonths + 1, p.months) } : p));
+  const deleteInstPlan = (id) => { if (window.confirm('Delete this installment plan?')) saveInstPlans(instPlans.filter(p => p.id !== id)); };
+  const activeInstPlans    = instPlans.filter(p => p.paidMonths < p.months);
+  const completedInstPlans = instPlans.filter(p => p.paidMonths >= p.months);
+  const totalMonthlyInst   = activeInstPlans.reduce((s, p) => s + Math.ceil(p.total / p.months), 0);
+
 
   // Credit Card Transaction States
   const [selectedCardId, setSelectedCardId] = useState(debts[0]?.id || '');
@@ -2566,6 +3086,131 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
             <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Assuming ₱5,000 monthly total payment distributed across accounts.</div>
           </div>
         </div>
+      </Card>
+
+      {/* ══ INSTALLMENT PLAN TRACKER ════════════════════════════════════════ */}
+      <Card style={{ marginBottom: 0, border: `1px solid ${C.amber}33` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showInstForm ? 14 : 0 }}>
+          <div>
+            <SecTitle style={{ margin: 0 }}>📦 Installment Plan Tracker</SecTitle>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
+              Monthly CC installment obligation: <span style={{ color: C.amber, fontWeight: 700 }}>{peso(totalMonthlyInst)}/mo</span>
+              {' · '}{activeInstPlans.length} active · {completedInstPlans.length} completed
+            </div>
+          </div>
+          {canWrite && (
+            <button onClick={() => setShowInstForm(p => !p)}
+              style={{ padding: '6px 14px', borderRadius: 7, border: `1px solid ${C.amber}55`, background: showInstForm ? `${C.amber}22` : 'transparent', color: C.amber, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+              {showInstForm ? 'Cancel' : '+ Add Plan'}
+            </button>
+          )}
+        </div>
+
+        {/* ── Add Installment Form ── */}
+        {showInstForm && (
+          <div style={{ background: `${C.card2}`, borderRadius: 10, padding: 14, marginBottom: 14, border: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 11, color: C.amber, fontWeight: 700, marginBottom: 10, textTransform: 'uppercase' }}>New Installment Plan</div>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 2fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Credit Card</label>
+                <select value={newInst.cardId} onChange={e => setNewInst(p => ({ ...p, cardId: e.target.value }))}
+                  style={{ padding: '8px 10px', borderRadius: 7, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, outline: 'none', width: '100%' }}>
+                  <option value="">Select card…</option>
+                  {debts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Item Description</label>
+                <Inp value={newInst.item} onChange={e => setNewInst(p => ({ ...p, item: e.target.value }))} placeholder="e.g. Lazada Shopping, Samsung TV…" />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Total Amount (₱)</label>
+                <Inp type="number" value={newInst.total} onChange={e => setNewInst(p => ({ ...p, total: e.target.value }))} placeholder="12000" style={{ textAlign: 'right' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Terms (Months)</label>
+                <Inp type="number" value={newInst.months} onChange={e => setNewInst(p => ({ ...p, months: e.target.value }))} placeholder="12" style={{ textAlign: 'right' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Monthly Amount</label>
+                <div style={{ padding: '8px 10px', borderRadius: 7, border: `1px solid ${C.border}`, background: `${C.green}18`, color: C.green, fontSize: 14, fontWeight: 800, textAlign: 'right' }}>
+                  {newInst.total && newInst.months ? peso(Math.ceil(Number(newInst.total) / Number(newInst.months))) : '₱—'}
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Start Month</label>
+                <Inp type="month" value={newInst.startMonth} onChange={e => setNewInst(p => ({ ...p, startMonth: e.target.value }))} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <BtnG onClick={addInstPlan} style={{ padding: '8px 20px', fontSize: 12 }}>💾 Save Installment Plan</BtnG>
+              {instSuccessMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>✓ {instSuccessMsg}</span>}
+            </div>
+          </div>
+        )}
+
+        {/* ── Active Plans ── */}
+        {activeInstPlans.length === 0 && !showInstForm && (
+          <div style={{ textAlign: 'center', color: C.muted, padding: '16px 0', fontSize: 12, marginTop: 10 }}>No active installment plans. Click "+ Add Plan" to track your CC installments.</div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: activeInstPlans.length > 0 ? 14 : 0 }}>
+          {activeInstPlans.map(plan => {
+            const monthly   = Math.ceil(plan.total / plan.months);
+            const remaining = plan.months - plan.paidMonths;
+            const paidAmt   = plan.paidMonths * monthly;
+            const remAmt    = plan.total - paidAmt;
+            const pct       = Math.round(plan.paidMonths / plan.months * 100);
+            return (
+              <div key={plan.id} style={{ background: `${C.card2}`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.amber}33` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{plan.item}</div>
+                    <div style={{ fontSize: 11, color: C.muted }}>
+                      <span style={{ color: C.amber, fontWeight: 600 }}>{plan.cardName}</span>
+                      {' · '}{plan.months} months @ {peso(monthly)}/mo · Started {plan.startMonth}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: C.amber }}>{peso(monthly)}<span style={{ fontSize: 10, color: C.muted, fontWeight: 400 }}>/mo</span></div>
+                    <div style={{ fontSize: 10, color: C.muted }}>{remaining} month{remaining !== 1 ? 's' : ''} left</div>
+                  </div>
+                </div>
+                <div style={{ height: 6, borderRadius: 3, background: `${C.border}44`, overflow: 'hidden', marginBottom: 6 }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg, ${C.amber}, ${C.green})`, borderRadius: 3, transition: 'width 0.4s ease' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, marginBottom: 10 }}>
+                  <span>{plan.paidMonths}/{plan.months} months paid · {peso(paidAmt)} paid</span>
+                  <span style={{ color: C.orange, fontWeight: 600 }}>{peso(remAmt)} remaining</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {canUpdate && (
+                    <button onClick={() => payInstMonth(plan.id)}
+                      style={{ flex: 1, padding: '6px', borderRadius: 6, border: `1px solid ${C.green}55`, background: `${C.green}18`, color: C.green, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                      ✓ Mark 1 Month Paid ({peso(monthly)})
+                    </button>
+                  )}
+                  <button onClick={() => deleteInstPlan(plan.id)}
+                    style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.red}33`, background: 'none', color: C.red, cursor: 'pointer', fontSize: 11 }}>🗑</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Completed Plans ── */}
+        {completedInstPlans.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}33` }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 6 }}>✅ FULLY PAID PLANS ({completedInstPlans.length})</div>
+            {completedInstPlans.map(plan => (
+              <div key={plan.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', borderRadius: 6, background: `${C.green}08`, marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{plan.item} <span style={{ color: C.green }}>· {peso(plan.total)} fully paid</span></span>
+                <button onClick={() => deleteInstPlan(plan.id)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 14 }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Transaction Logging Sections */}
@@ -5232,6 +5877,8 @@ export default function App() {
     history:'History',
     budget:'Monthly Budget',
     accounts:'Accounts',
+    'account-manager':'Account Manager',
+    reconcile:'Reconcile & Audit',
     investments:'Investments',
     debts:'Debt Manager',
     credits:'Credits (Money Owed)',
@@ -5244,9 +5891,11 @@ export default function App() {
 
   const NAV_TABS=[
     {id:'dashboard',   label:'Dashboard',          icon:'📊',group:'main'},
-    {id:'accounts',    label:'Accounts',           icon:'🏦',group:'manage'},
+    {id:'accounts',       label:'Accounts',              icon:'🏦',group:'manage'},
+    {id:'account-manager', label:'Account Manager',       icon:'🗂️',group:'manage'},
+    {id:'reconcile',       label:'Reconcile & Audit',     icon:'🔍',group:'manage'},
     {id:'transactions',label:'Transactions',       icon:'💸',group:'manage'},
-    {id:'balancelog',  label:'Balance Log',        icon:'📓',group:'manage'},
+    // Balance Log removed — superseded by Reconcile & Audit tab (data preserved)
     {id:'debts',       label:'Debts',              icon:'💳',group:'manage'},
     {id:'credits',     label:'Credits (Owed to You)',icon:'🤝',group:'manage'},
     {id:'expenses',    label:'Goals',              icon:'🎯',group:'manage'},
@@ -5493,7 +6142,9 @@ export default function App() {
               {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm}/>}
               {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
               {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='accounts'    &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='accounts'       &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab}/>}
+              {tab==='account-manager'&&<AccountManagerTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='reconcile'      &&<ReconcileTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='transactions'&&<TransactionsTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='balancelog'  &&<BalanceLogTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='investments'&&<InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
