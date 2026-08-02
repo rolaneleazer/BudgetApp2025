@@ -2880,6 +2880,7 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
 
 
 
+
 // ─── FINANCIAL KNOWLEDGE GRAPH (ENGRAPHIS INSPIRED) ───────────────────────────
 function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorExpenses = [], credits = [], sm }) {
   const canvasRef = useRef(null);
@@ -2897,6 +2898,9 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
   const [searchTerm, setSearchTerm] = useState('');
   const [hoveredNode, setHoveredNode] = useState(null);
   const [draggingNode, setDraggingNode] = useState(null);
+
+  // Zoom & Viewport Matrix State
+  const [zoomScale, setZoomScale] = useState(1.0);
 
   const selectedKey = makeKey(graphYear, graphMonth);
   const monthData = budgetData[selectedKey] || { expenses: [] };
@@ -3005,7 +3009,7 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
     alphaRef.current = 1.0;
   }, [accounts, debts, majorExpenses, monthlyExpenses, graphYear, graphMonth]);
 
-  // Edges connecting graph hubs and monthly expense items
+  // Edges connecting graph hubs
   const links = useMemo(() => {
     const edges = [];
     const nodes = nodesRef.current;
@@ -3014,7 +3018,6 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
         edges.push({ source: 'core-user', target: n.id });
       }
       if (n.type === 'monthly_item') {
-        // Connect itemized monthly expense to its category hub
         const parentCatId = `cat-${n.category}`;
         const parentNode = nodes.find(c => c.id === parentCatId);
         edges.push({ source: parentNode ? parentNode.id : 'core-user', target: n.id });
@@ -3027,12 +3030,27 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
     return edges;
   }, [nodesRef.current.length]);
 
+  // Mouse Wheel Zoom Handler
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      setZoomScale(prev => Math.max(0.3, Math.min(3.0, prev * zoomFactor)));
+    };
+
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, []);
+
   // Re-warm physics when controls change
   useEffect(() => {
     alphaRef.current = 0.4;
   }, [filterType, repelForce, nodeSizeScale, graphYear, graphMonth]);
 
-  // Canvas Physics Loop with Alpha Cooling
+  // Canvas Physics & Render Loop with Zoom Transformation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -3044,7 +3062,7 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
     const centerX = width / 2;
     const centerY = height / 2;
 
-    let particles = Array.from({ length: 30 }, () => ({
+    let particles = Array.from({ length: 25 }, () => ({
       linkIndex: Math.floor(Math.random() * Math.max(links.length, 1)),
       progress: Math.random(),
       speed: 0.003 + Math.random() * 0.004
@@ -3080,7 +3098,7 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
           }
         }
 
-        // 3. Link Spring Attraction
+        // 3. Link Attraction
         links.forEach(l => {
           const s = nodes.find(n => n.id === l.source);
           const t = nodes.find(n => n.id === l.target);
@@ -3112,6 +3130,12 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
       }
 
       ctx.clearRect(0, 0, width, height);
+
+      // Save transform and apply Zoom around center
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.scale(zoomScale, zoomScale);
+      ctx.translate(-centerX, -centerY);
 
       // Render Grid
       ctx.strokeStyle = 'rgba(28, 43, 66, 0.2)';
@@ -3207,24 +3231,45 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
         ctx.globalAlpha = 1;
       });
 
+      ctx.restore();
+
       animId = requestAnimationFrame(step);
     }
 
     step();
     return () => cancelAnimationFrame(animId);
-  }, [links, selectedNode, hoveredNode, filterType, nodeSizeScale, repelForce, labelDensity, searchTerm]);
+  }, [links, selectedNode, hoveredNode, filterType, nodeSizeScale, repelForce, labelDensity, searchTerm, zoomScale]);
 
-  // Mouse Handlers
-  const handleMouseDown = (e) => {
+  // Helper to convert Mouse Event coordinates to Zoomed Canvas Node Coordinates
+  const getCanvasMousePos = (e) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return { mx: 0, my: 0 };
     const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const rawX = (e.clientX - rect.left) * scaleX;
+    const rawY = (e.clientY - rect.top) * scaleY;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    // Inverse transform for zoom around center
+    const mx = (rawX - centerX) / zoomScale + centerX;
+    const my = (rawY - centerY) / zoomScale + centerY;
+
+    return { mx, my };
+  };
+
+  // Mouse Handlers with Scale & Zoom Precision
+  const handleMouseDown = (e) => {
+    const { mx, my } = getCanvasMousePos(e);
 
     const target = nodesRef.current.find(n => {
+      const baseRadius = (n.type === 'core' ? 24 : 10 + Math.log10(Math.max(n.val, 100)) * 2.2) * nodeSizeScale;
+      const hitRadius = baseRadius + 14;
       const dx = n.x - mx, dy = n.y - my;
-      return Math.sqrt(dx * dx + dy * dy) < 28;
+      return Math.sqrt(dx * dx + dy * dy) <= hitRadius;
     });
 
     if (target) {
@@ -3238,11 +3283,7 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
   };
 
   const handleMouseMove = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+    const { mx, my } = getCanvasMousePos(e);
 
     if (draggingNode) {
       draggingNode.x = mx;
@@ -3252,11 +3293,13 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
       alphaRef.current = 0.3;
     } else {
       const hover = nodesRef.current.find(n => {
+        const baseRadius = (n.type === 'core' ? 24 : 10 + Math.log10(Math.max(n.val, 100)) * 2.2) * nodeSizeScale;
+        const hitRadius = baseRadius + 14;
         const dx = n.x - mx, dy = n.y - my;
-        return Math.sqrt(dx * dx + dy * dy) < 28;
+        return Math.sqrt(dx * dx + dy * dy) <= hitRadius;
       });
       setHoveredNode(hover || null);
-      canvas.style.cursor = hover ? 'pointer' : 'default';
+      if (canvasRef.current) canvasRef.current.style.cursor = hover ? 'pointer' : 'default';
     }
   };
 
@@ -3360,8 +3403,19 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
             onMouseLeave={handleMouseUp}
             style={{ display: 'block', width: '100%', height: 650 }}
           />
+
+          {/* Zoom Overlay Quick Controls */}
+          <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 4, background: 'rgba(7,17,31,0.85)', padding: '4px', borderRadius: 6, border: `1px solid ${C.border}` }}>
+            <button onClick={() => setZoomScale(p => Math.min(3.0, p * 1.2))} title="Zoom In"
+              style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, padding: '4px 8px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>🔍 +</button>
+            <button onClick={() => setZoomScale(p => Math.max(0.3, p / 1.2))} title="Zoom Out"
+              style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, padding: '4px 8px', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>🔍 −</button>
+            <button onClick={() => setZoomScale(1.0)} title="Reset View"
+              style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, color: C.muted, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>↺ 100%</button>
+          </div>
+
           <div style={{ position: 'absolute', bottom: 12, left: 16, fontSize: 10, color: C.muted, background: 'rgba(7,17,31,0.85)', padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.border}` }}>
-            💡 Select month at top right • Drag expense nodes to custom position
+            💡 Scroll mouse wheel to Zoom In/Out • Click & drag any node circle • Zoom: {Math.round(zoomScale * 100)}%
           </div>
         </Card>
 
@@ -3384,8 +3438,8 @@ function FinancialGraphTab({ budgetData = {}, accounts = [], debts = [], majorEx
 
               {selectedNode.amount !== undefined && (
                 <div style={{ background: C.card2, borderRadius: 8, padding: '10px 12px', border: `1px solid ${C.border}` }}>
-                  <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Monthly Amount</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: C.red }}>{peso(selectedNode.amount)}</div>
+                  <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Value / Amount</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: C.green }}>{peso(selectedNode.amount)}</div>
                 </div>
               )}
 
