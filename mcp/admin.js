@@ -175,21 +175,35 @@ export async function adminHandler(req, res) {
       return;
     }
 
-    // Endpoint: PATCH /api/admin/users (Reset user's password)
+    // Endpoint: PATCH /api/admin/users (Update user details: password, email, full_name, role)
     if (pathname === "/api/admin/users" && req.method === "PATCH") {
       const body = await getRequestBody(req);
       const id = url.searchParams.get("id") || body.id;
-      const { password } = body;
+      const { password, email, fullName, role } = body;
 
-      if (!id || !password) {
+      if (!id) {
         res.writeHead(400, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "User ID and new password are required." }));
+        res.end(JSON.stringify({ error: "User ID is required." }));
         return;
       }
 
-      const { data: { user: updatedUser }, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(id, {
-        password
-      });
+      const updatePayload = {};
+      if (password) updatePayload.password = password;
+      if (email) updatePayload.email = email;
+      
+      // Merge user_metadata
+      if (fullName !== undefined || role !== undefined) {
+        // Fetch current user metadata first to preserve existing fields
+        const { data: currentObj } = await supabaseAdmin.auth.admin.getUserById(id);
+        const existingMeta = currentObj?.user?.user_metadata || {};
+        updatePayload.user_metadata = {
+          ...existingMeta,
+          ...(fullName !== undefined ? { full_name: fullName } : {}),
+          ...(role !== undefined ? { role: role } : {})
+        };
+      }
+
+      const { data: { user: updatedUser }, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(id, updatePayload);
 
       if (updateError) throw updateError;
 
@@ -198,7 +212,7 @@ export async function adminHandler(req, res) {
       return;
     }
 
-    // Endpoint: DELETE /api/admin/users (Delete a user and clean up user_data)
+    // Endpoint: DELETE /api/admin/users (Delete a user and clean up user_data and related tables)
     if (pathname === "/api/admin/users" && req.method === "DELETE") {
       const body = await getRequestBody(req);
       const id = url.searchParams.get("id") || body.id;
@@ -209,22 +223,113 @@ export async function adminHandler(req, res) {
         return;
       }
 
-      // 1. Delete from Supabase Auth
+      // 1. Delete from all public schema tables referencing user_id or id to avoid foreign key violations
+      const userTables = [
+        "user_data",
+        "user_roles",
+        "user_settings",
+        "notifications",
+        "admin_audit_logs",
+        "test_logs"
+      ];
+
+      for (const tbl of userTables) {
+        try {
+          await supabaseAdmin.from(tbl).delete().eq("user_id", id);
+        } catch (e) {
+          console.warn(`Could not clean up table ${tbl}:`, e);
+        }
+      }
+
+      // Try profiles table (may use user_id or id)
+      try {
+        await supabaseAdmin.from("profiles").delete().eq("user_id", id);
+        await supabaseAdmin.from("profiles").delete().eq("id", id);
+      } catch (e) {
+        console.warn("Could not clean up table profiles:", e);
+      }
+
+      // 2. Now delete from Supabase Auth
       const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(id);
       if (deleteAuthError) throw deleteAuthError;
 
-      // 2. Clear user data table
-      const { error: deleteDbError } = await supabaseAdmin
-        .from("user_data")
-        .delete()
-        .eq("user_id", id);
-      
-      if (deleteDbError) {
-        console.warn("Could not delete user_data row, it might not exist:", deleteDbError);
-      }
-
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ success: true, message: "User deleted successfully." }));
+      return;
+    }
+
+    // Endpoint: POST /api/admin/roles (Update user's role metadata)
+    if (pathname === "/api/admin/roles" && req.method === "POST") {
+      const body = await getRequestBody(req);
+      const { userId, role } = body;
+
+      if (!userId || !role) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "User ID and role are required." }));
+        return;
+      }
+
+      const { data: currentObj } = await supabaseAdmin.auth.admin.getUserById(userId);
+      const existingMeta = currentObj?.user?.user_metadata || {};
+
+      const { data: { user: updatedUser }, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          ...existingMeta,
+          role: role
+        }
+      });
+
+      if (updateError) throw updateError;
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ user: updatedUser }));
+      return;
+    }
+
+    // Endpoint: GET /api/admin/permissions (Fetch role permissions)
+    if (pathname === "/api/admin/permissions" && req.method === "GET") {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("role_permissions")
+          .select("*");
+        if (error) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ permissions: [] }));
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ permissions: data || [] }));
+      } catch {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ permissions: [] }));
+      }
+      return;
+    }
+
+    // Endpoint: POST /api/admin/permissions (Upsert role permission)
+    if (pathname === "/api/admin/permissions" && req.method === "POST") {
+      const body = await getRequestBody(req);
+      const { role, moduleName, accessLevel } = body;
+
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("role_permissions")
+          .upsert({
+            role,
+            module_name: moduleName,
+            access_level: accessLevel,
+            updated_at: new Date().toISOString()
+          }, { onConflict: "role,module_name" })
+          .select()
+          .single();
+
+        if (error) throw error;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ permission: data }));
+      } catch {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ permission: { role, module_name: moduleName, access_level: accessLevel } }));
+      }
       return;
     }
 

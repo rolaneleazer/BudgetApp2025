@@ -4917,6 +4917,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPwdModal, setShowPwdModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [targetUser, setTargetUser] = useState(null);
   
   // Forms
@@ -4924,6 +4925,11 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
   const [addPassword, setAddPassword] = useState("");
   const [addFullName, setAddFullName] = useState("");
   const [resetPwd, setResetPwd] = useState("");
+
+  const [editFullName, setEditFullName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState("user");
+  const [editPassword, setEditPassword] = useState("");
 
   // System Diagnostics states
   const [testResults, setTestResults] = useState({});
@@ -5157,6 +5163,41 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
     }
   }
 
+  async function handleEditUser(e) {
+    e.preventDefault();
+    if (!targetUser) return;
+    setActionLoading(true);
+    setActionSuccess("");
+    setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/admin/users?id=${targetUser.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          fullName: editFullName,
+          email: editEmail,
+          role: editRole,
+          password: editPassword || undefined
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update user");
+      
+      setActionSuccess(`Successfully updated user ${editEmail || targetUser.email}`);
+      setShowEditModal(false);
+      setTargetUser(null);
+      fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   async function handleDelete(user) {
     if (!confirm(`Are you absolutely sure you want to delete user ${user.email}?\nThis will remove them from Supabase auth and delete all of their budget data. This cannot be undone.`)) {
       return;
@@ -5365,6 +5406,22 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                               setActionSuccess(""); 
                               setError("");
                               setTargetUser(user);
+                              setEditFullName(user.user_metadata?.full_name || "");
+                              setEditEmail(user.email || "");
+                              setEditRole(user.user_metadata?.role || user.role || "user");
+                              setEditPassword("");
+                              setShowEditModal(true);
+                            }}
+                            style={{ padding: "4px 8px", fontSize: 11, border: `1px solid ${C.purple}44`, color: C.purple }}
+                            disabled={actionLoading}
+                          >
+                            Edit
+                          </Btn>
+                          <Btn 
+                            onClick={() => {
+                              setActionSuccess(""); 
+                              setError("");
+                              setTargetUser(user);
                               setShowPwdModal(true);
                             }}
                             style={{ padding: "4px 8px", fontSize: 11, border: `1px solid ${C.blue}44`, color: C.blue }}
@@ -5515,6 +5572,92 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
           </Card>
         </div>
       )}
+
+      {/* Edit User Modal */}
+      {showEditModal && targetUser && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(2, 8, 20, 0.8)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 100,
+          padding: 16
+        }}>
+          <Card style={{ width: "100%", maxWidth: 450, marginBottom: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <SecTitle style={{ margin: 0 }}>Edit User Details</SecTitle>
+              <button 
+                onClick={() => { setShowEditModal(false); setTargetUser(null); }} 
+                style={{ background: "none", border: "none", color: C.muted, fontSize: 20, cursor: "pointer" }}
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleEditUser} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>Full Name</label>
+                <Inp 
+                  value={editFullName} 
+                  onChange={e => setEditFullName(e.target.value)} 
+                  placeholder="Full Name" 
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>Email Address</label>
+                <Inp 
+                  type="email"
+                  value={editEmail} 
+                  onChange={e => setEditEmail(e.target.value)} 
+                  placeholder="name@example.com" 
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>System Role</label>
+                <select
+                  value={editRole}
+                  onChange={e => setEditRole(e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: C.bg,
+                    color: C.text,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 6,
+                    padding: "8px 10px",
+                    fontSize: 13
+                  }}
+                >
+                  <option value="admin">Admin</option>
+                  <option value="user">User</option>
+                  <option value="viewer">Viewer</option>
+                  <option value="guest">Guest</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>New Password (leave blank to keep current)</label>
+                <Inp 
+                  type="password"
+                  value={editPassword} 
+                  onChange={e => setEditPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <BtnG type="submit" disabled={actionLoading} style={{ flex: 1 }}>
+                  {actionLoading ? "Saving..." : "Save Changes"}
+                </BtnG>
+                <Btn type="button" onClick={() => { setShowEditModal(false); setTargetUser(null); }} disabled={actionLoading}>
+                  Cancel
+                </Btn>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
       {/* System Diagnostics & Tests Card */}
       <Card style={{ marginTop: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexDirection: sm ? "column" : "row", gap: 12 }}>
