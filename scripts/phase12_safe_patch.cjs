@@ -1,0 +1,429 @@
+/**
+ * Phase 12 — Safe multi-patch script
+ * Applies 3 targeted changes to App.jsx without touching surrounding code:
+ * 1. Replace MajorTab body (lines 2339-2381) - active/history split
+ * 2. Inject installment states into DebtsTab (after line 2536)
+ * 3. Remove Balance Log from NAV_TABS
+ */
+const fs   = require('fs');
+const path = require('path');
+
+const SRC_PATH = path.join(__dirname, '..', 'src', 'App.jsx');
+const raw      = fs.readFileSync(SRC_PATH, 'utf8');
+// Work with LF-normalised lines for clean surgery
+const lines    = raw.split(/\r?\n/);
+
+console.log(`File loaded: ${lines.length} lines`);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: find first line index matching a pattern
+// ─────────────────────────────────────────────────────────────────────────────
+function findLine(pattern, from = 0) {
+  for (let i = from; i < lines.length; i++) {
+    if (pattern instanceof RegExp ? pattern.test(lines[i]) : lines[i].includes(pattern)) return i;
+  }
+  return -1;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANGE 1: Remove Balance Log from NAV_TABS
+// ─────────────────────────────────────────────────────────────────────────────
+const balLogIdx = findLine(`{id:'balancelog',  label:'Balance Log',`);
+if (balLogIdx !== -1) {
+  lines[balLogIdx] = `    // Balance Log removed \u2014 superseded by Reconcile & Audit tab (data preserved)`;
+  console.log(`[OK] Balance Log removed from NAV_TABS at line ${balLogIdx + 1}`);
+} else {
+  console.log('[SKIP] Balance Log entry not found in NAV_TABS (already removed?)');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANGE 2: Replace MajorTab with Active/History split version
+// Find the exact start+end and splice in replacement
+// ─────────────────────────────────────────────────────────────────────────────
+const majorStart = findLine('function MajorTab(');
+const creditsStart = findLine('// \u2500\u2500\u2500 CREDITS', majorStart);
+
+if (majorStart !== -1 && creditsStart !== -1) {
+  console.log(`[OK] Replacing MajorTab lines ${majorStart + 1}\u2013${creditsStart} with new Active/History version`);
+
+  const newMajorLines = `// \u2500\u2500\u2500 MAJOR EXPENSES / GOALS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function MajorTab({majorExpenses,setMajorExpenses,sm,readOnly,canWrite,canUpdate}) {
+  const [activeView, setActiveView] = useState('active');
+  const [histYear,   setHistYear]   = useState('all');
+
+  const active  = majorExpenses.filter(e => !e.done);
+  const history = majorExpenses.filter(e => e.done);
+  const histFiltered = histYear === 'all' ? history : history.filter(e => (e.doneDate || '').startsWith(histYear));
+
+  const totBudget  = active.reduce((s, e) => s + (e.budget || 0), 0);
+  const onTrack    = active.filter(e => e.budget > 0 && e.actual <= e.budget).length;
+  const onTrackPct = active.length > 0 ? Math.round(onTrack / active.length * 100) : 100;
+  const histYears  = [...new Set(history.map(e => (e.doneDate || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+
+  function upd(id, f, v) {
+    if (readOnly) return;
+    setMajorExpenses(p => p.map(e => e.id === id ? { ...e, [f]: ['budget','actual'].includes(f) ? (Number(v) || 0) : v } : e));
+  }
+  function markDone(id) {
+    setMajorExpenses(p => p.map(e => e.id === id ? { ...e, done: true, doneDate: new Date().toISOString().slice(0, 10) } : e));
+  }
+  function reopen(id) {
+    setMajorExpenses(p => p.map(e => e.id === id ? { ...e, done: false, doneDate: null } : e));
+  }
+  function addGoal() {
+    setMajorExpenses(p => [...p, { id: Date.now(), name: 'New Goal', budget: 0, actual: 0, done: false, doneDate: null }]);
+  }
+
+  return (
+    <div>
+      {/* \u2500\u2500 Header \u2500\u2500 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>\ud83c\udfaf Goals & Major Expenses</div>
+          <div style={{ fontSize: 12, color: C.muted }}>Track saving goals and major expense milestones.</div>
+        </div>
+        {canWrite && activeView === 'active' && (
+          <BtnG onClick={addGoal} style={{ padding: '8px 16px', fontSize: 12 }}>+ Add Goal</BtnG>
+        )}
+      </div>
+
+      {/* \u2500\u2500 4 Metric Cards \u2500\u2500 */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+        <MetricCard icon="\ud83c\udfaf" label="Active Goals"    value={active.length.toString()}  color={C.amber} sm={sm} sub={active.length === 0 ? 'All done! \ud83c\udf89' : \`\${active.length} pending\`} />
+        <MetricCard icon="\ud83d\udcb0" label="Total Budgeted"  value={peso(totBudget)}            color={C.blue}  sm={sm} />
+        <MetricCard icon="\u2705" label="Completed Goals" value={history.length.toString()}  color={C.green} sm={sm} sub="all time" />
+        <MetricCard icon="\ud83d\udcca" label="Goals On-Track"  value={\`\${onTrackPct}%\`}           color={onTrackPct >= 80 ? C.green : C.red} sm={sm} sub={\`\${onTrack} of \${active.length} active\`} />
+      </div>
+
+      {/* \u2500\u2500 View Toggle \u2500\u2500 */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+        {[['active', \`\ud83c\udfaf Active Goals (\${active.length})\`], ['history', \`\u2705 Completed / History (\${history.length})\`]].map(([v, label]) => (
+          <button key={v} onClick={() => setActiveView(v)}
+            style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              border: \`1px solid \${activeView === v ? C.amber : C.border}\`,
+              background: activeView === v ? \`\${C.amber}22\` : 'transparent',
+              color: activeView === v ? C.amber : C.muted, transition: 'all 0.15s' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* \u2500\u2500 ACTIVE GOALS VIEW \u2500\u2500 */}
+      {activeView === 'active' && (
+        <div>
+          {active.length === 0 ? (
+            <Card style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>\ud83c\udf89</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.green, marginBottom: 6 }}>All Goals Completed!</div>
+              <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>No active goals. Add a new one to get started.</div>
+              {canWrite && <BtnG onClick={addGoal} style={{ padding: '8px 20px', fontSize: 12 }}>+ Add New Goal</BtnG>}
+            </Card>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(auto-fill, minmax(310px, 1fr))', gap: 14 }}>
+              {active.map(e => {
+                const pct = e.budget > 0 ? Math.min(100, Math.round(e.actual / e.budget * 100)) : 0;
+                const rem = (e.budget || 0) - (e.actual || 0);
+                return (
+                  <Card key={e.id} style={{ marginBottom: 0, border: \`1px solid \${rem >= 0 ? C.green : C.red}33\` }}>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'flex-start' }}>
+                      <Inp value={e.name} onChange={ev => upd(e.id, 'name', ev.target.value)}
+                        style={{ flex: 1, fontWeight: 700, fontSize: 13 }} disabled={readOnly} />
+                      {canUpdate && (
+                        <button onClick={() => setMajorExpenses(p => p.filter(x => x.id !== e.id))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18, lineHeight: 1 }}>\u00d7</button>
+                      )}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Budget</div>
+                        <Inp type="number" value={e.budget || ''} onChange={ev => upd(e.id, 'budget', ev.target.value)} placeholder="\u20b10" style={{ textAlign: 'right' }} disabled={readOnly} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Actual Spent</div>
+                        <Inp type="number" value={e.actual || ''} onChange={ev => upd(e.id, 'actual', ev.target.value)} placeholder="\u20b10" style={{ textAlign: 'right' }} disabled={readOnly} />
+                      </div>
+                    </div>
+                    <div style={{ height: 8, borderRadius: 4, background: \`\${C.border}44\`, overflow: 'hidden', marginBottom: 6 }}>
+                      <div style={{ height: '100%', width: \`\${pct}%\`, background: pct > 90 ? C.red : pct > 70 ? C.amber : C.blue, borderRadius: 4, transition: 'width 0.4s ease' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, marginBottom: 12 }}>
+                      <span style={{ color: C.text, fontWeight: 600 }}>{peso(e.actual || 0)} spent</span>
+                      <span>{pct}% \u00b7 <span style={{ color: rem >= 0 ? C.green : C.red }}>{rem >= 0 ? peso(rem) + ' left' : peso(Math.abs(rem)) + ' over'}</span></span>
+                    </div>
+                    {canUpdate && (
+                      <button onClick={() => markDone(e.id)}
+                        style={{ width: '100%', padding: '7px', borderRadius: 6, border: \`1px solid \${C.green}55\`, background: \`\${C.green}18\`, color: C.green, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                        \u2713 Mark as Completed \u2192 Move to History
+                      </button>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* \u2500\u2500 HISTORY / COMPLETED VIEW \u2500\u2500 */}
+      {activeView === 'history' && (
+        <Card style={{ marginBottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+            <SecTitle style={{ margin: 0 }}>\u2705 Completed Goals History</SecTitle>
+            {histYears.length > 0 && (
+              <select value={histYear} onChange={e => setHistYear(e.target.value)}
+                style={{ padding: '5px 10px', borderRadius: 6, border: \`1px solid \${C.border}\`, background: C.bg, color: C.text, fontSize: 12 }}>
+                <option value="all">All Years</option>
+                {histYears.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            )}
+          </div>
+          {histFiltered.length === 0 ? (
+            <div style={{ textAlign: 'center', color: C.muted, padding: '32px 0', fontSize: 13 }}>No completed goals yet. Mark active goals as done to see them here.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {histFiltered.map(e => {
+                const pct = e.budget > 0 ? Math.min(100, Math.round(e.actual / e.budget * 100)) : 0;
+                return (
+                  <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: \`\${C.green}08\`, border: \`1px solid \${C.green}22\` }}>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>\u2705</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>
+                        Spent {peso(e.actual || 0)} of {peso(e.budget || 0)} \u00b7 {pct}%
+                        {e.doneDate && <span style={{ marginLeft: 8, color: C.green }}>\u00b7 Completed: {e.doneDate}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      {canUpdate && (
+                        <button onClick={() => reopen(e.id)}
+                          style={{ background: 'none', border: \`1px solid \${C.border}\`, borderRadius: 5, color: C.muted, padding: '3px 10px', cursor: 'pointer', fontSize: 10, fontWeight: 600 }}>\u21a9 Reopen</button>
+                      )}
+                      {canUpdate && (
+                        <button onClick={() => setMajorExpenses(p => p.filter(x => x.id !== e.id))}
+                          style={{ background: 'none', border: \`1px solid \${C.red}44\`, borderRadius: 5, color: C.red, padding: '3px 10px', cursor: 'pointer', fontSize: 10 }}>Delete</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+`.split('\n');
+
+  // Find the line with the old major marker to preserve it
+  const markerLine = lines[majorStart - 1]; // "// ─── MAJOR EXPENSES ───..."
+  lines.splice(majorStart - 1, creditsStart - (majorStart - 1), ...newMajorLines);
+  console.log('[OK] MajorTab replaced successfully');
+} else {
+  console.error(`[ERROR] Could not locate MajorTab (${majorStart}) or CreditsTab marker (${creditsStart})`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANGE 3: Inject installment plan states into DebtsTab
+// Find DebtsTab and inject after the avgUtilization line
+// ─────────────────────────────────────────────────────────────────────────────
+const debtsStart    = findLine('function DebtsTab(');
+const avgUtilLine   = findLine('avgUtilization', debtsStart);
+const ccStateMarker = findLine('// Credit Card Transaction States', debtsStart);
+
+if (avgUtilLine !== -1 && ccStateMarker !== -1) {
+  const instStateLines = `
+  // \u2500\u2500 Installment Plan Tracker \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  const [instPlans, setInstPlans] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; }
+  });
+  const [showInstForm, setShowInstForm]     = useState(false);
+  const [newInst, setNewInst]               = useState({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7) });
+  const [instSuccessMsg, setInstSuccessMsg] = useState('');
+
+  const saveInstPlans = (plans) => {
+    setInstPlans(plans);
+    try { localStorage.setItem('bg_installments', JSON.stringify(plans)); } catch {}
+  };
+  const addInstPlan = () => {
+    if (!newInst.cardId) return alert('Select a credit card');
+    if (!newInst.item.trim()) return alert('Enter the item description');
+    if (!newInst.total || Number(newInst.total) <= 0) return alert('Enter the total amount');
+    const card = debts.find(d => d.id === newInst.cardId);
+    const plan = { id: 'inst-' + Date.now(), cardId: newInst.cardId, cardName: card?.name || 'Unknown', item: newInst.item.trim(), total: Number(newInst.total), months: Number(newInst.months) || 12, startMonth: newInst.startMonth, paidMonths: 0, createdAt: new Date().toISOString().slice(0,10) };
+    saveInstPlans([...instPlans, plan]);
+    setNewInst({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7) });
+    setShowInstForm(false);
+    setInstSuccessMsg('Plan added!');
+    setTimeout(() => setInstSuccessMsg(''), 3000);
+  };
+  const payInstMonth   = (id) => saveInstPlans(instPlans.map(p => p.id === id ? { ...p, paidMonths: Math.min(p.paidMonths + 1, p.months) } : p));
+  const deleteInstPlan = (id) => { if (window.confirm('Delete this installment plan?')) saveInstPlans(instPlans.filter(p => p.id !== id)); };
+  const activeInstPlans    = instPlans.filter(p => p.paidMonths < p.months);
+  const completedInstPlans = instPlans.filter(p => p.paidMonths >= p.months);
+  const totalMonthlyInst   = activeInstPlans.reduce((s, p) => s + Math.ceil(p.total / p.months), 0);
+`.split('\n');
+
+  // Insert after the avgUtilization line
+  lines.splice(avgUtilLine + 1, 0, ...instStateLines);
+  console.log(`[OK] Installment plan states injected after line ${avgUtilLine + 1}`);
+} else {
+  console.error(`[ERROR] Could not find DebtsTab state injection points (avgUtil:${avgUtilLine}, ccState:${ccStateMarker})`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Now inject the Installment Plan Tracker UI before the CC Charge Logger section
+// ─────────────────────────────────────────────────────────────────────────────
+const debtsStartNew   = findLine('function DebtsTab(');
+const ccLoggerMarker  = findLine('CC Charge Logger', debtsStartNew);
+
+if (ccLoggerMarker !== -1) {
+  // Find the enclosing Card opening 2-3 lines before
+  let insertBefore = ccLoggerMarker - 1;
+  while (insertBefore > debtsStartNew && !lines[insertBefore].includes('<Card') && !lines[insertBefore].trim().startsWith('{/*')) {
+    insertBefore--;
+  }
+
+  const instUILines = `
+      {/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+          INSTALLMENT PLAN TRACKER
+          \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */}
+      <Card style={{ marginBottom: 0, border: \`1px solid \${C.amber}33\` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div>
+            <SecTitle style={{ margin: 0 }}>\ud83d\udce6 Installment Plan Tracker</SecTitle>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+              Monthly obligation: <span style={{ color: C.amber, fontWeight: 700 }}>{peso(totalMonthlyInst)}/mo</span>
+              {' \u00b7 '}{activeInstPlans.length} active plan{activeInstPlans.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+          {canWrite && (
+            <button onClick={() => setShowInstForm(p => !p)}
+              style={{ padding: '6px 14px', borderRadius: 7, border: \`1px solid \${C.amber}55\`, background: showInstForm ? \`\${C.amber}22\` : 'transparent', color: C.amber, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+              {showInstForm ? 'Cancel' : '+ Add Plan'}
+            </button>
+          )}
+        </div>
+
+        {/* Add Form */}
+        {showInstForm && (
+          <div style={{ background: \`\${C.card2}\`, borderRadius: 10, padding: 14, marginBottom: 14, border: \`1px solid \${C.border}\` }}>
+            <div style={{ fontSize: 11, color: C.amber, fontWeight: 700, marginBottom: 10, textTransform: 'uppercase' }}>New Installment Plan</div>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 2fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Credit Card</label>
+                <select value={newInst.cardId} onChange={e => setNewInst(p => ({ ...p, cardId: e.target.value }))}
+                  style={{ padding: '8px 10px', borderRadius: 7, border: \`1px solid \${C.border}\`, background: C.bg, color: C.text, fontSize: 12, outline: 'none', width: '100%' }}>
+                  <option value="">Select card\u2026</option>
+                  {debts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Item Description</label>
+                <Inp value={newInst.item} onChange={e => setNewInst(p => ({ ...p, item: e.target.value }))} placeholder="e.g. Lazada Shopping, Samsung TV\u2026" />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Total Amount (\u20b1)</label>
+                <Inp type="number" value={newInst.total} onChange={e => setNewInst(p => ({ ...p, total: e.target.value }))} placeholder="12000" style={{ textAlign: 'right' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Terms (Months)</label>
+                <Inp type="number" value={newInst.months} onChange={e => setNewInst(p => ({ ...p, months: e.target.value }))} placeholder="12" style={{ textAlign: 'right' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Monthly Amount</label>
+                <div style={{ padding: '8px 10px', borderRadius: 7, border: \`1px solid \${C.border}\`, background: \`\${C.green}18\`, color: C.green, fontSize: 14, fontWeight: 800, textAlign: 'right' }}>
+                  {newInst.total && newInst.months ? peso(Math.ceil(Number(newInst.total) / Number(newInst.months))) : '\u20b1\u2014'}
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Start Month</label>
+                <Inp type="month" value={newInst.startMonth} onChange={e => setNewInst(p => ({ ...p, startMonth: e.target.value }))} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <BtnG onClick={addInstPlan} style={{ padding: '8px 20px', fontSize: 12 }}>\ud83d\udcbe Save Installment Plan</BtnG>
+              {instSuccessMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>\u2713 {instSuccessMsg}</span>}
+            </div>
+          </div>
+        )}
+
+        {/* Active Plans */}
+        {activeInstPlans.length === 0 && !showInstForm && (
+          <div style={{ textAlign: 'center', color: C.muted, padding: '20px 0', fontSize: 12 }}>No active installment plans. Click \u201c+ Add Plan\u201d to track your CC installments.</div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {activeInstPlans.map(plan => {
+            const monthly = Math.ceil(plan.total / plan.months);
+            const remaining = plan.months - plan.paidMonths;
+            const paidAmt = plan.paidMonths * monthly;
+            const remAmt = plan.total - paidAmt;
+            const pct = Math.round(plan.paidMonths / plan.months * 100);
+            return (
+              <div key={plan.id} style={{ background: \`\${C.card2}\`, borderRadius: 10, padding: '12px 14px', border: \`1px solid \${C.amber}33\` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{plan.item}</div>
+                    <div style={{ fontSize: 11, color: C.muted }}>
+                      <span style={{ color: C.amber, fontWeight: 600 }}>{plan.cardName}</span>
+                      {' \u00b7 '}{plan.months} months @ {peso(monthly)}/mo
+                      {' \u00b7 '}Started {plan.startMonth}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: C.amber }}>{peso(monthly)}<span style={{ fontSize: 10, color: C.muted }}>/mo</span></div>
+                    <div style={{ fontSize: 10, color: C.muted }}>{remaining} months left</div>
+                  </div>
+                </div>
+                <div style={{ height: 6, borderRadius: 3, background: \`\${C.border}44\`, overflow: 'hidden', marginBottom: 6 }}>
+                  <div style={{ height: '100%', width: \`\${pct}%\`, background: \`linear-gradient(90deg, \${C.amber}, \${C.green})\`, borderRadius: 3, transition: 'width 0.4s' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, marginBottom: 10 }}>
+                  <span>{plan.paidMonths}/{plan.months} months paid \u00b7 {peso(paidAmt)} paid</span>
+                  <span style={{ color: C.orange, fontWeight: 600 }}>{peso(remAmt)} remaining</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {canUpdate && (
+                    <button onClick={() => payInstMonth(plan.id)}
+                      style={{ flex: 1, padding: '6px', borderRadius: 6, border: \`1px solid \${C.green}55\`, background: \`\${C.green}18\`, color: C.green, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                      \u2713 Mark 1 Month Paid ({peso(monthly)})
+                    </button>
+                  )}
+                  <button onClick={() => deleteInstPlan(plan.id)}
+                    style={{ padding: '6px 10px', borderRadius: 6, border: \`1px solid \${C.red}33\`, background: 'none', color: C.red, cursor: 'pointer', fontSize: 11 }}>\ud83d\uddd1</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Completed Plans */}
+        {completedInstPlans.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: \`1px solid \${C.border}33\` }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 6 }}>\u2705 FULLY PAID PLANS ({completedInstPlans.length})</div>
+            {completedInstPlans.map(plan => (
+              <div key={plan.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', borderRadius: 6, background: \`\${C.green}08\`, marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{plan.item} <span style={{ color: C.green }}>\u00b7 {peso(plan.total)} fully paid</span></span>
+                <button onClick={() => deleteInstPlan(plan.id)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 14 }}>\u00d7</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+`.split('\n');
+
+  lines.splice(insertBefore, 0, ...instUILines);
+  console.log(`[OK] Installment Plan Tracker UI injected at line ${insertBefore + 1}`);
+} else {
+  console.error(`[ERROR] CC Charge Logger marker not found (ccLoggerMarker:${ccLoggerMarker})`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Write output
+// ─────────────────────────────────────────────────────────────────────────────
+fs.writeFileSync(SRC_PATH, lines.join('\n'), 'utf8');
+console.log(`\nDone! File written: ${lines.length} lines`);
