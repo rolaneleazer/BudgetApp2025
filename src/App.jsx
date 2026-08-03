@@ -302,9 +302,19 @@ function YMPicker({year,monthIdx,onYear,onMonth,sm}) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-const DEFAULT_CARD_ORDER = ['metrics','balance-logs','cashflow','charts-row','budget-row','insights-row'];
+const DEFAULT_CARD_ORDER = ['today-glance','surplus-banner','metrics','period-burn','balance-logs','cashflow','expense-donut','charts-row','budget-row','recent-tx','installment-summary','insights-row'];
 
 function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm }) {
+  // ── Load installment plans from localStorage ──
+  const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
+  const getInstBreakdownSimple = (total, months, interestRate, customMonthly) => {
+    const p = Number(total) || 0, m = Number(months) || 12, r = Number(interestRate) || 0, c = Number(customMonthly) || 0;
+    if (c > 0) return Math.ceil(c);
+    return Math.ceil(p / m + p * (r / 100 / 12));
+  };
+  const activeInstPlans = instPlans.filter(pl => (pl.paidMonths || 0) < (Number(pl.months) || 12));
+  const totalMonthlyObligation = activeInstPlans.reduce((s, pl) => s + getInstBreakdownSimple(pl.total, pl.months, pl.interestRate, pl.customMonthly), 0);
+
   const [historyView, setHistoryView] = useState('total');
   const [historyGrouping, setHistoryGrouping] = useState('weekly');
   const [balanceFilter, setBalanceFilter] = useState('daily');
@@ -711,6 +721,59 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   };
   const bvsA = getBudgetVsActual();
 
+  // ── Current-month expense category breakdown (for donut) ──
+  const curMonthKey = makeKey(CUR_YEAR, CUR_MONTH);
+  const curMd = budgetData[curMonthKey] || makeMonthData();
+  let catFixed = 0, catDebt = 0, catVariable = 0, catInvestment = 0;
+  ['5th','20th'].forEach(p => {
+    if (curMd[p]) curMd[p].expenses.forEach(e => {
+      const cat = classifyExpense(e.name), amt = Number(e.amount) || 0;
+      if (cat === 'Fixed') catFixed += amt;
+      else if (cat === 'Debt') catDebt += amt;
+      else if (cat === 'Investment') catInvestment += amt;
+      else catVariable += amt;
+    });
+  });
+  // Unbudgeted manual debits this month
+  const catUnbudgeted = (budgetData.debitHistory || []).filter(d => !d.isCredit && !!d.excludeFromBudget && (d.date||'').slice(0,7) === curMonthKey).reduce((s,d) => s + (d.amount||0), 0);
+  const expenseDonutData = [
+    { name: 'Fixed', value: catFixed, color: C.red },
+    { name: 'Debt', value: catDebt, color: C.amber },
+    { name: 'Variable', value: catVariable, color: C.orange },
+    { name: 'Investment', value: catInvestment, color: C.purple },
+    { name: 'Unbudgeted', value: catUnbudgeted, color: C.muted },
+  ].filter(d => d.value > 0);
+
+  // ── Payroll period burn ──
+  const period5  = curMd['5th']  || makePeriod();
+  const period20 = curMd['20th'] || makePeriod();
+  const sum5  = calcSummary(period5);
+  const sum20 = calcSummary(period20);
+
+  // ── Today at a glance ──
+  const todayFull = new Date();
+  const todayDayNum = todayFull.getDate();
+  const daysTo5  = todayDayNum <= 5  ? 5  - todayDayNum : null;
+  const daysTo20 = todayDayNum <= 20 ? 20 - todayDayNum : null;
+  const activePeriodLabel = todayDayNum <= 15 ? '5th' : '20th';
+  const activePeriodSum = activePeriodLabel === '5th' ? sum5 : sum20;
+  const burnPct = activePeriodSum.totalIncome > 0 ? Math.min(100, (activePeriodSum.paidExpenses / activePeriodSum.totalIncome) * 100) : 0;
+  const burnColor = burnPct > 90 ? C.red : burnPct > 65 ? C.amber : C.green;
+
+  // ── Monthly surplus/deficit for current month ──
+  const curMonthCalc = calcMonth(curMd);
+  const surplusAmount = curMonthCalc.savings;
+  const isSurplus = surplusAmount >= 0;
+
+  // ── Recent transactions feed ──
+  const allRecentTx = [
+    ...(budgetData.debitHistory || []).map(d => ({ ...d, source: 'manual', sourceLabel: d.isCredit ? 'Credit' : 'Debit' })),
+    ...(budgetData.ccHistory || []).map(d => ({ ...d, source: 'cc', sourceLabel: 'CC Charge' })),
+    ...(budgetData.installmentHistory || []).map(d => ({ ...d, source: 'installment', sourceLabel: 'Installment' })),
+  ].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 7);
+  const TX_SRC_CLR = { manual: C.blue, cc: C.purple, installment: C.amber };
+  const TX_SRC_ICON = { manual: '💸', cc: '💳', installment: '📦' };
+
   const forecast = [];
   for (let i = 0; i <= 12; i++) {
     forecast.push({
@@ -728,6 +791,246 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   // ── Section renderers ──
   const sectionContent = (id) => {
     switch (id) {
+      case 'today-glance': return (
+        <Card style={{ marginBottom: 0, background: `linear-gradient(135deg, ${C.card2}, ${C.card})` }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: sm ? 12 : 20, alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: `${C.teal}22`, border: `1px solid ${C.teal}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔥</div>
+              <div>
+                <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Today at a Glance</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
+                  {todayFull.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase' }}>Active Period</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: C.blue }}>{activePeriodLabel} Payroll</div>
+              </div>
+              {daysTo5 !== null && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase' }}>Days to 5th</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: daysTo5 <= 2 ? C.red : C.amber }}>{daysTo5 === 0 ? 'Today!' : `${daysTo5}d`}</div>
+                </div>
+              )}
+              {daysTo20 !== null && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase' }}>Days to 20th</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: daysTo20 <= 2 ? C.red : C.amber }}>{daysTo20 === 0 ? 'Today!' : `${daysTo20}d`}</div>
+                </div>
+              )}
+              <div style={{ minWidth: 140 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.muted, marginBottom: 4 }}>
+                  <span>Budget Burn ({activePeriodLabel})</span>
+                  <span style={{ color: burnColor, fontWeight: 700 }}>{burnPct.toFixed(0)}%</span>
+                </div>
+                <div style={{ height: 6, background: C.border, borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: `${burnPct}%`, height: '100%', background: `linear-gradient(90deg, ${C.green}, ${burnColor})`, borderRadius: 4, transition: 'width 0.4s ease' }} />
+                </div>
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 3 }}>{peso(activePeriodSum.paidExpenses)} paid of {peso(activePeriodSum.totalIncome)}</div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      );
+
+      case 'surplus-banner': {
+        const surplusGrad = isSurplus
+          ? `linear-gradient(135deg, ${C.green}22, ${C.teal}11)`
+          : `linear-gradient(135deg, ${C.red}22, ${C.orange}11)`;
+        return (
+          <Card style={{ marginBottom: 0, background: surplusGrad, border: `1px solid ${isSurplus ? C.green : C.red}44` }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Monthly Budget — {MONTH_NAMES[CUR_MONTH]} {CUR_YEAR}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontSize: sm ? 26 : 34, fontWeight: 900, color: isSurplus ? C.green : C.red, letterSpacing: -1 }}>
+                    {isSurplus ? '+' : '−'}{peso(Math.abs(surplusAmount))}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: isSurplus ? C.green : C.red }}>{isSurplus ? 'SURPLUS' : 'DEFICIT'}</span>
+                </div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
+                  {peso(curMonthCalc.income)} income − {peso(curMonthCalc.expenses)} expenses
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 16 }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>5th Period</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: sum5.netSavings >= 0 ? C.green : C.red }}>{sum5.netSavings >= 0 ? '+' : '−'}{peso(Math.abs(sum5.netSavings))}</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>20th Period</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: sum20.netSavings >= 0 ? C.green : C.red }}>{sum20.netSavings >= 0 ? '+' : '−'}{peso(Math.abs(sum20.netSavings))}</div>
+                </div>
+              </div>
+            </div>
+          </Card>
+        );
+      }
+
+      case 'period-burn': return (
+        <Card style={{ marginBottom: 0 }}>
+          <SecTitle>Payroll Period Burn — {MONTH_NAMES[CUR_MONTH]} {CUR_YEAR}</SecTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 14 }}>
+            {[['5th', sum5, period5], ['20th', sum20, period20]].map(([label, s, pd]) => {
+              const income = s.totalIncome;
+              const paid   = s.paidExpenses;
+              const total  = s.totalExpenses;
+              const pct    = income > 0 ? Math.min(100, (paid / income) * 100) : 0;
+              const tc     = pct > 90 ? C.red : pct > 65 ? C.amber : C.green;
+              const unpaidExpenses = pd.expenses.filter(e => !e.done && e.amount > 0);
+              return (
+                <div key={label}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{label} Payroll Period</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: tc }}>{pct.toFixed(0)}% used</span>
+                  </div>
+                  <div style={{ height: 8, background: C.border, borderRadius: 5, overflow: 'hidden', marginBottom: 8 }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg, ${C.green}, ${tc})`, borderRadius: 5, transition: 'width 0.4s ease' }} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
+                    {[['Income', peso(income), C.blue], ['Paid', peso(paid), tc], ['Budget', peso(total), C.muted]].map(([lbl, val, col]) => (
+                      <div key={lbl} style={{ fontSize: 11 }}>
+                        <div style={{ color: C.muted, fontSize: 9, textTransform: 'uppercase', fontWeight: 700 }}>{lbl}</div>
+                        <div style={{ color: col, fontWeight: 700, marginTop: 2 }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {unpaidExpenses.length > 0 && (
+                    <div style={{ fontSize: 10, color: C.muted, padding: '6px 8px', background: `${C.border}33`, borderRadius: 5 }}>
+                      ⚠ {unpaidExpenses.length} unpaid: {unpaidExpenses.slice(0,3).map(e => e.name).join(', ')}{unpaidExpenses.length > 3 ? '...' : ''}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      );
+
+      case 'expense-donut': return (
+        <Card style={{ marginBottom: 0 }}>
+          <SecTitle>Expense Breakdown — {MONTH_NAMES[CUR_MONTH]} {CUR_YEAR}</SecTitle>
+          {expenseDonutData.length === 0 ? (
+            <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No expenses logged yet this month.</div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <ResponsiveContainer width={130} height={130}>
+                <PieChart>
+                  <Pie data={expenseDonutData} dataKey="value" cx="50%" cy="50%" innerRadius={34} outerRadius={56}>
+                    {expenseDonutData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={ttip} formatter={v => peso(v)} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ flex: 1, minWidth: 140 }}>
+                {expenseDonutData.map(d => {
+                  const tot = expenseDonutData.reduce((s, x) => s + x.value, 0);
+                  const pct = tot > 0 ? ((d.value / tot) * 100).toFixed(0) : 0;
+                  return (
+                    <div key={d.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                        <span style={{ width: 9, height: 9, borderRadius: 2, background: d.color, display: 'inline-block', flexShrink: 0 }} />
+                        <span style={{ color: C.text, fontWeight: 600 }}>{d.name}</span>
+                      </span>
+                      <span style={{ fontSize: 11, color: C.muted }}>{peso(d.value)} <span style={{ color: d.color, fontWeight: 700 }}>({pct}%)</span></span>
+                    </div>
+                  );
+                })}
+                <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 6, marginTop: 4, display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700 }}>
+                  <span style={{ color: C.muted }}>Total Expenses</span>
+                  <span style={{ color: C.red }}>{peso(expenseDonutData.reduce((s, d) => s + d.value, 0))}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+      );
+
+      case 'recent-tx': return (
+        <Card style={{ marginBottom: 0 }}>
+          <SecTitle>Recent Transactions</SecTitle>
+          {allRecentTx.length === 0 ? (
+            <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No transactions logged yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {allRecentTx.map((tx, i) => (
+                <div key={tx.id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 4px', borderBottom: `1px solid ${C.border}18`, gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>{tx.isCredit ? '💰' : (TX_SRC_ICON[tx.source] || '💸')}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: sm ? 130 : 200 }}>{tx.description}</div>
+                      <div style={{ fontSize: 10, color: C.muted }}>{tx.date} · {tx.accountName}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: tx.isCredit ? C.green : C.red }}>
+                      {tx.isCredit ? '+' : '−'}{peso(tx.amount)}
+                    </span>
+                    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: `${tx.isCredit ? C.green : (TX_SRC_CLR[tx.source] || C.muted)}22`, color: tx.isCredit ? C.green : (TX_SRC_CLR[tx.source] || C.muted), fontWeight: 700, marginTop: 2 }}>
+                      {tx.sourceLabel}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      );
+
+      case 'installment-summary': return (
+        <Card style={{ marginBottom: 0 }}>
+          <SecTitle>Installment Obligations</SecTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: `${C.amber}11`, border: `1px solid ${C.amber}33` }}>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Monthly Obligation</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: C.amber }}>{peso(totalMonthlyObligation)}</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 3 }}>Total across all active plans</div>
+            </div>
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: `${C.blue}11`, border: `1px solid ${C.blue}33` }}>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Active Plans</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: C.blue }}>{activeInstPlans.length}</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 3 }}>{instPlans.length - activeInstPlans.length} completed</div>
+            </div>
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: `${C.purple}11`, border: `1px solid ${C.purple}33` }}>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Total Remaining</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: C.purple }}>
+                {peso(activeInstPlans.reduce((s, pl) => {
+                  const monthly = getInstBreakdownSimple(pl.total, pl.months, pl.interestRate, pl.customMonthly);
+                  const remaining = Math.max(0, (Number(pl.months) || 12) - (pl.paidMonths || 0));
+                  return s + monthly * remaining;
+                }, 0))}
+              </div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 3 }}>Outstanding balance</div>
+            </div>
+          </div>
+          {activeInstPlans.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {activeInstPlans.slice(0, 5).map(pl => {
+                const totalM = Number(pl.months) || 12;
+                const paid   = pl.paidMonths || 0;
+                const pct    = (paid / totalM) * 100;
+                const monthly = getInstBreakdownSimple(pl.total, pl.months, pl.interestRate, pl.customMonthly);
+                return (
+                  <div key={pl.id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
+                      <span style={{ fontWeight: 600, color: C.text }}>{pl.item}</span>
+                      <span style={{ color: C.muted }}>{peso(monthly)}/mo · {paid}/{totalM} paid</span>
+                    </div>
+                    <div style={{ height: 5, background: C.border, borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg, ${C.amber}, ${C.green})`, borderRadius: 3 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {activeInstPlans.length === 0 && (
+            <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '12px 0' }}>No active installment plans. Go to Debts tab to add one.</div>
+          )}
+        </Card>
+      );
       case 'metrics': return (
         <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(6, minmax(0, 1fr))', gap: sm ? 8 : 12 }}>
           <MetricCard icon="^" label="Net Worth" value={confidentialValue(peso(netWorth))} sub={`${Math.round(avgRate)}% savings rate`} color={C.blue} sm={sm} masked={moneyMasked} onToggleMask={toggleMoneyMask} />
@@ -1015,11 +1318,17 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   };
 
   const SECTION_LABELS = {
+    'today-glance': 'Today at a Glance',
+    'surplus-banner': 'Monthly Surplus / Deficit',
     'metrics': 'Key Metrics',
+    'period-burn': 'Payroll Period Burn',
     'balance-logs': 'Balance Logs',
     'cashflow': 'Cash Flow',
+    'expense-donut': 'Expense Breakdown Donut',
     'charts-row': 'Charts',
     'budget-row': 'Budget & Goals',
+    'recent-tx': 'Recent Transactions',
+    'installment-summary': 'Installment Obligations',
     'insights-row': 'Insights',
   };
 
@@ -1743,6 +2052,9 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [filterAccount, setFilterAccount] = useState('all');
+  const [txType, setTxType] = useState('debit'); // 'debit' or 'credit'
+  const [excludeFromBudget, setExcludeFromBudget] = useState(false);
+  const [editingLedgerTx, setEditingLedgerTx] = useState(null);
 
   const handleDebitDateChange = (val) => {
     setDebitDate(val);
@@ -1750,20 +2062,45 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
     setDebitPeriod(day <= 15 ? '5th' : '20th');
   };
 
+  const handleStartEditLedgerTx = (tx) => {
+    setSelectedAccId(tx.accountId || accounts[0]?.id || '');
+    setDebitAmount(String(tx.amount || ''));
+    setDebitDesc(tx.description || '');
+    setDebitDate(tx.date || new Date().toISOString().slice(0, 10));
+    setDebitPeriod(tx.period || (new Date().getDate() <= 15 ? '5th' : '20th'));
+    setTxType(tx.isCredit ? 'credit' : 'debit');
+    setExcludeFromBudget(!!tx.excludeFromBudget);
+    setEditingLedgerTx(tx);
+    setShowForm(true);
+  };
+
+  const handleCancelEditLedgerTx = () => {
+    setEditingLedgerTx(null);
+    setDebitAmount('');
+    setDebitDesc('');
+    setTxType('debit');
+    setExcludeFromBudget(false);
+  };
+
   // ── Unified outflow sources ──
-  const manualDebits   = (budgetData.debitHistory       || []).map(d => ({ ...d, source: 'manual',      sourceLabel: 'Manual Debit' }));
+  const manualDebits   = (budgetData.debitHistory       || []).map(d => ({ 
+    ...d, 
+    source: 'manual',      
+    sourceLabel: d.isCredit ? 'Manual Credit' : 'Manual Debit' 
+  }));
   const ccCharges      = (budgetData.ccHistory          || []).map(d => ({ ...d, source: 'cc',          sourceLabel: 'CC Charge'    }));
   const installments   = (budgetData.installmentHistory || []).map(d => ({ ...d, source: 'installment', sourceLabel: 'Installment'  }));
   const allTx = [...manualDebits, ...ccCharges, ...installments]
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-  // ── Metrics ──
+  // ── Metrics (Only for spending outflows) ──
   const now = new Date();
   const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const last7Date    = new Date(now - 7 * 86400000).toISOString().slice(0, 10);
-  const thisMonthAmt = allTx.filter(t => (t.date || '').slice(0, 7) === thisMonthKey).reduce((s, t) => s + (t.amount || 0), 0);
-  const last7Amt     = allTx.filter(t => (t.date || '') >= last7Date).reduce((s, t) => s + (t.amount || 0), 0);
-  const biggestTx    = allTx.reduce((mx, t) => (t.amount || 0) > (mx?.amount || 0) ? t : mx, null);
+  const outflows     = allTx.filter(t => !t.isCredit);
+  const thisMonthAmt = outflows.filter(t => (t.date || '').slice(0, 7) === thisMonthKey).reduce((s, t) => s + (t.amount || 0), 0);
+  const last7Amt     = outflows.filter(t => (t.date || '') >= last7Date).reduce((s, t) => s + (t.amount || 0), 0);
+  const biggestTx    = outflows.reduce((mx, t) => (t.amount || 0) > (mx?.amount || 0) ? t : mx, null);
 
   // ── Filtered ──
   const filtered = allTx.filter(t => {
@@ -1786,41 +2123,141 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
     const dateStr = debitDate;
     const period  = debitPeriod;
     const key     = dateStr.slice(0, 7);
-    setAccounts(prev => prev.map(a => a.id === accId ? { ...a, balance: a.balance - amount } : a));
+    const isCredit = txType === 'credit';
+
+    // If editing an existing ledger transaction, first revert its original balance and budget expense
+    if (editingLedgerTx) {
+      if (editingLedgerTx.accountId && editingLedgerTx.accountId !== 'none') {
+        setAccounts(prev => prev.map(a => a.id === editingLedgerTx.accountId ? { ...a, balance: editingLedgerTx.isCredit ? a.balance - editingLedgerTx.amount : a.balance + editingLedgerTx.amount } : a));
+      }
+      const oldKey = (editingLedgerTx.date || '').slice(0, 7);
+      const oldExpName = editingLedgerTx.source === 'installment'
+        ? `Installment: ${editingLedgerTx.description.replace('Installment Payment: ', '')}`
+        : (editingLedgerTx.source === 'cc' ? `${editingLedgerTx.description} (CC)` : `${editingLedgerTx.description} (${editingLedgerTx.accountName})`);
+
+      setBudgetData(prev => {
+        const md = prev[oldKey] || makeMonthData();
+        const pd = md[editingLedgerTx.period] || makePeriod();
+        const updatedBudgetData = { ...prev };
+
+        if (editingLedgerTx.source === 'installment') {
+          updatedBudgetData.installmentHistory = (prev.installmentHistory || []).filter(h => h.id !== editingLedgerTx.id);
+        } else if (editingLedgerTx.source === 'cc') {
+          updatedBudgetData.ccHistory = (prev.ccHistory || []).filter(h => h.id !== editingLedgerTx.id);
+        } else {
+          updatedBudgetData.debitHistory = (prev.debitHistory || []).filter(h => h.id !== editingLedgerTx.id);
+        }
+
+        if (!editingLedgerTx.isCredit && !editingLedgerTx.excludeFromBudget) {
+          updatedBudgetData[oldKey] = {
+            ...md,
+            [editingLedgerTx.period]: {
+              ...pd,
+              expenses: pd.expenses.filter(e => !(e.name === oldExpName && e.amount === editingLedgerTx.amount))
+            }
+          };
+        }
+        return updatedBudgetData;
+      });
+    }
+
+    // Update account balance for new values
+    setAccounts(prev => prev.map(a => a.id === accId ? { ...a, balance: isCredit ? a.balance + amount : a.balance - amount } : a));
+
     setBudgetData(prev => {
-      const monthData  = prev[key]         || makeMonthData();
-      const periodData = monthData[period]  || makePeriod();
-      const newExpense = { name: `${debitDesc.trim()} (${account.name})`, budget: amount, amount, done: true };
-      const newItem    = {
-        id: 'deb-' + Date.now(), accountId: accId, accountName: account.name,
-        amount, description: debitDesc.trim(), date: dateStr, period,
+      const newItem = {
+        id: editingLedgerTx ? editingLedgerTx.id : ('deb-' + Date.now()),
+        accountId: accId,
+        accountName: account.name,
+        amount,
+        description: debitDesc.trim(),
+        date: dateStr,
+        period,
+        isCredit,
+        excludeFromBudget: isCredit ? true : excludeFromBudget,
         timestamp: new Date().toISOString()
       };
-      return {
-        ...prev,
-        [key]: { ...monthData, [period]: { ...periodData, expenses: [...periodData.expenses, newExpense] } },
-        debitHistory: [newItem, ...(prev.debitHistory || [])]
-      };
+
+      if (!isCredit && !excludeFromBudget) {
+        // Budgeted debit: add as expense line item
+        const monthData  = prev[key]         || makeMonthData();
+        const periodData = monthData[period]  || makePeriod();
+        const newExpense = { name: `${debitDesc.trim()} (${account.name})`, budget: amount, amount, done: true };
+        return {
+          ...prev,
+          [key]: { ...monthData, [period]: { ...periodData, expenses: [...periodData.expenses, newExpense] } },
+          debitHistory: [newItem, ...(prev.debitHistory || []).filter(h => h.id !== newItem.id)]
+        };
+      } else {
+        // Credit or unbudgeted debit
+        return {
+          ...prev,
+          debitHistory: [newItem, ...(prev.debitHistory || []).filter(h => h.id !== newItem.id)]
+        };
+      }
     });
-    setDebitAmount(''); setDebitDesc('');
-    setDebitSuccessMsg('Debit logged!');
+
+    setDebitAmount('');
+    setDebitDesc('');
+    const wasEditing = editingLedgerTx;
+    setEditingLedgerTx(null);
+    setDebitSuccessMsg(wasEditing ? 'Transaction updated!' : (isCredit ? 'Credit logged!' : 'Debit logged!'));
     setTimeout(() => setDebitSuccessMsg(''), 3000);
   };
 
   const handleDeleteTx = (tx) => {
-    if (tx.source !== 'manual') return alert('Only manual debits can be refunded here.');
-    if (!confirm(`Refund ₱${(tx.amount || 0).toLocaleString()} back to ${tx.accountName} and remove this entry?`)) return;
-    setAccounts(prev => prev.map(a => a.id === tx.accountId ? { ...a, balance: a.balance + tx.amount } : a));
+    const msg = tx.isCredit
+      ? `Remove this credit entry and deduct ₱${(tx.amount || 0).toLocaleString()} from ${tx.accountName}?`
+      : `Refund ₱${(tx.amount || 0).toLocaleString()} back to ${tx.accountName || 'account'} and remove this entry?`;
+    if (!confirm(msg)) return;
+
+    // Reverse balance adjustment
+    if (tx.accountId && tx.accountId !== 'none') {
+      setAccounts(prev => prev.map(a => a.id === tx.accountId ? { ...a, balance: tx.isCredit ? a.balance - tx.amount : a.balance + tx.amount } : a));
+    }
+
     const key = (tx.date || '').slice(0, 7);
-    const expName = `${tx.description} (${tx.accountName})`;
+    const expName = tx.source === 'installment'
+      ? `Installment: ${tx.description.replace('Installment Payment: ', '')}`
+      : (tx.source === 'cc' ? `${tx.description} (CC)` : `${tx.description} (${tx.accountName})`);
+
     setBudgetData(prev => {
       const md = prev[key] || makeMonthData();
       const pd = md[tx.period] || makePeriod();
-      return {
-        ...prev,
-        [key]: { ...md, [tx.period]: { ...pd, expenses: pd.expenses.filter(e => !(e.name === expName && e.amount === tx.amount)) } },
-        debitHistory: (prev.debitHistory || []).filter(h => h.id !== tx.id)
+
+      const newBudgetData = {
+        ...prev
       };
+
+      if (tx.source === 'installment') {
+        newBudgetData.installmentHistory = (prev.installmentHistory || []).filter(h => h.id !== tx.id);
+        if (tx.planId) {
+          try {
+            const saved = JSON.parse(localStorage.getItem('bg_installments') || '[]');
+            const updated = saved.map(p => p.id === tx.planId ? { ...p, paidMonths: Math.max(0, p.paidMonths - 1) } : p);
+            localStorage.setItem('bg_installments', JSON.stringify(updated));
+          } catch (e) {
+            console.error("Failed to decrement paidMonths in localStorage:", e);
+          }
+        }
+      } else if (tx.source === 'cc') {
+        newBudgetData.ccHistory = (prev.ccHistory || []).filter(h => h.id !== tx.id);
+      } else {
+        newBudgetData.debitHistory = (prev.debitHistory || []).filter(h => h.id !== tx.id);
+      }
+
+      // Only clean up budget expenses if it was a budgeted manual debit, cc, or installment
+      if (!tx.isCredit && !tx.excludeFromBudget) {
+        newBudgetData[key] = {
+          ...md,
+          [tx.period]: {
+            ...pd,
+            expenses: pd.expenses.filter(e => !(e.name === expName && e.amount === tx.amount))
+          }
+        };
+      }
+
+      return newBudgetData;
     });
   };
 
@@ -1837,23 +2274,80 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
         <MetricCard icon="🏆" label="Largest Transaction"   value={biggestTx ? peso(biggestTx.amount) : '₱0'}      sub={biggestTx?.description || '—'} color={C.purple} sm={sm} />
       </div>
 
-      {/* ── New Debit Form ── */}
+      {/* ── New Transaction Form ── */}
       <Card style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showForm ? 16 : 0 }}>
-          <SecTitle style={{ margin: 0 }}>⚡ Log New Debit</SecTitle>
+          <SecTitle style={{ margin: 0 }}>
+            {showForm ? (editingLedgerTx ? '✏️ Edit Transaction' : (txType === 'debit' ? '⚡ Log New Debit' : '💰 Log New Credit')) : '⚡ Log New Transaction'}
+          </SecTitle>
           {canWrite && (
-            <button onClick={() => setShowForm(p => !p)}
-              style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${showForm ? C.red : C.green}`, background: showForm ? `${C.red}18` : `${C.green}18`, color: showForm ? C.red : C.green, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-              {showForm ? '✕ Close' : '+ New Debit'}
+            <button onClick={() => {
+              if (showForm && editingLedgerTx) {
+                handleCancelEditLedgerTx();
+              }
+              setShowForm(p => !p);
+            }}
+              style={{ padding: '5px 14px', borderRadius: 6, border: `1px solid ${showForm ? C.red : C.blue}`, background: showForm ? `${C.red}18` : `${C.blue}18`, color: showForm ? C.red : C.blue, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+              {showForm ? '✕ Close' : '+ New Transaction'}
             </button>
           )}
         </div>
 
         {showForm && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Transaction Type Pills */}
+            <div style={{ display: 'flex', background: `${C.card2}`, padding: 4, borderRadius: 8, gap: 4, marginBottom: 4 }}>
+              <button
+                type="button"
+                onClick={() => setTxType('debit')}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  border: 'none',
+                  borderRadius: 6,
+                  background: txType === 'debit' ? `linear-gradient(135deg, ${C.red}, ${C.orange})` : 'transparent',
+                  color: txType === 'debit' ? '#fff' : C.muted,
+                  fontWeight: 700,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
+                }}
+              >
+                💸 Debit (Outflow)
+              </button>
+              <button
+                type="button"
+                onClick={() => setTxType('credit')}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  border: 'none',
+                  borderRadius: 6,
+                  background: txType === 'credit' ? `linear-gradient(135deg, ${C.green}, ${C.teal})` : 'transparent',
+                  color: txType === 'credit' ? '#fff' : C.muted,
+                  fontWeight: 700,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6
+                }}
+              >
+                💰 Credit (Deposit/Inflow)
+              </button>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>From Account</label>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                  {txType === 'debit' ? 'From Account' : 'To Account (Deposit)'}
+                </label>
                 <select value={selectedAccId} onChange={e => setSelectedAccId(e.target.value)} disabled={readOnly}
                   style={{ padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 13, outline: 'none', width: '100%', cursor: 'pointer', fontFamily: 'inherit' }}>
                   <option value="" disabled>Select Account</option>
@@ -1862,7 +2356,7 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
               </div>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Description</label>
-                <Inp type="text" value={debitDesc} onChange={e => setDebitDesc(e.target.value)} placeholder="e.g. Grocery, Medicine, Utilities" />
+                <Inp type="text" value={debitDesc} onChange={e => setDebitDesc(e.target.value)} placeholder={txType === 'debit' ? 'e.g. Grocery, Medicine, Utilities' : 'e.g. Salary, Dividend, Transfer In'} />
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
@@ -1883,11 +2377,58 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
                 </select>
               </div>
             </div>
+
+            {txType === 'debit' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                <input
+                  type="checkbox"
+                  id="excludeFromBudget"
+                  checked={excludeFromBudget}
+                  onChange={e => setExcludeFromBudget(e.target.checked)}
+                  disabled={readOnly}
+                  style={{
+                    cursor: 'pointer',
+                    width: 16,
+                    height: 16,
+                    accentColor: C.blue,
+                  }}
+                />
+                <label htmlFor="excludeFromBudget" style={{ fontSize: 12, color: C.text, cursor: 'pointer', fontWeight: 500 }}>
+                  Exclude from Budget <span style={{ color: C.muted, fontSize: 11 }}>(Deducts from account but won't add an expense item to the monthly budget)</span>
+                </label>
+              </div>
+            )}
+
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {canWrite && (
                 <button onClick={handleDebit}
-                  style={{ padding: '8px 20px', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(75,141,255,0.3)' }}>
-                  ⚡ Deduct & Log
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 7,
+                    border: 'none',
+                    background: editingLedgerTx
+                      ? `linear-gradient(135deg, ${C.blue}, ${C.teal})`
+                      : (txType === 'debit'
+                        ? `linear-gradient(135deg, ${C.red}, ${C.orange})`
+                        : `linear-gradient(135deg, ${C.green}, ${C.teal})`),
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    boxShadow: editingLedgerTx
+                      ? '0 4px 14px rgba(33,150,243,0.3)'
+                      : (txType === 'debit'
+                        ? '0 4px 14px rgba(255,81,79,0.3)'
+                        : '0 4px 14px rgba(36,209,126,0.3)'),
+                    transition: 'all 0.2s ease'
+                  }}>
+                  {editingLedgerTx ? '💾 Save Changes' : (txType === 'debit' ? '⚡ Deduct & Log' : '💰 Deposit & Log')}
+                </button>
+              )}
+              {editingLedgerTx && (
+                <button onClick={handleCancelEditLedgerTx}
+                  style={{ padding: '8px 16px', borderRadius: 7, border: `1px solid ${C.border}`, background: 'none', color: C.muted, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                  Cancel
                 </button>
               )}
               {debitSuccessMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>✓ {debitSuccessMsg}</span>}
@@ -1934,13 +2475,24 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
           <SecTitle style={{ margin: 0 }}>Transaction Ledger</SecTitle>
           <span style={{ fontSize: 11, color: C.muted }}>
             {filtered.length} / {allTx.length} entries
-            {filtered.length > 0 && <span style={{ marginLeft: 8, color: C.red, fontWeight: 700 }}>−{peso(filtered.reduce((s,t) => s+(t.amount||0),0))}</span>}
+            {filtered.length > 0 && (
+              <span style={{ marginLeft: 8, fontWeight: 700 }}>
+                Net: {(() => {
+                  const net = filtered.reduce((s, t) => s + (t.isCredit ? (t.amount || 0) : -(t.amount || 0)), 0);
+                  return (
+                    <span style={{ color: net >= 0 ? C.green : C.red }}>
+                      {net >= 0 ? '+' : '−'}{peso(Math.abs(net))}
+                    </span>
+                  );
+                })()}
+              </span>
+            )}
           </span>
         </div>
 
         {filtered.length === 0 ? (
           <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '32px 0' }}>
-            {allTx.length === 0 ? '📭 No transactions yet. Click "+ New Debit" to log your first one.' : '🔍 No results match your filters.'}
+            {allTx.length === 0 ? '📭 No transactions yet. Click "+ New Transaction" to log your first one.' : '🔍 No results match your filters.'}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -1963,19 +2515,34 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
                     onMouseEnter={e => e.currentTarget.style.background = `${C.panel}88`}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td style={{ padding: '9px 8px', color: C.muted, whiteSpace: 'nowrap' }}>{tx.date}</td>
-                    <td style={{ padding: '9px 8px', fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</td>
+                    <td style={{ padding: '9px 8px', fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>{tx.description}</span>
+                        {tx.excludeFromBudget && !tx.isCredit && (
+                          <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: `${C.muted}22`, color: C.muted, fontWeight: 700 }}>
+                            Unbudgeted
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td style={{ padding: '9px 8px', color: C.muted }}>{tx.accountName}</td>
                     <td style={{ padding: '9px 8px' }}>
-                      <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, fontWeight: 700, background: `${SRC_CLR[tx.source]||C.muted}22`, color: SRC_CLR[tx.source]||C.muted }}>
-                        {SRC_PILL[tx.source]} {tx.sourceLabel}
+                      <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, fontWeight: 700, background: `${tx.isCredit ? C.green : (SRC_CLR[tx.source]||C.muted)}22`, color: tx.isCredit ? C.green : (SRC_CLR[tx.source]||C.muted) }}>
+                        {tx.isCredit ? '💰' : SRC_PILL[tx.source]} {tx.sourceLabel}
                       </span>
                     </td>
                     <td style={{ padding: '9px 8px', textAlign: 'center', fontSize: 11, color: C.muted }}>{tx.period || '—'}</td>
-                    <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 700, color: C.red }}>−{peso(tx.amount)}</td>
+                    <td style={{ padding: '9px 8px', textAlign: 'right', fontWeight: 700, color: tx.isCredit ? C.green : C.red }}>
+                      {tx.isCredit ? '+' : '−'}{peso(tx.amount)}
+                    </td>
                     <td style={{ padding: '9px 8px', textAlign: 'center' }}>
-                      {canUpdate && tx.source === 'manual' && (
-                        <button onClick={() => handleDeleteTx(tx)} title="Refund & Delete"
-                          style={{ background: 'none', border: `1px solid ${C.red}44`, borderRadius: 5, color: C.red, padding: '3px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>↩</button>
+                      {canUpdate && (
+                        <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                          <button onClick={() => handleStartEditLedgerTx(tx)} title="Edit Transaction Details"
+                            style={{ background: 'none', border: `1px solid ${C.blue}44`, borderRadius: 5, color: C.blue, padding: '3px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>✏️</button>
+                          <button onClick={() => handleDeleteTx(tx)} title={tx.isCredit ? "Remove Credit" : "Refund & Delete"}
+                            style={{ background: 'none', border: `1px solid ${C.red}44`, borderRadius: 5, color: C.red, padding: '3px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>↩</button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -2651,7 +3218,7 @@ function InvestmentsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpda
 }
 
 // ─── DEBT MANAGER ─────────────────────────────────────────────────────────────
-function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, canWrite, canUpdate }) {
+function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budgetData, setBudgetData, sm, readOnly, canWrite, canUpdate }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState(null);
 
@@ -2664,30 +3231,247 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
     try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; }
   });
   const [showInstForm, setShowInstForm]     = useState(false);
-  const [newInst, setNewInst]               = useState({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7) });
+  const [editingPlanId, setEditingPlanId]   = useState(null);
+  const [newInst, setNewInst]               = useState({
+    cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7),
+    interestRate: '', customMonthly: ''
+  });
   const [instSuccessMsg, setInstSuccessMsg] = useState('');
+
+  // Paying States
+  const [payingPlanId, setPayingPlanId] = useState(null);
+  const [payAccountId, setPayAccountId] = useState('');
+  const [payLogBudget, setPayLogBudget] = useState(true);
+  const [payPeriod, setPayPeriod] = useState(new Date().getDate() <= 15 ? '5th' : '20th');
+  const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
+  const [historyExpandedPlanId, setHistoryExpandedPlanId] = useState(null);
+
+  const getInstallmentBreakdown = (total, months, interestRate, customMonthly) => {
+    const p = Number(total) || 0;
+    const m = Number(months) || 12;
+    const r = Number(interestRate) || 0;
+    const c = Number(customMonthly) || 0;
+
+    let monthly = 0;
+    let totalInterest = 0;
+    let monthlyInterest = 0;
+    let monthlyPrincipal = 0;
+
+    if (c > 0) {
+      monthly = c;
+      const totalPaid = c * m;
+      totalInterest = Math.max(0, totalPaid - p);
+      monthlyInterest = totalInterest / m;
+      monthlyPrincipal = p / m;
+    } else {
+      // CC Add-on interest style (common for merchant installments)
+      monthlyInterest = p * (r / 100 / 12);
+      monthlyPrincipal = p / m;
+      monthly = monthlyPrincipal + monthlyInterest;
+      totalInterest = monthlyInterest * m;
+    }
+
+    return {
+      monthly: Math.ceil(monthly),
+      monthlyInterest: Math.ceil(monthlyInterest),
+      monthlyPrincipal: Math.ceil(monthlyPrincipal),
+      totalInterest: Math.ceil(totalInterest),
+      totalCost: Math.ceil(p + totalInterest)
+    };
+  };
 
   const saveInstPlans = (plans) => {
     setInstPlans(plans);
     try { localStorage.setItem('bg_installments', JSON.stringify(plans)); } catch {}
   };
+
   const addInstPlan = () => {
     if (!newInst.cardId) return alert('Select a credit card');
     if (!newInst.item.trim()) return alert('Enter the item description');
     if (!newInst.total || Number(newInst.total) <= 0) return alert('Enter the total amount');
     const card = debts.find(d => d.id === newInst.cardId);
-    const plan = { id: 'inst-' + Date.now(), cardId: newInst.cardId, cardName: card?.name || 'Unknown', item: newInst.item.trim(), total: Number(newInst.total), months: Number(newInst.months) || 12, startMonth: newInst.startMonth, paidMonths: 0, createdAt: new Date().toISOString().slice(0,10) };
-    saveInstPlans([...instPlans, plan]);
-    setNewInst({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7) });
+
+    if (editingPlanId) {
+      const updated = instPlans.map(p => p.id === editingPlanId ? {
+        ...p,
+        cardId: newInst.cardId,
+        cardName: card?.name || 'Unknown',
+        item: newInst.item.trim(),
+        total: Number(newInst.total),
+        months: Number(newInst.months) || 12,
+        startMonth: newInst.startMonth,
+        interestRate: newInst.interestRate ? Number(newInst.interestRate) : 0,
+        customMonthly: newInst.customMonthly ? Number(newInst.customMonthly) : 0
+      } : p);
+      saveInstPlans(updated);
+      setEditingPlanId(null);
+      setInstSuccessMsg('Plan updated!');
+    } else {
+      const plan = {
+        id: 'inst-' + Date.now(),
+        cardId: newInst.cardId,
+        cardName: card?.name || 'Unknown',
+        item: newInst.item.trim(),
+        total: Number(newInst.total),
+        months: Number(newInst.months) || 12,
+        startMonth: newInst.startMonth,
+        paidMonths: 0,
+        interestRate: newInst.interestRate ? Number(newInst.interestRate) : 0,
+        customMonthly: newInst.customMonthly ? Number(newInst.customMonthly) : 0,
+        createdAt: new Date().toISOString().slice(0,10)
+      };
+      saveInstPlans([...instPlans, plan]);
+      setInstSuccessMsg('Plan added!');
+    }
+    setNewInst({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7), interestRate: '', customMonthly: '' });
     setShowInstForm(false);
-    setInstSuccessMsg('Plan added!');
     setTimeout(() => setInstSuccessMsg(''), 3000);
   };
-  const payInstMonth   = (id) => saveInstPlans(instPlans.map(p => p.id === id ? { ...p, paidMonths: Math.min(p.paidMonths + 1, p.months) } : p));
+
+  const handleStartEditPlan = (plan) => {
+    setEditingPlanId(plan.id);
+    setNewInst({
+      cardId: plan.cardId,
+      item: plan.item,
+      total: plan.total,
+      months: plan.months,
+      startMonth: plan.startMonth,
+      interestRate: plan.interestRate || '',
+      customMonthly: plan.customMonthly || ''
+    });
+    setShowInstForm(true);
+  };
+
+  const confirmInstallmentPayment = (plan, monthly) => {
+    // 1. Increment paidMonths
+    saveInstPlans(instPlans.map(p => p.id === plan.id ? { ...p, paidMonths: Math.min(p.paidMonths + 1, p.months) } : p));
+
+    // 2. Account Deduction
+    if (payAccountId) {
+      setAccounts(prev => prev.map(a => a.id === payAccountId ? { ...a, balance: a.balance - monthly } : a));
+    }
+
+    const account = accounts.find(a => a.id === payAccountId);
+    const accountName = account ? account.name : 'Unknown Account';
+
+    // 3. Budget & History Updates
+    if (payLogBudget) {
+      const key = payDate.slice(0, 7);
+      const period = payPeriod;
+
+      setBudgetData(prev => {
+        // Add expense line item to budget
+        const monthData = prev[key] || makeMonthData();
+        const periodData = monthData[period] || makePeriod();
+        const expenseName = `Installment: ${plan.item} (${plan.cardName})`;
+        const newExpense = { name: expenseName, budget: monthly, amount: monthly, done: true };
+
+        // Log transaction history
+        const newTx = {
+          id: 'inst-tx-' + Date.now(),
+          accountId: payAccountId || 'none',
+          accountName: payAccountId ? accountName : 'No Account Deducted',
+          amount: monthly,
+          description: `Installment Payment: ${plan.item} (${plan.cardName})`,
+          date: payDate,
+          period: period,
+          planId: plan.id,
+          timestamp: new Date().toISOString()
+        };
+
+        return {
+          ...prev,
+          [key]: {
+            ...monthData,
+            [period]: {
+              ...periodData,
+              expenses: [...periodData.expenses, newExpense]
+            }
+          },
+          installmentHistory: [newTx, ...(prev.installmentHistory || [])]
+        };
+      });
+    } else {
+      // Just log transaction history, no budget impact
+      setBudgetData(prev => {
+        const newTx = {
+          id: 'inst-tx-' + Date.now(),
+          accountId: payAccountId || 'none',
+          accountName: payAccountId ? accountName : 'No Account Deducted',
+          amount: monthly,
+          description: `Installment Payment: ${plan.item} (${plan.cardName})`,
+          date: payDate,
+          period: payPeriod,
+          planId: plan.id,
+          timestamp: new Date().toISOString()
+        };
+
+        return {
+          ...prev,
+          installmentHistory: [newTx, ...(prev.installmentHistory || [])]
+        };
+      });
+    }
+
+    setPayingPlanId(null);
+  };
+
+  const unpayInstMonth = (id) => {
+    if (!window.confirm('Undo 1 paid month for this installment plan?')) return;
+    saveInstPlans(instPlans.map(p => p.id === id ? { ...p, paidMonths: Math.max(0, p.paidMonths - 1) } : p));
+  };
+
+  const deleteSpecificInstallmentPayment = (tx) => {
+    const msg = `Undo payment of ₱${(tx.amount || 0).toLocaleString()} made on ${tx.date} (${tx.period || '5th'} Payroll)?`;
+    if (!window.confirm(msg)) return;
+
+    // 1. Revert account balance
+    if (tx.accountId && tx.accountId !== 'none') {
+      setAccounts(prev => prev.map(a => a.id === tx.accountId ? { ...a, balance: a.balance + tx.amount } : a));
+    }
+
+    // 2. Remove budget expense & transaction log
+    const key = (tx.date || '').slice(0, 7);
+    const expName = `Installment: ${tx.description.replace('Installment Payment: ', '')}`;
+
+    setBudgetData(prev => {
+      const md = prev[key] || makeMonthData();
+      const pd = md[tx.period] || makePeriod();
+
+      const newBudgetData = {
+        ...prev,
+        installmentHistory: (prev.installmentHistory || []).filter(h => h.id !== tx.id)
+      };
+
+      if (key && tx.period && md[tx.period]) {
+        newBudgetData[key] = {
+          ...md,
+          [tx.period]: {
+            ...pd,
+            expenses: pd.expenses.filter(e => !(e.name === expName && e.amount === tx.amount))
+          }
+        };
+      }
+
+      return newBudgetData;
+    });
+
+    // 3. Decrement paidMonths on matching plan
+    if (tx.planId) {
+      saveInstPlans(instPlans.map(p => p.id === tx.planId ? { ...p, paidMonths: Math.max(0, p.paidMonths - 1) } : p));
+    }
+  };
   const deleteInstPlan = (id) => { if (window.confirm('Delete this installment plan?')) saveInstPlans(instPlans.filter(p => p.id !== id)); };
   const activeInstPlans    = instPlans.filter(p => p.paidMonths < p.months);
   const completedInstPlans = instPlans.filter(p => p.paidMonths >= p.months);
-  const totalMonthlyInst   = activeInstPlans.reduce((s, p) => s + Math.ceil(p.total / p.months), 0);
+  const totalMonthlyInst   = activeInstPlans.reduce((s, p) => {
+    const bd = getInstallmentBreakdown(p.total, p.months, p.interestRate, p.customMonthly);
+    return s + bd.monthly;
+  }, 0);
+  const totalPaidInInst    = instPlans.reduce((s, p) => {
+    const bd = getInstallmentBreakdown(p.total, p.months, p.interestRate, p.customMonthly);
+    return s + (p.paidMonths * bd.monthly);
+  }, 0);
 
 
   // Credit Card Transaction States
@@ -3099,17 +3883,41 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
             </div>
           </div>
           {canWrite && (
-            <button onClick={() => setShowInstForm(p => !p)}
+            <button onClick={() => {
+              if (showInstForm && editingPlanId) {
+                setEditingPlanId(null);
+                setNewInst({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7), interestRate: '', customMonthly: '' });
+              }
+              setShowInstForm(p => !p);
+            }}
               style={{ padding: '6px 14px', borderRadius: 7, border: `1px solid ${C.amber}55`, background: showInstForm ? `${C.amber}22` : 'transparent', color: C.amber, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
               {showInstForm ? 'Cancel' : '+ Add Plan'}
             </button>
           )}
         </div>
 
+        {/* ── Monthly Obligations Metric Summary Bar ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : '1fr 1fr 1fr', gap: 8, marginTop: 12, marginBottom: 14 }}>
+          <div style={{ background: `${C.card}`, padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Monthly Obligation</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.amber }}>{peso(totalMonthlyInst)}<span style={{ fontSize: 10, color: C.muted }}>/mo</span></div>
+          </div>
+          <div style={{ background: `${C.card}`, padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Total Paid To Date</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.green }}>{peso(totalPaidInInst)}</div>
+          </div>
+          <div style={{ background: `${C.card}`, padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Active Plans</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.blue }}>{activeInstPlans.length} <span style={{ fontSize: 10, color: C.muted }}>({completedInstPlans.length} done)</span></div>
+          </div>
+        </div>
+
         {/* ── Add Installment Form ── */}
         {showInstForm && (
           <div style={{ background: `${C.card2}`, borderRadius: 10, padding: 14, marginBottom: 14, border: `1px solid ${C.border}` }}>
-            <div style={{ fontSize: 11, color: C.amber, fontWeight: 700, marginBottom: 10, textTransform: 'uppercase' }}>New Installment Plan</div>
+            <div style={{ fontSize: 11, color: C.amber, fontWeight: 700, marginBottom: 10, textTransform: 'uppercase' }}>
+              {editingPlanId ? 'Edit Installment Plan' : 'New Installment Plan'}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 2fr', gap: 10, marginBottom: 10 }}>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Credit Card</label>
@@ -3124,9 +3932,9 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
                 <Inp value={newInst.item} onChange={e => setNewInst(p => ({ ...p, item: e.target.value }))} placeholder="e.g. Lazada Shopping, Samsung TV…" />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
-                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Total Amount (₱)</label>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Total Principal (₱)</label>
                 <Inp type="number" value={newInst.total} onChange={e => setNewInst(p => ({ ...p, total: e.target.value }))} placeholder="12000" style={{ textAlign: 'right' }} />
               </div>
               <div>
@@ -3134,18 +3942,44 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
                 <Inp type="number" value={newInst.months} onChange={e => setNewInst(p => ({ ...p, months: e.target.value }))} placeholder="12" style={{ textAlign: 'right' }} />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Monthly Amount</label>
-                <div style={{ padding: '8px 10px', borderRadius: 7, border: `1px solid ${C.border}`, background: `${C.green}18`, color: C.green, fontSize: 14, fontWeight: 800, textAlign: 'right' }}>
-                  {newInst.total && newInst.months ? peso(Math.ceil(Number(newInst.total) / Number(newInst.months))) : '₱—'}
-                </div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Interest Rate (%/yr)</label>
+                <Inp type="number" value={newInst.interestRate} onChange={e => setNewInst(p => ({ ...p, interestRate: e.target.value }))} placeholder="0" style={{ textAlign: 'right' }} />
               </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Custom Monthly Payment (₱)</label>
+                <Inp type="number" value={newInst.customMonthly} onChange={e => setNewInst(p => ({ ...p, customMonthly: e.target.value }))} placeholder="Optional override" style={{ textAlign: 'right' }} />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Start Month</label>
                 <Inp type="month" value={newInst.startMonth} onChange={e => setNewInst(p => ({ ...p, startMonth: e.target.value }))} />
               </div>
             </div>
+
+            {/* Live interest breakdown calculation */}
+            {(() => {
+              const bd = getInstallmentBreakdown(newInst.total, newInst.months, newInst.interestRate, newInst.customMonthly);
+              return (newInst.total && newInst.months) ? (
+                <div style={{ background: `${C.bg}`, border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 12 }}>
+                  <div style={{ fontWeight: 700, color: C.amber, marginBottom: 6 }}>📊 Live Payment Breakdown:</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div>Monthly Principal: <strong style={{ color: C.text }}>{peso(bd.monthlyPrincipal)}</strong></div>
+                    <div>Monthly Interest: <strong style={{ color: bd.monthlyInterest > 0 ? C.red : C.muted }}>{peso(bd.monthlyInterest)}</strong></div>
+                    <div>Total Interest: <strong style={{ color: bd.totalInterest > 0 ? C.red : C.muted }}>{peso(bd.totalInterest)}</strong></div>
+                    <div>Total Cost of Plan: <strong style={{ color: C.green }}>{peso(bd.totalCost)}</strong></div>
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: 13, borderTop: `1px solid ${C.border}33`, paddingTop: 6 }}>
+                    Effective Monthly Outflow: <strong style={{ color: C.green, fontSize: 15 }}>{peso(bd.monthly)}/mo</strong>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <BtnG onClick={addInstPlan} style={{ padding: '8px 20px', fontSize: 12 }}>💾 Save Installment Plan</BtnG>
+              <BtnG onClick={addInstPlan} style={{ padding: '8px 20px', fontSize: 12 }}>
+                {editingPlanId ? '💾 Save Changes' : '💾 Save Installment Plan'}
+              </BtnG>
               {instSuccessMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>✓ {instSuccessMsg}</span>}
             </div>
           </div>
@@ -3157,11 +3991,14 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: activeInstPlans.length > 0 ? 14 : 0 }}>
           {activeInstPlans.map(plan => {
-            const monthly   = Math.ceil(plan.total / plan.months);
+            const bd        = getInstallmentBreakdown(plan.total, plan.months, plan.interestRate, plan.customMonthly);
+            const monthly   = bd.monthly;
             const remaining = plan.months - plan.paidMonths;
             const paidAmt   = plan.paidMonths * monthly;
-            const remAmt    = plan.total - paidAmt;
+            const totalRepay = bd.totalCost;
+            const remAmt    = totalRepay - paidAmt;
             const pct       = Math.round(plan.paidMonths / plan.months * 100);
+            const planHistory = (budgetData.installmentHistory || []).filter(h => h.planId === plan.id);
             return (
               <div key={plan.id} style={{ background: `${C.card2}`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.amber}33` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
@@ -3169,7 +4006,9 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
                     <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{plan.item}</div>
                     <div style={{ fontSize: 11, color: C.muted }}>
                       <span style={{ color: C.amber, fontWeight: 600 }}>{plan.cardName}</span>
-                      {' · '}{plan.months} months @ {peso(monthly)}/mo · Started {plan.startMonth}
+                      {' · '}{plan.months} months @ {peso(monthly)}/mo
+                      {bd.totalInterest > 0 && ` (Principal: ${peso(bd.monthlyPrincipal)}, Interest: ${peso(bd.monthlyInterest)})`}
+                      {' · '}Started {plan.startMonth}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -3181,19 +4020,119 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
                   <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg, ${C.amber}, ${C.green})`, borderRadius: 3, transition: 'width 0.4s ease' }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, marginBottom: 10 }}>
-                  <span>{plan.paidMonths}/{plan.months} months paid · {peso(paidAmt)} paid</span>
+                  <span>
+                    {plan.paidMonths}/{plan.months} months paid · {peso(paidAmt)} paid
+                    {bd.totalInterest > 0 && ` (Total Interest: ${peso(bd.totalInterest)})`}
+                  </span>
                   <span style={{ color: C.orange, fontWeight: 600 }}>{peso(remAmt)} remaining</span>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {canUpdate && (
-                    <button onClick={() => payInstMonth(plan.id)}
-                      style={{ flex: 1, padding: '6px', borderRadius: 6, border: `1px solid ${C.green}55`, background: `${C.green}18`, color: C.green, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
-                      ✓ Mark 1 Month Paid ({peso(monthly)})
+                {payingPlanId === plan.id ? (
+                  <div style={{ background: `${C.card}`, borderRadius: 8, padding: 12, marginTop: 8, border: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.green, display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span>✓ Confirm Installment Payment ({peso(monthly)})</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 8 }}>
+                      <div>
+                        <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 2 }}>Deduct From Account</label>
+                        <select value={payAccountId} onChange={e => setPayAccountId(e.target.value)}
+                          style={{ padding: '6px 8px', borderRadius: 5, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 11, width: '100%', cursor: 'pointer' }}>
+                          <option value="">Don't deduct (Track only)</option>
+                          {accounts.map(a => <option key={a.id} value={a.id}>{a.name} ({peso(a.balance)})</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 10, color: C.muted, display: 'block', marginBottom: 2 }}>Payment Date</label>
+                        <Inp type="date" value={payDate} onChange={e => setPayDate(e.target.value)} style={{ padding: '5px 8px', fontSize: 11 }} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 8, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input type="checkbox" id="payLogBudget" checked={payLogBudget} onChange={e => setPayLogBudget(e.target.checked)} style={{ cursor: 'pointer', width: 14, height: 14, accentColor: C.blue }} />
+                        <label htmlFor="payLogBudget" style={{ fontSize: 11, color: C.text, cursor: 'pointer', fontWeight: 500 }}>Include in Budget</label>
+                      </div>
+                      {payLogBudget && (
+                        <div>
+                          <select value={payPeriod} onChange={e => setPayPeriod(e.target.value)}
+                            style={{ padding: '6px 8px', borderRadius: 5, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 11, width: '100%', cursor: 'pointer' }}>
+                            <option value="5th">5th Payroll (1st-15th)</option>
+                            <option value="20th">20th Payroll (16th-31st)</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                      <button onClick={() => confirmInstallmentPayment(plan, monthly)}
+                        style={{ flex: 1, padding: '6px 12px', borderRadius: 5, border: 'none', background: `linear-gradient(135deg, ${C.green}, ${C.teal})`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                        Confirm Payment
+                      </button>
+                      <button onClick={() => setPayingPlanId(null)}
+                        style={{ padding: '6px 12px', borderRadius: 5, border: `1px solid ${C.border}`, background: 'none', color: C.muted, fontSize: 11, cursor: 'pointer' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {canUpdate && (
+                      <button onClick={() => {
+                        setPayingPlanId(plan.id);
+                        setPayAccountId(accounts[0]?.id || '');
+                        setPayLogBudget(true);
+                        setPayPeriod(new Date().getDate() <= 15 ? '5th' : '20th');
+                        setPayDate(new Date().toISOString().slice(0, 10));
+                      }}
+                        style={{ flex: 1, minWidth: 120, padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.green}55`, background: `${C.green}18`, color: C.green, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                        ✓ Mark 1 Month Paid ({peso(monthly)})
+                      </button>
+                    )}
+                    <button onClick={() => setHistoryExpandedPlanId(p => p === plan.id ? null : plan.id)} title="View Payment History Logs"
+                      style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.blue}44`, background: historyExpandedPlanId === plan.id ? `${C.blue}22` : 'none', color: C.blue, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
+                      📜 History ({planHistory.length})
                     </button>
-                  )}
-                  <button onClick={() => deleteInstPlan(plan.id)}
-                    style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.red}33`, background: 'none', color: C.red, cursor: 'pointer', fontSize: 11 }}>🗑</button>
-                </div>
+                    {canUpdate && plan.paidMonths > 0 && (
+                      <button onClick={() => unpayInstMonth(plan.id)} title="Undo 1 Paid Month"
+                        style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.amber}55`, background: `${C.amber}18`, color: C.amber, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                        ↩ Unpay
+                      </button>
+                    )}
+                    {canUpdate && (
+                      <button onClick={() => handleStartEditPlan(plan)} title="Edit Plan"
+                        style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.blue}33`, background: 'none', color: C.blue, cursor: 'pointer', fontSize: 11 }}>✏️</button>
+                    )}
+                    <button onClick={() => deleteInstPlan(plan.id)} title="Delete Plan"
+                      style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.red}33`, background: 'none', color: C.red, cursor: 'pointer', fontSize: 11 }}>🗑</button>
+                  </div>
+                )}
+
+                {/* 📜 Specific Payment History Drawer */}
+                {historyExpandedPlanId === plan.id && (
+                  <div style={{ background: `${C.card}`, borderRadius: 8, padding: 10, marginTop: 10, border: `1px solid ${C.border}` }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.amber, marginBottom: 8 }}>📜 Logged Payment History for {plan.item}:</div>
+                    {planHistory.length === 0 ? (
+                      <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic' }}>No detailed payment transactions logged for this plan yet.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {planHistory.map(tx => (
+                          <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.bg, padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.border}44`, fontSize: 11 }}>
+                            <div>
+                              <div style={{ fontWeight: 600, color: C.text }}>{tx.date} <span style={{ color: C.amber }}>({tx.period || '5th'} Payroll)</span></div>
+                              <div style={{ fontSize: 10, color: C.muted }}>Account: {tx.accountName || 'No Account Deducted'}</div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontWeight: 700, color: C.green }}>{peso(tx.amount)}</span>
+                              {canUpdate && (
+                                <button onClick={() => deleteSpecificInstallmentPayment(tx)} title="Undo & refund this specific payment"
+                                  style={{ padding: '3px 8px', borderRadius: 4, border: `1px solid ${C.red}44`, background: `${C.red}15`, color: C.red, cursor: 'pointer', fontSize: 10, fontWeight: 700 }}>
+                                  🗑 Undo
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -3203,12 +4142,55 @@ function DebtsTab({ debts, setDebts, budgetData, setBudgetData, sm, readOnly, ca
         {completedInstPlans.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}33` }}>
             <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 6 }}>✅ FULLY PAID PLANS ({completedInstPlans.length})</div>
-            {completedInstPlans.map(plan => (
-              <div key={plan.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', borderRadius: 6, background: `${C.green}08`, marginBottom: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{plan.item} <span style={{ color: C.green }}>· {peso(plan.total)} fully paid</span></span>
-                <button onClick={() => deleteInstPlan(plan.id)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 14 }}>×</button>
-              </div>
-            ))}
+            {completedInstPlans.map(plan => {
+              const planHistory = (budgetData.installmentHistory || []).filter(h => h.planId === plan.id);
+              return (
+                <div key={plan.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px', borderRadius: 6, background: `${C.green}08`, marginBottom: 6, border: `1px solid ${C.green}22` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>{plan.item} <span style={{ color: C.green }}>· {peso(plan.total)} fully paid</span></span>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <button onClick={() => setHistoryExpandedPlanId(p => p === plan.id ? null : plan.id)} title="View Payment History"
+                        style={{ background: 'none', border: `1px solid ${C.blue}44`, borderRadius: 4, color: C.blue, cursor: 'pointer', fontSize: 10, padding: '2px 6px', fontWeight: 600 }}>
+                        📜 History ({planHistory.length})
+                      </button>
+                      {canUpdate && (
+                        <button onClick={() => unpayInstMonth(plan.id)} title="Unpay 1 Month"
+                          style={{ background: 'none', border: `1px solid ${C.amber}44`, borderRadius: 4, color: C.amber, cursor: 'pointer', fontSize: 10, padding: '2px 6px', fontWeight: 700 }}>↩ Unpay</button>
+                      )}
+                      <button onClick={() => deleteInstPlan(plan.id)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 14 }}>×</button>
+                    </div>
+                  </div>
+                  {historyExpandedPlanId === plan.id && (
+                    <div style={{ background: `${C.card}`, borderRadius: 6, padding: 8, marginTop: 4, border: `1px solid ${C.border}` }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.amber, marginBottom: 6 }}>📜 Logged Payment History for {plan.item}:</div>
+                      {planHistory.length === 0 ? (
+                        <div style={{ fontSize: 11, color: C.muted, fontStyle: 'italic' }}>No detailed payment transactions logged for this plan.</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {planHistory.map(tx => (
+                            <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.bg, padding: '4px 8px', borderRadius: 4, border: `1px solid ${C.border}44`, fontSize: 11 }}>
+                              <div>
+                                <span style={{ fontWeight: 600, color: C.text }}>{tx.date}</span> <span style={{ color: C.amber }}>({tx.period || '5th'})</span>
+                                <span style={{ fontSize: 10, color: C.muted, marginLeft: 6 }}>{tx.accountName || 'No Account'}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontWeight: 700, color: C.green }}>{peso(tx.amount)}</span>
+                                {canUpdate && (
+                                  <button onClick={() => deleteSpecificInstallmentPayment(tx)} title="Undo & refund this specific payment"
+                                    style={{ padding: '2px 6px', borderRadius: 4, border: `1px solid ${C.red}44`, background: `${C.red}15`, color: C.red, cursor: 'pointer', fontSize: 10, fontWeight: 700 }}>
+                                    🗑 Undo
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </Card>
@@ -6148,7 +7130,7 @@ export default function App() {
               {tab==='transactions'&&<TransactionsTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='balancelog'  &&<BalanceLogTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='investments'&&<InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='credits'  &&<CreditsTab credits={credits} setCredits={setCredits} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='expenses' &&<MajorTab majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='calendar'  &&<CalendarTab budgetData={budgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
