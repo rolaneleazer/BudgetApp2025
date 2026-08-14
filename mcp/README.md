@@ -1,6 +1,6 @@
-# BudgetApp2025 Remote MCP Server
+# BudgetApp2025 MCP Server
 
-This folder contains a Streamable HTTP MCP server for ChatGPT or other MCP clients.
+This folder contains a Model Context Protocol (MCP) server supporting both **Stdio (Standard I/O)** and **Streamable HTTP** transports for AI assistants like Gemini, Claude, Cursor, and ChatGPT.
 
 ## Tools
 
@@ -9,11 +9,31 @@ This folder contains a Streamable HTTP MCP server for ChatGPT or other MCP clien
 - `read_project_file` - reads a safe text/code file by relative path.
 - `search_code` - searches project text files.
 - `budget_data_model` - describes the known Supabase `user_data` shape used by the app.
+- `get_budget_app_snapshot` - reads full financial profile snapshot across all UI modules.
+- `get_budget_module` - reads specific module (`dashboard`, `history`, `monthly`, `accounts`, `investments`, `debts`, `credits`, `major`, `calendar`).
+- `get_net_worth` - calculates net worth, debt utilization, and account summaries.
 - `select_user_data` - reads rows from Supabase `user_data` when server-side Supabase env vars are configured.
 
 The server deliberately blocks `.env`, `.git`, `node_modules`, build output, and other internal folders.
 
-## Local Run
+## Connecting to Gemini / Local MCP Clients (Stdio)
+
+For Gemini CLI, Claude Desktop, Cursor, or VS Code MCP extensions using standard I/O:
+
+Add this to your MCP configuration file:
+
+```json
+{
+  "mcpServers": {
+    "budgetapp2025": {
+      "command": "node",
+      "args": ["c:/Users/rtm1863/BudgetApp2025/mcp/stdio.js"]
+    }
+  }
+}
+```
+
+## Local HTTP Server Run
 
 Copy `.env.example` to `.env`, set at least:
 
@@ -40,8 +60,6 @@ MCP endpoint:
 ```text
 http://127.0.0.1:3333/mcp
 ```
-
-Use this for local MCP clients. ChatGPT needs a public HTTPS URL.
 
 ## Vercel Deployment
 
