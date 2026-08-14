@@ -129,16 +129,39 @@ export function getMcpConfig() {
   };
 }
 
-export function isAuthorized(req) {
-  const { accessToken } = getMcpConfig();
-  if (!accessToken) return true;
-
-  const authHeader = req.headers.authorization || "";
+export async function isAuthorized(req) {
+  const { accessToken, hasSupabase } = getMcpConfig();
+  const authHeader = req.headers?.authorization || "";
   const bearerToken = authHeader.startsWith("Bearer ")
     ? authHeader.slice("Bearer ".length)
     : "";
 
-  return bearerToken === accessToken;
+  if (accessToken && bearerToken === accessToken) {
+    return true;
+  }
+
+  if (hasSupabase && bearerToken) {
+    try {
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        const { data, error } = await supabase.auth.getUser(bearerToken);
+        if (data?.user && !error) {
+          if (req) {
+            req.authenticatedUserId = data.user.id;
+          }
+          return true;
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to verify Supabase JWT token:", err.message);
+    }
+  }
+
+  if (!accessToken && !hasSupabase) {
+    return true;
+  }
+
+  return false;
 }
 
 export function healthPayload() {

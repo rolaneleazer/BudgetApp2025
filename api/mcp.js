@@ -1,6 +1,7 @@
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 import { createBudgetMcpServer, isAuthorized } from "../mcp/core.js";
+
 import { getOAuthConfig } from "../mcp/oauth.js";
 
 export const config = {

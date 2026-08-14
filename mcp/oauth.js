@@ -24,7 +24,7 @@ export function getOAuthConfig(req) {
 
   return {
     baseUrl,
-    clientId: process.env.MCP_OAUTH_CLIENT_ID || "budget-app-2026",
+    clientId: process.env.MCP_OAUTH_CLIENT_ID || "",
     clientSecret: process.env.MCP_OAUTH_CLIENT_SECRET || "",
   };
 }
@@ -73,7 +73,11 @@ function validateClient(req, body = {}) {
   const submittedClientId = body.client_id || basic.client_id;
   const submittedClientSecret = body.client_secret || basic.client_secret || "";
 
-  if (submittedClientId !== clientId) {
+  if (!submittedClientId) {
+    return false;
+  }
+
+  if (clientId && submittedClientId !== clientId) {
     return false;
   }
 
@@ -93,7 +97,12 @@ export function handleAuthorize(req, res) {
     return;
   }
 
-  if (query.client_id !== clientId) {
+  if (!query.client_id) {
+    res.status(400).send("Missing client_id.");
+    return;
+  }
+
+  if (clientId && query.client_id !== clientId) {
     res.status(400).send("Invalid client_id.");
     return;
   }
