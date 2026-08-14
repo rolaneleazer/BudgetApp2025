@@ -96,12 +96,22 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 Do not set `MCP_HOST` on Vercel. That setting is only for the local standalone server.
 
-Use these values when ChatGPT asks for manual OAuth settings:
+Use these values when Gemini Spark asks for Custom Connected App OAuth settings:
+
+```text
+Add a custom app link: https://your-vercel-domain.vercel.app/api/mcp
+Authorization endpoint: https://<your-supabase-id>.supabase.co/auth/v1/oauth/authorize
+Token endpoint: https://<your-supabase-id>.supabase.co/auth/v1/oauth/token
+Client ID: <Client ID from Supabase OAuth App> (e.g. dac89170-7d26-459a-aa94-3a5cc550ebfb)
+Client Secret: <Client Secret generated in Supabase OAuth App>
+```
+
+Or for ChatGPT / Self-Hosted OAuth:
 
 ```text
 Auth URL: https://your-vercel-domain.vercel.app/api/oauth/authorize
 Token URL: https://your-vercel-domain.vercel.app/api/oauth/token
-OAuth Client ID: budget-app-2026
+OAuth Client ID: budget-app-2026 (or client_id generated in your app)
 OAuth Client Secret: value of MCP_OAUTH_CLIENT_SECRET
 Token endpoint auth method: client_secret_post
 Default scopes: project.read

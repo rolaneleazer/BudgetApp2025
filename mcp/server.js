@@ -48,8 +48,8 @@ app.post("/api/send-report", async (req, res) => {
 });
 
 
-function authenticate(req, res, next) {
-  if (!isAuthorized(req)) {
+async function authenticate(req, res, next) {
+  if (!(await isAuthorized(req))) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
