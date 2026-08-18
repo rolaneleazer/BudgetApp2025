@@ -80,23 +80,27 @@ export default async function handler(req, res) {
       .map(e => e.trim().toLowerCase())
       .filter(Boolean);
 
+    const { data: roleEntry, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (roleErr) throw roleErr;
+
+    const isActive = roleEntry?.status !== "inactive" && user.app_metadata?.is_active !== false && !user.banned_until;
+    if (!isActive) {
+      return res.status(403).json({ error: "Your account has been deactivated by an administrator.", isActive: false });
+    }
+
     let role = "user";
     if (adminEmails.includes(email.toLowerCase()) || user.app_metadata?.role === "admin") {
       role = "admin";
-    } else {
-      const { data: roleEntry, error: roleErr } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (roleErr) throw roleErr;
-      if (roleEntry?.role) {
-        role = roleEntry.role;
-      }
+    } else if (roleEntry?.role) {
+      role = roleEntry.role;
     }
 
-    console.log(`[Profile Resolver] Resolved user: "${email}" (ID: ${userId}) -> Role: "${role}"`);
+    console.log(`[Profile Resolver] Resolved user: "${email}" (ID: ${userId}) -> Role: "${role}", Active: ${isActive}`);
 
     const { data: permissions, error: permErr } = await supabase
       .from("role_permissions")
@@ -106,8 +110,36 @@ export default async function handler(req, res) {
     if (permErr) throw permErr;
 
     const permissionsMap = {};
-    const defaultModules = ["dashboard", "history", "budget", "accounts", "investments", "debts", "credits", "expenses", "calendar", "reports", "admin"];
+    const defaultModules = [
+      "dashboard",
+      "history",
+      "budget",
+      "accounts",
+      "account-manager",
+      "reconcile",
+      "transactions",
+      "investments",
+      "debts",
+      "credits",
+      "expenses",
+      "calendar",
+      "graph",
+      "reports",
+      "admin"
+    ];
     
+    const baselineUserModules = new Set([
+      "dashboard",
+      "history",
+      "budget",
+      "accounts",
+      "debts",
+      "credits",
+      "expenses",
+      "calendar",
+      "reports"
+    ]);
+
     defaultModules.forEach(mod => {
       if (role === "admin") {
         permissionsMap[mod] = "update";
@@ -116,7 +148,8 @@ export default async function handler(req, res) {
       } else if (role === "guest") {
         permissionsMap[mod] = mod === "dashboard" ? "read" : "none";
       } else {
-        permissionsMap[mod] = mod === "admin" ? "none" : "update";
+        // Standard user role: allow baseline user modules, hide advanced/new modules by default unless granted in DB
+        permissionsMap[mod] = baselineUserModules.has(mod) ? "update" : "none";
       }
     });
 

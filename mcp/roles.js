@@ -46,11 +46,20 @@ export default async function handler(req, res) {
 
       const usersWithRoles = users.map(u => {
         const roleEntry = userRoles?.find(r => r.user_id === u.id);
+        const isActive = roleEntry?.status !== "inactive" && u.app_metadata?.is_active !== false && !u.banned_until;
+        const firstName = u.user_metadata?.first_name || "";
+        const lastName = u.user_metadata?.last_name || "";
+        const fullName = u.user_metadata?.full_name || `${firstName} ${lastName}`.trim() || "";
+
         return {
           id: u.id,
           email: u.email,
-          fullName: u.user_metadata?.full_name || "",
-          role: roleEntry ? roleEntry.role : "user"
+          fullName,
+          firstName,
+          lastName,
+          role: roleEntry ? roleEntry.role : "user",
+          isActive: Boolean(isActive),
+          status: isActive ? "active" : "inactive"
         };
       });
 
@@ -63,27 +72,48 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const body = await getRequestBody(req);
-      const { userId, role } = body;
-      if (!userId || !role) {
-        return res.status(400).json({ error: "Missing userId or role." });
+      const { userId, role, isActive, status } = body;
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId." });
       }
 
-      const { data, error: upsertErr } = await supabase
+      const isUserActive = typeof isActive === "boolean" ? isActive : status !== "inactive";
+      const targetRole = role || "user";
+      const userStatus = isUserActive ? "active" : "inactive";
+
+      let userRoleData = null;
+      const { data: upsertData, error: upsertErr } = await supabase
         .from("user_roles")
-        .upsert({ user_id: userId, role }, { onConflict: "user_id" })
+        .upsert({ user_id: userId, role: targetRole, status: userStatus }, { onConflict: "user_id" })
         .select()
         .single();
 
-      if (upsertErr) throw upsertErr;
+      if (upsertErr) {
+        if (upsertErr.message?.includes("status") || upsertErr.code === "PGRST204") {
+          // Schema fallback if 'status' column does not exist in user_roles table
+          const { data: fbData, error: fbErr } = await supabase
+            .from("user_roles")
+            .upsert({ user_id: userId, role: targetRole }, { onConflict: "user_id" })
+            .select()
+            .single();
+          if (fbErr) throw fbErr;
+          userRoleData = fbData;
+        } else {
+          throw upsertErr;
+        }
+      } else {
+        userRoleData = upsertData;
+      }
 
       const { error: updateAuthErr } = await supabase.auth.admin.updateUserById(userId, {
-        app_metadata: { role }
+        app_metadata: { role: targetRole, is_active: isUserActive },
+        ban_duration: isUserActive ? "none" : "876000h"
       });
       if (updateAuthErr) {
         console.warn("Failed to update user app_metadata:", updateAuthErr.message);
       }
 
-      return res.status(200).json({ success: true, userRole: data });
+      return res.status(200).json({ success: true, userRole: userRoleData, isActive: isUserActive });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }

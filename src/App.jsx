@@ -304,7 +304,7 @@ function YMPicker({year,monthIdx,onYear,onMonth,sm}) {
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 const DEFAULT_CARD_ORDER = ['today-glance','surplus-banner','metrics','period-burn','balance-logs','cashflow','expense-donut','charts-row','budget-row','recent-tx','installment-summary','insights-row'];
 
-function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm }) {
+function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm, session }) {
   // ── Load installment plans from localStorage ──
   const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
   const getInstBreakdownSimple = (total, months, interestRate, customMonthly) => {
@@ -1335,10 +1335,10 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   return (
     <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:sm?'flex-start':'center',gap:14,marginBottom:16,flexDirection:sm?'column':'row'}}>
-        <div>
-          <div style={{fontSize:sm?20:25,fontWeight:800,letterSpacing:0,color:C.text}}>Welcome back, Rolan!</div>
-          <div style={{fontSize:12,color:C.muted,marginTop:5}}>Here is your financial overview for today.</div>
-        </div>
+          {(() => {
+            const greetingName = session?.user?.user_metadata?.first_name || (session?.user?.user_metadata?.full_name || session?.user?.email || 'User').split(' ')[0].split('@')[0];
+            return <div style={{fontSize:sm?20:25,fontWeight:800,letterSpacing:0,color:C.text}}>Welcome back, {greetingName}!</div>;
+          })()}
         <select
           value={range}
           onChange={e => setRange(e.target.value)}
@@ -6837,7 +6837,8 @@ export default function App() {
     if (role === "admin") return "update";
     if (role === "viewer") return "read";
     if (role === "guest") return tabId === "dashboard" ? "read" : "none";
-    return tabId === "admin" ? "none" : "update";
+    const baselineModules = new Set(["dashboard", "history", "budget", "accounts", "debts", "credits", "expenses", "calendar", "reports"]);
+    return baselineModules.has(tabId) ? "update" : "none";
   };
 
   const TABS=[
@@ -6896,12 +6897,30 @@ export default function App() {
     ['analytics', 'Analytics'],
     ...(isAdmin ? [['admin', 'System']] : []),
   ];
-  const displayName = (session?.user?.user_metadata?.full_name || session?.user?.email || 'Rolan Eleazer').split('@')[0];
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [deactivatedMsg, setDeactivatedMsg] = useState(null);
+
+  const userMeta = session?.user?.user_metadata || {};
+  const userFirstName = userMeta.first_name || '';
+  const userLastName = userMeta.last_name || '';
+  const userFullName = userMeta.full_name || `${userFirstName} ${userLastName}`.trim();
+  const userAvatarUrl = userMeta.avatar_url || '';
+  const displayName = userFullName || session?.user?.email || 'User';
+  const avatarInitial = (displayName.charAt(0) || 'U').toUpperCase();
 
   console.log("[App Client] Rendering navigation panel - isAdmin:", isAdmin, "role:", role, "navGroups:", navGroups);
 
   if (!session && isSupabaseConfigured) {
-    return <Auth />;
+    return (
+      <>
+        {deactivatedMsg && (
+          <div style={{ background: C.red, color: '#fff', padding: '12px 16px', textAlign: 'center', fontWeight: 700, fontSize: 13 }}>
+            ⚠️ {deactivatedMsg}
+          </div>
+        )}
+        <Auth />
+      </>
+    );
   }
 
   return (
@@ -6965,16 +6984,26 @@ export default function App() {
               </div>
             ))}
           </nav>
-          <div style={{margin:12,padding:12,border:`1px solid ${C.border}`,borderRadius:8,display:'flex',alignItems:'center',gap:10,background:C.panel}}>
-            <div style={{width:34,height:34,borderRadius:'50%',background:`linear-gradient(135deg, ${C.amber}, ${C.orange})`,display:'flex',alignItems:'center',justifyContent:'center',color:'#08111f',fontWeight:900}}>R</div>
-            <div style={{minWidth:0}}>
-              <div style={{fontSize:12,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{displayName}</div>
-              {isSupabaseConfigured ? (
-                <button onClick={() => supabase.auth.signOut()} style={{border:'none',background:'transparent',color:C.muted,fontSize:11,padding:0,cursor:'pointer'}}>Sign out</button>
-              ) : (
-                <div style={{color:C.muted,fontSize:11}}>Local demo</div>
-              )}
+          <div 
+            onClick={() => setShowProfileModal(true)} 
+            title="Click to edit profile settings" 
+            style={{margin:12,padding:12,border:`1px solid ${C.border}`,borderRadius:8,display:'flex',alignItems:'center',gap:10,background:C.panel,cursor:'pointer'}}
+          >
+            <div style={{
+              width:34, height:34, borderRadius:'50%',
+              background: userAvatarUrl ? `url(${userAvatarUrl}) center/cover no-repeat` : `linear-gradient(135deg, ${C.amber}, ${C.orange})`,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              color:'#08111f', fontWeight:900, fontSize:14, flexShrink:0
+            }}>
+              {!userAvatarUrl && avatarInitial}
             </div>
+            <div style={{minWidth:0,flex:1}}>
+              <div style={{fontSize:12,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{displayName}</div>
+              <div style={{fontSize:10,color:C.blue,fontWeight:600}}>⚙️ Edit Profile</div>
+            </div>
+            {isSupabaseConfigured && (
+              <button onClick={(e) => { e.stopPropagation(); supabase.auth.signOut(); }} style={{border:'none',background:'transparent',color:C.muted,fontSize:11,padding:0,cursor:'pointer'}}>Sign out</button>
+            )}
           </div>
         </aside>
       )}
@@ -6986,7 +7015,21 @@ export default function App() {
           <span style={{ fontSize: 11, color: !loaded ? C.amber : syncStatus === 'saved' ? C.green : syncStatus === 'syncing' ? C.amber : C.red }}>
             {!isSupabaseConfigured ? 'Local Demo Mode' : !loaded ? 'Loading...' : syncStatus === 'saved' ? 'Saved to Cloud' : syncStatus === 'syncing' ? 'Syncing...' : 'Sync Error'}
           </span>
-          {!sm && <span style={{ fontSize: 12, color: C.text, fontWeight: 700 }}>{displayName}</span>}
+          <div 
+            onClick={() => setShowProfileModal(true)} 
+            title="Click to edit profile settings" 
+            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+          >
+            <div style={{
+              width: 28, height: 28, borderRadius: '50%',
+              background: userAvatarUrl ? `url(${userAvatarUrl}) center/cover no-repeat` : `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontWeight: 800, fontSize: 12, border: `1px solid ${C.border}`, flexShrink: 0
+            }}>
+              {!userAvatarUrl && avatarInitial}
+            </div>
+            {!sm && <span style={{ fontSize: 12, color: C.text, fontWeight: 700 }}>{displayName}</span>}
+          </div>
           <button 
             onClick={() => setFakeMode(p => !p)} 
             style={{ 
@@ -7121,7 +7164,7 @@ export default function App() {
 
           return (
             <>
-              {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm}/>}
+              {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session}/>}
               {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
               {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='accounts'       &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab}/>}
@@ -7140,6 +7183,260 @@ export default function App() {
           );
         })()}
         {tab==='admin'     &&<AdminTab sm={sm} users={users} setUsers={setUsers} adminConfigured={adminConfigured} fetchUsers={fetchUsers}/>}
+      </div>
+      {showProfileModal && <ProfileSettingsModal session={session} onClose={() => setShowProfileModal(false)} />}
+    </div>
+  );
+}
+
+// ─── PROFILE SETTINGS MODAL ──────────────────────────────────────────────────
+function ProfileSettingsModal({ session, onClose }) {
+  const meta = session?.user?.user_metadata || {};
+  const [firstName, setFirstName] = useState(meta.first_name || '');
+  const [lastName, setLastName] = useState(meta.last_name || '');
+  const [email, setEmail] = useState(session?.user?.email || '');
+  const [avatarUrl, setAvatarUrl] = useState(meta.avatar_url || '');
+  const [previewUrl, setPreviewUrl] = useState(meta.avatar_url || '');
+  const [fileToUpload, setFileToUpload] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState({ text: '', type: '' });
+  const fileInputRef = useRef(null);
+
+  const initialLetter = ((firstName || meta.full_name || session?.user?.email || 'U').charAt(0)).toUpperCase();
+
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 256;
+          const MAX_HEIGHT = 256;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = err => reject(err);
+      };
+      reader.onerror = err => reject(err);
+    });
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setMsg({ text: 'Please select a valid image file (PNG, JPG, WEBP).', type: 'error' });
+      return;
+    }
+
+    try {
+      const compressedDataUrl = await compressImage(file);
+      setPreviewUrl(compressedDataUrl);
+      setFileToUpload(file);
+      setMsg({ text: '', type: '' });
+    } catch (err) {
+      console.error("Image compression error:", err);
+      setMsg({ text: 'Failed to process selected image file.', type: 'error' });
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPreviewUrl('');
+    setAvatarUrl('');
+    setFileToUpload(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMsg({ text: '', type: '' });
+
+    try {
+      let finalAvatarUrl = avatarUrl;
+
+      // Handle Picture Upload
+      if (fileToUpload || (previewUrl && previewUrl !== meta.avatar_url)) {
+        if (previewUrl.startsWith('data:')) {
+          // Attempt upload to Supabase Storage 'avatars' bucket
+          try {
+            const filePath = `${session.user.id}/avatar_${Date.now()}.jpg`;
+            const { data: uploadRes, error: uploadErr } = await supabase.storage
+              .from('avatars')
+              .upload(filePath, fileToUpload, { upsert: true });
+
+            if (!uploadErr && uploadRes) {
+              const { data: pData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+              finalAvatarUrl = pData?.publicUrl || previewUrl;
+            } else {
+              // Fall back to compressed Base64 Data URL if bucket is unconfigured
+              finalAvatarUrl = previewUrl;
+            }
+          } catch {
+            finalAvatarUrl = previewUrl;
+          }
+        } else {
+          finalAvatarUrl = previewUrl;
+        }
+      } else if (!previewUrl) {
+        finalAvatarUrl = '';
+      }
+
+      const fullName = `${firstName} ${lastName}`.trim();
+      const updates = {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          full_name: fullName || email.split('@')[0],
+          avatar_url: finalAvatarUrl
+        }
+      };
+
+      if (email && email !== session.user.email) {
+        updates.email = email;
+      }
+
+      const { error } = await supabase.auth.updateUser(updates);
+      if (error) throw error;
+
+      setMsg({ text: 'Profile updated successfully! Refreshing session...', type: 'success' });
+      setTimeout(() => {
+        onClose();
+        window.location.reload();
+      }, 1200);
+    } catch (err) {
+      setMsg({ text: err.message || 'Failed to update profile.', type: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 9999, padding: 16
+    }}>
+      <div style={{
+        background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+        padding: '24px 28px', maxWidth: 440, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: C.text }}>👤 My Profile Settings</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        {msg.text && (
+          <div style={{
+            padding: '10px 12px', borderRadius: 6, fontSize: 12, marginBottom: 16,
+            background: msg.type === 'error' ? 'rgba(255, 81, 79, 0.15)' : 'rgba(63, 185, 80, 0.15)',
+            border: `1px solid ${msg.type === 'error' ? C.red : C.green}`,
+            color: msg.type === 'error' ? C.red : C.green
+          }}>
+            {msg.text}
+          </div>
+        )}
+
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Avatar Photo Picker Section */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 14px', background: `${C.panel}66`, borderRadius: 10, border: `1px solid ${C.border}44` }}>
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: previewUrl ? `url(${previewUrl}) center/cover no-repeat` : `linear-gradient(135deg, ${C.amber}, ${C.orange})`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#08111f', fontWeight: 900, fontSize: 22,
+                cursor: 'pointer', border: `2px solid ${C.purple}`, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                flexShrink: 0, position: 'relative'
+              }}
+              title="Click to change profile picture"
+            >
+              {!previewUrl && initialLetter}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Profile Picture</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  accept="image/*" 
+                  onChange={handleFileChange} 
+                  style={{ display: 'none' }} 
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.purple}`,
+                    background: `${C.purple}22`, color: C.text, fontSize: 11, fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  📷 Upload Photo
+                </button>
+                {previewUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    style={{
+                      padding: '6px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
+                      background: 'transparent', color: C.muted, fontSize: 11,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🗑️ Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>First Name</label>
+              <Inp value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First Name" />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Last Name</label>
+              <Inp value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last Name" />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', marginBottom: 4, display: 'block' }}>Email Address</label>
+            <Inp type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+            <Btn type="button" onClick={onClose}>Cancel</Btn>
+            <BtnG type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Profile'}</BtnG>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -7268,6 +7565,32 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update user role");
       setActionSuccess(`Successfully updated user role to '${newRole}'`);
+      fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleToggleUserStatus = async (user) => {
+    setActionLoading(true);
+    setActionSuccess("");
+    setError("");
+    try {
+      const newActive = user.isActive === false ? true : false;
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/roles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ userId: user.id, role: user.role || 'user', isActive: newActive })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update user status");
+      setActionSuccess(`User status updated to ${newActive ? 'Active' : 'Inactive'} for ${user.email}`);
       fetchUsers();
     } catch (err) {
       setError(err.message);
@@ -7576,6 +7899,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                 <tr style={{ background: "#08111f", borderBottom: `1px solid ${C.border}` }}>
                   <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted }}>User Info</th>
                   <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted }}>Role</th>
+                  <th style={{ padding: "10px 8px", textAlign: "center", color: C.muted }}>Status</th>
                   <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted, display: sm ? "none" : "table-cell" }}>Created At</th>
                   <th style={{ padding: "10px 8px", textAlign: "left", color: C.muted, display: sm ? "none" : "table-cell" }}>Last Sign In</th>
                   <th style={{ padding: "10px 8px", textAlign: "center", color: C.muted }}>Actions</th>
@@ -7584,7 +7908,9 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
               <tbody>
                 {filteredUsers.map(user => {
                   const avClr = getAvatarColor(user.id);
-                  const fullName = user.user_metadata?.full_name || "";
+                  const fullName = user.fullName || user.user_metadata?.full_name || "";
+                  const userPic = user.user_metadata?.avatar_url || user.avatarUrl;
+                  const isUserActive = user.isActive !== false;
                   return (
                     <tr key={user.id} style={{ borderBottom: `1px solid ${C.border}22`, transition: "background 0.2s" }}>
                       <td style={{ padding: "10px 8px" }}>
@@ -7593,16 +7919,17 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                             width: 32, 
                             height: 32, 
                             borderRadius: "50%", 
-                            background: `${avClr}22`, 
+                            background: userPic ? `url(${userPic}) center/cover no-repeat` : `${avClr}22`, 
                             border: `1px solid ${avClr}44`, 
                             color: avClr, 
                             display: "flex", 
                             alignItems: "center", 
                             justifyContent: "center", 
                             fontWeight: 700,
-                            fontSize: 12
+                            fontSize: 12,
+                            flexShrink: 0
                           }}>
-                            {getInitials(user)}
+                            {!userPic && getInitials(user)}
                           </div>
                           <div>
                             <div style={{ fontWeight: 600, color: C.text }}>{fullName || "No Name"}</div>
@@ -7631,6 +7958,28 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                           <option value="viewer">Viewer</option>
                           <option value="guest">Guest</option>
                         </select>
+                      </td>
+                      <td style={{ padding: "10px 8px", textAlign: "center" }}>
+                        <button
+                          onClick={() => handleToggleUserStatus(user)}
+                          disabled={actionLoading}
+                          title="Click to toggle user activation status"
+                          style={{
+                            padding: '3px 9px',
+                            borderRadius: 12,
+                            border: `1px solid ${isUserActive ? C.green : C.red}`,
+                            background: `${isUserActive ? C.green : C.red}22`,
+                            color: isUserActive ? C.green : C.red,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          {isUserActive ? '● Active' : '○ Inactive'}
+                        </button>
                       </td>
                       <td style={{ padding: "10px 8px", color: C.muted, display: sm ? "none" : "table-cell" }}>
                         {formatDate(user.created_at)}
