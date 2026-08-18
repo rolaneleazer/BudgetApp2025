@@ -1,4 +1,5 @@
 import "dotenv/config";
+import http from "node:http";
 
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -128,7 +129,9 @@ app.all("/api/profile", async (req, res) => {
   await profileHandler(req, res);
 });
 
-app.listen(config.port, config.host, (error) => {
+const server = http.createServer({ maxHeaderSize: 65536 }, app);
+
+server.listen(config.port, config.host, (error) => {
   if (error) {
     console.error("Failed to start MCP server:", error);
     process.exit(1);

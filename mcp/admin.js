@@ -2,22 +2,27 @@ import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 import { getMcpConfig } from "./core.js";
 
-// Initialize Supabase Admin client using the service role key
-const config = getMcpConfig();
-const supabaseUrl = config.supabaseUrl;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.MCP_SUPABASE_SERVICE_ROLE_KEY;
+// Dynamic getter for Supabase Admin client using the service role key
+export function getSupabaseAdmin() {
+  const config = getMcpConfig();
+  const supabaseUrl = config.supabaseUrl;
+  const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.MCP_SUPABASE_SERVICE_ROLE_KEY || "";
+  const serviceRoleKey = rawKey.trim();
 
-export const supabaseAdmin = supabaseUrl && serviceRoleKey
-  ? createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      },
-      realtime: {
-        transport: ws
-      }
-    })
-  : null;
+  if (!supabaseUrl || !serviceRoleKey) return null;
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    },
+    realtime: {
+      transport: ws
+    }
+  });
+}
+
+export const supabaseAdmin = getSupabaseAdmin();
 
 // Helper to reliably parse the request body in Express or serverless environments
 export async function getRequestBody(req) {
@@ -62,10 +67,11 @@ export async function verifyAdmin(req) {
   let email = "";
   let isUserAdmin = false;
   let user = null;
+  const adminClient = getSupabaseAdmin();
 
-  if (supabaseAdmin) {
+  if (adminClient) {
     // Retrieve user using the JWT token via Supabase Auth
-    const { data: { user: supabaseUser }, error } = await supabaseAdmin.auth.getUser(token);
+    const { data: { user: supabaseUser }, error } = await adminClient.auth.getUser(token);
     if (error || !supabaseUser) {
       return { authorized: false, error: error?.message || "Invalid authentication token" };
     }
@@ -127,6 +133,7 @@ export async function adminHandler(req, res) {
 
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     const pathname = url.pathname;
+    const supabaseAdmin = getSupabaseAdmin();
 
     // Endpoint: GET /api/admin/check
     if (pathname === "/api/admin/check" && req.method === "GET") {

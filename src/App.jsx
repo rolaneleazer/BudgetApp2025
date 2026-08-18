@@ -7206,6 +7206,19 @@ export default function App() {
       activeUserIsAdmin = false;
       return;
     }
+
+    // Auto-clean bloated base64 image strings from user_metadata to shrink JWT token
+    const currentAvatar = session.user?.user_metadata?.avatar_url;
+    if (currentAvatar && typeof currentAvatar === 'string' && currentAvatar.startsWith('data:image/')) {
+      console.log("[App Client] Detected bloated base64 avatar in Supabase user_metadata. Cleaning up to shrink JWT...");
+      try {
+        localStorage.setItem(`bujdet-avatar-${session.user.id}`, currentAvatar);
+      } catch (_) {}
+      supabase.auth.updateUser({
+        data: { avatar_url: null }
+      }).catch(e => console.warn("Failed to clean avatar metadata:", e));
+    }
+
     const isSuperAdmin = isSuperAdminEmail(session.user.email);
     if (isSuperAdmin) {
       setIsAdmin(true);
@@ -7957,7 +7970,7 @@ function ProfileSettingsModal({ session, onClose }) {
 
       // Handle Picture Upload
       if (fileToUpload || (previewUrl && previewUrl !== meta.avatar_url)) {
-        if (previewUrl.startsWith('data:')) {
+        if (previewUrl && previewUrl.startsWith('data:')) {
           // Attempt upload to Supabase Storage 'avatars' bucket
           try {
             const filePath = `${session.user.id}/avatar_${Date.now()}.jpg`;
@@ -7969,7 +7982,6 @@ function ProfileSettingsModal({ session, onClose }) {
               const { data: pData } = supabase.storage.from('avatars').getPublicUrl(filePath);
               finalAvatarUrl = pData?.publicUrl || previewUrl;
             } else {
-              // Fall back to compressed Base64 Data URL if bucket is unconfigured
               finalAvatarUrl = previewUrl;
             }
           } catch {
@@ -7982,13 +7994,20 @@ function ProfileSettingsModal({ session, onClose }) {
         finalAvatarUrl = '';
       }
 
+      if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image/')) {
+        try {
+          localStorage.setItem(`bujdet-avatar-${session.user.id}`, finalAvatarUrl);
+        } catch (_) {}
+        finalAvatarUrl = null; // Do NOT store heavy base64 strings in Supabase user_metadata to avoid JWT bloat!
+      }
+
       const fullName = `${firstName} ${lastName}`.trim();
       const updates = {
         data: {
           first_name: firstName,
           last_name: lastName,
           full_name: fullName || email.split('@')[0],
-          avatar_url: finalAvatarUrl
+          avatar_url: (finalAvatarUrl && finalAvatarUrl.startsWith('http')) ? finalAvatarUrl : null
         }
       };
 
