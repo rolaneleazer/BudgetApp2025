@@ -18,6 +18,8 @@ export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [message, setMessage] = useState({ text: '', type: '' });
 
   const isConfigured = 
@@ -33,7 +35,7 @@ export default function Auth() {
       return;
     }
     if (!email || !password) {
-      setMessage({ text: 'Please fill in all fields.', type: 'error' });
+      setMessage({ text: 'Please fill in all required fields.', type: 'error' });
       return;
     }
 
@@ -42,11 +44,17 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
+        const fullName = `${firstName} ${lastName}`.trim();
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: import.meta.env.VITE_PUBLIC_URL || (typeof window !== 'undefined' ? window.location.origin : undefined),
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+              full_name: fullName || email.split('@')[0]
+            }
           },
         });
         if (error) throw error;
@@ -151,6 +159,54 @@ export default function Auth() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {isSignUp && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label htmlFor="auth-first-name" style={{ fontSize: '12px', fontWeight: 600, color: C.muted }}>First Name</label>
+                <input
+                  id="auth-first-name"
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="John"
+                  disabled={loading}
+                  style={{
+                    background: C.bg,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: '8px',
+                    padding: '12px 14px',
+                    color: C.text,
+                    fontSize: '14px',
+                    outline: 'none',
+                    width: '100%',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label htmlFor="auth-last-name" style={{ fontSize: '12px', fontWeight: 600, color: C.muted }}>Last Name</label>
+                <input
+                  id="auth-last-name"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                  disabled={loading}
+                  style={{
+                    background: C.bg,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: '8px',
+                    padding: '12px 14px',
+                    color: C.text,
+                    fontSize: '14px',
+                    outline: 'none',
+                    width: '100%',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label htmlFor="auth-email" style={{ fontSize: '12px', fontWeight: 600, color: C.muted }}>Email Address</label>
             <input
