@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import Auth from "./Auth";
+import { isSuperAdminEmail } from "./config/superAdmins";
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const OT_RATES = { weekday: 750, weekend: 680 };
@@ -7102,7 +7103,7 @@ const checkSessionAdmin = (sess) => {
   if (!sess || !sess.user) return false;
   const email = sess.user.email || "";
   const role = sess.user.app_metadata?.role;
-  return role === "admin" || email.toLowerCase() === "rolanmolano_77@yahoo.com";
+  return role === "admin" || isSuperAdminEmail(email);
 };
 
 export default function App() {
@@ -7165,6 +7166,7 @@ export default function App() {
 
   const fetchProfile = async () => {
     if (!session?.access_token) return;
+    const isSuperAdmin = isSuperAdminEmail(session?.user?.email);
     try {
       const res = await fetch("/api/profile", {
         headers: {
@@ -7174,14 +7176,23 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         console.log("[App Client] fetchProfile API response:", data);
-        setRole(data.role || 'user');
+        const effectiveRole = (isSuperAdmin || data.role === 'admin') ? 'admin' : (data.role || 'user');
+        setRole(effectiveRole);
         setPermissions(data.permissions || {});
-        setIsAdmin(data.role === 'admin');
-      } else {
-        console.warn("[App Client] fetchProfile API failed with status:", res.status);
+        setIsAdmin(effectiveRole === 'admin');
+        activeUserIsAdmin = (effectiveRole === 'admin');
+      } else if (isSuperAdmin) {
+        setRole('admin');
+        setIsAdmin(true);
+        activeUserIsAdmin = true;
       }
     } catch (err) {
       console.error("Error fetching user profile permissions:", err);
+      if (isSuperAdmin) {
+        setRole('admin');
+        setIsAdmin(true);
+        activeUserIsAdmin = true;
+      }
     }
   };
 
@@ -7195,7 +7206,14 @@ export default function App() {
       activeUserIsAdmin = false;
       return;
     }
-    activeUserIsAdmin = checkSessionAdmin(session);
+    const isSuperAdmin = isSuperAdminEmail(session.user.email);
+    if (isSuperAdmin) {
+      setIsAdmin(true);
+      setRole('admin');
+      activeUserIsAdmin = true;
+    } else {
+      activeUserIsAdmin = checkSessionAdmin(session);
+    }
     fetchProfile();
   }, [session]);
 
@@ -7493,8 +7511,8 @@ export default function App() {
   useEffect(() => { if (ready.current && session && (!viewingUserId || viewingUserId === session.user.id)) safeSet('bujdet-balanceHistory-' + session.user.id, balanceHistory); }, [balanceHistory, session, viewingUserId]);
 
   const getPermission = (tabId) => {
+    if (role === "admin" || isAdmin || isSuperAdminEmail(session?.user?.email)) return "update";
     if (permissions && permissions[tabId]) return permissions[tabId];
-    if (role === "admin") return "update";
     if (role === "viewer") return "read";
     if (role === "guest") return tabId === "dashboard" ? "read" : "none";
     const baselineModules = new Set(["dashboard", "history", "budget", "accounts", "debts", "credits", "expenses", "calendar", "reports"]);
@@ -8102,6 +8120,199 @@ function ProfileSettingsModal({ session, onClose }) {
   );
 }
 
+// ─── LIVE SUPABASE REALTIME DATABASE ANALYTICS ────────────────────────────────
+function LiveSupabaseAnalytics({ sm, users = [] }) {
+  const [events, setEvents] = useState([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [latency, setLatency] = useState(null);
+  const [mutationCount, setMutationCount] = useState(0);
+  const [globalStats, setGlobalStats] = useState({
+    totalProfiles: 0,
+    totalFinancialVolume: 0,
+    totalAccounts: 0,
+    totalDebts: 0,
+    totalCredits: 0,
+    avgProfileKb: 0
+  });
+
+  // Fetch initial database analytics snapshot
+  const fetchSnapshot = async () => {
+    try {
+      const startTime = performance.now();
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('user_id, budget_data, accounts, credits, debts, updated_at');
+      
+      const endTime = performance.now();
+      setLatency(Math.round(endTime - startTime));
+
+      if (data) {
+        let totalVolume = 0;
+        let accCount = 0;
+        let debtCount = 0;
+        let creditCount = 0;
+        let totalBytes = 0;
+
+        data.forEach(row => {
+          totalBytes += JSON.stringify(row).length;
+          const accs = Array.isArray(row.accounts) ? row.accounts : [];
+          accCount += accs.length;
+          totalVolume += accs.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+
+          const dbts = Array.isArray(row.debts) ? row.debts : [];
+          debtCount += dbts.length;
+
+          const crds = Array.isArray(row.credits) ? row.credits : [];
+          creditCount += crds.length;
+        });
+
+        setGlobalStats({
+          totalProfiles: data.length,
+          totalFinancialVolume: totalVolume,
+          totalAccounts: accCount,
+          totalDebts: debtCount,
+          totalCredits: creditCount,
+          avgProfileKb: data.length > 0 ? (totalBytes / data.length / 1024).toFixed(1) : 0
+        });
+      }
+    } catch (err) {
+      console.warn('[Live Analytics] Error fetching snapshot:', err);
+    }
+  };
+
+  // Real-time Supabase Subscription listening to postgres_changes
+  useEffect(() => {
+    fetchSnapshot();
+
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel('supabase-live-analytics')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_profiles' },
+        (payload) => {
+          const timestamp = new Date().toLocaleTimeString();
+          const newEvt = {
+            id: Date.now() + Math.random(),
+            table: 'user_profiles',
+            eventType: payload.eventType,
+            userId: payload.new?.user_id || payload.old?.user_id || 'Unknown',
+            time: timestamp
+          };
+
+          setMutationCount(c => c + 1);
+          setEvents(prev => [newEvt, ...prev.slice(0, 19)]);
+          fetchSnapshot();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_roles' },
+        (payload) => {
+          const timestamp = new Date().toLocaleTimeString();
+          const newEvt = {
+            id: Date.now() + Math.random(),
+            table: 'user_roles',
+            eventType: payload.eventType,
+            userId: payload.new?.user_id || payload.old?.user_id || 'Unknown',
+            time: timestamp
+          };
+
+          setMutationCount(c => c + 1);
+          setEvents(prev => [newEvt, ...prev.slice(0, 19)]);
+        }
+      )
+      .subscribe((status) => {
+        setIsConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  return (
+    <Card style={{ marginBottom: 16, background: `linear-gradient(135deg, ${C.card}, #0f172a)` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+        <div>
+          <SecTitle style={{ margin: 0 }}>⚡ Supabase Live Realtime Database Telemetry & Analytics</SecTitle>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+            Real-time PostgreSQL WebSocket telemetry streaming database mutations, storage volume & user activity.
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: isConnected ? `${C.green}22` : `${C.amber}22`, border: `1px solid ${isConnected ? C.green : C.amber}` }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: isConnected ? C.green : C.amber }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: isConnected ? C.green : C.amber }}>
+              {isConnected ? '🟢 Realtime Subscribed' : '🟡 Polling Active'}
+            </span>
+          </div>
+
+          <button onClick={fetchSnapshot} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+            🔄 Refresh Ping ({latency ? `${latency}ms` : 'pinging...'})
+          </button>
+        </div>
+      </div>
+
+      {/* 4 Metric Summary Boxes */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
+        <div style={{ padding: '12px 14px', borderRadius: 8, background: `${C.panel}aa`, border: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Total Synced Users</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: C.blue, marginTop: 2 }}>{globalStats.totalProfiles} Profiles</div>
+          <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{users.length} registered in Auth</div>
+        </div>
+
+        <div style={{ padding: '12px 14px', borderRadius: 8, background: `${C.panel}aa`, border: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Global Synced Balance</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: C.green, marginTop: 2 }}>{peso(globalStats.totalFinancialVolume)}</div>
+          <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{globalStats.totalAccounts} total bank/card accounts</div>
+        </div>
+
+        <div style={{ padding: '12px 14px', borderRadius: 8, background: `${C.panel}aa`, border: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Realtime DB Mutations</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: C.purple, marginTop: 2 }}>{mutationCount} Events</div>
+          <div style={{ fontSize: 10, color: C.purple, marginTop: 2 }}>Avg Payload: {globalStats.avgProfileKb} kB/user</div>
+        </div>
+
+        <div style={{ padding: '12px 14px', borderRadius: 8, background: `${C.panel}aa`, border: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Supabase API Latency</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: latency < 150 ? C.green : C.amber, marginTop: 2 }}>{latency ? `${latency} ms` : '—'}</div>
+          <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>PostgreSQL Direct Connection</div>
+        </div>
+      </div>
+
+      {/* Live PostgreSQL Event Stream Box */}
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>📡 Live PostgreSQL Change Feed (postgres_changes)</span>
+          <span style={{ fontSize: 10, color: C.muted }}>Showing last 20 realtime events</span>
+        </div>
+
+        <div style={{ background: `${C.bg}bb`, borderRadius: 8, padding: 10, border: `1px solid ${C.border}`, maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, fontFamily: 'monospace' }}>
+          {events.length === 0 ? (
+            <div style={{ textAlign: 'center', color: C.muted, fontSize: 11, padding: '16px 0' }}>
+              ⚡ Listening for live PostgreSQL table mutations across Supabase... (Perform an account update or edit to see live events)
+            </div>
+          ) : (
+            events.map(evt => (
+              <div key={evt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, padding: '4px 8px', background: `${C.panel}`, borderRadius: 4, borderLeft: `3px solid ${evt.eventType === 'UPDATE' ? C.blue : evt.eventType === 'INSERT' ? C.green : C.red}` }}>
+                <div>
+                  <span style={{ fontWeight: 800, color: evt.eventType === 'UPDATE' ? C.blue : evt.eventType === 'INSERT' ? C.green : C.red, marginRight: 8 }}>[{evt.eventType}]</span>
+                  <span style={{ color: C.text, marginRight: 8 }}>{evt.table}</span>
+                  <span style={{ color: C.muted, fontSize: 10 }}>User: {evt.userId.slice(0, 12)}…</span>
+                </div>
+                <span style={{ color: C.muted, fontSize: 10 }}>{evt.time}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 // ─── ADMIN PANEL ─────────────────────────────────────────────────────────────
 function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
   const [loading, setLoading] = useState(true);
@@ -8485,6 +8696,9 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
 
   return (
     <div>
+      {/* Live Supabase Realtime Telemetry Dashboard */}
+      <LiveSupabaseAnalytics sm={sm} users={users} />
+
       {/* Metric Cards at the Top */}
       <div style={{ display: "grid", gridTemplateColumns: sm ? "1fr" : "repeat(3, 1fr)", gap: 12, marginBottom: 14 }}>
         <MetricCard label="Total Registered Users" value={users.length} color={C.blue} sm={sm} icon="👥" />
