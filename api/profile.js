@@ -138,10 +138,14 @@ export default async function handler(req, res) {
       "history",
       "budget",
       "accounts",
+      "reconcile",
+      "transactions",
+      "investments",
       "debts",
       "credits",
       "expenses",
       "calendar",
+      "graph",
       "reports"
     ]);
 

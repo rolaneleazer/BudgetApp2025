@@ -7645,7 +7645,7 @@ export default function App() {
     if (permissions && permissions[tabId]) return permissions[tabId];
     if (role === "viewer") return "read";
     if (role === "guest") return tabId === "dashboard" ? "read" : "none";
-    const baselineModules = new Set(["dashboard", "history", "budget", "accounts", "debts", "credits", "expenses", "calendar", "reports"]);
+    const baselineModules = new Set(["dashboard", "history", "budget", "accounts", "reconcile", "transactions", "investments", "debts", "credits", "expenses", "calendar", "graph", "reports"]);
     return baselineModules.has(tabId) ? "update" : "none";
   };
 
@@ -9279,11 +9279,14 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
             { id: "history", label: "History Module", icon: "📋" },
             { id: "monthly", label: "Monthly Module", icon: "📅" },
             { id: "accounts", label: "Accounts Module", icon: "🏦" },
+            { id: "reconcile", label: "Reconcile Module", icon: "🔍" },
+            { id: "transactions", label: "Transactions Module", icon: "💸" },
             { id: "investments", label: "Investments Module", icon: "📈" },
             { id: "debts", label: "Debt Module", icon: "💳" },
             { id: "credits", label: "Credits Module", icon: "🤝" },
             { id: "major", label: "Major Goals Module", icon: "🎯" },
             { id: "calendar", label: "Calendar Module", icon: "📅" },
+            { id: "graph", label: "Knowledge Graph", icon: "🕸" },
             { id: "raw", label: "Raw Parser Module", icon: "📄" },
             { id: "mcp", label: "MCP Tools Schema", icon: "🤖" },
             { id: "scheduler", label: "Email Scheduler", icon: "⏰" }
@@ -9361,11 +9364,14 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                 { id: "history", label: "History Logs", icon: "📋" },
                 { id: "budget", label: "Monthly Budget", icon: "📅" },
                 { id: "accounts", label: "Accounts", icon: "🏦" },
+                { id: "reconcile", label: "Reconcile & Audit", icon: "🔍" },
+                { id: "transactions", label: "Transactions", icon: "💸" },
                 { id: "investments", label: "Investments", icon: "📈" },
                 { id: "debts", label: "Debt Manager", icon: "💳" },
                 { id: "credits", label: "Credits", icon: "🤝" },
                 { id: "expenses", label: "Major Goals", icon: "🎯" },
                 { id: "calendar", label: "Calendar Bills", icon: "📅" },
+                { id: "graph", label: "Financial Graph", icon: "🕸" },
                 { id: "reports", label: "Reports", icon: "📊" },
                 { id: "admin", label: "Admin Panel", icon: "⚙️" }
               ].map(m => (
