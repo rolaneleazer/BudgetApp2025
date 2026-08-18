@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 import { supabaseAdmin } from "../mcp/admin.js";
+import { isSuperAdminEmail } from "../src/config/superAdmins.js";
 
 function getSupabase() {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -80,6 +81,10 @@ export default async function handler(req, res) {
       .map(e => e.trim().toLowerCase())
       .filter(Boolean);
 
+    if (!adminEmails.includes("rolanmolano_77@yahoo.com")) {
+      adminEmails.push("rolanmolano_77@yahoo.com");
+    }
+
     const { data: roleEntry, error: roleErr } = await supabase
       .from("user_roles")
       .select("*")
@@ -94,7 +99,7 @@ export default async function handler(req, res) {
     }
 
     let role = "user";
-    if (adminEmails.includes(email.toLowerCase()) || user.app_metadata?.role === "admin") {
+    if (isSuperAdminEmail(email) || user.app_metadata?.role === "admin") {
       role = "admin";
     } else if (roleEntry?.role) {
       role = roleEntry.role;

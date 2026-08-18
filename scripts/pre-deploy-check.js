@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { createBudgetMcpServer, normalizeProfile, buildModulePayload } from "../mcp/core.js";
 import { shouldFire } from "../mcp/scheduler.js";
+import { isSuperAdminEmail } from "../src/config/superAdmins.js";
 
 const errors = [];
 
@@ -149,6 +150,27 @@ check("Scheduler Rules & Timezone Checks", () => {
   if (willFire === true) {
     throw new Error("Duplicate prevention failed! A schedule already sent today is matching to fire again.");
   }
+});
+
+// 5. Super Admin Role & Permission Verification
+check("Super Admin Role & Permission Verification", () => {
+  const testEmail = "rolanmolano_77@yahoo.com";
+  
+  if (!isSuperAdminEmail(testEmail)) {
+    throw new Error(`Super Admin check failed! '${testEmail}' was not recognized as Super Admin.`);
+  }
+
+  // Test case with empty process.env.ADMIN_EMAILS (tests fallback protection)
+  const oldEnv = process.env.ADMIN_EMAILS;
+  delete process.env.ADMIN_EMAILS;
+  
+  if (!isSuperAdminEmail("rolanmolano_77@yahoo.com")) {
+    process.env.ADMIN_EMAILS = oldEnv;
+    throw new Error("Super Admin fallback failed when ADMIN_EMAILS environment variable is missing!");
+  }
+  
+  if (oldEnv) process.env.ADMIN_EMAILS = oldEnv;
+  console.log(`Verified Super Admin protection for ${testEmail}!`);
 });
 
 console.log("\n====================================");
