@@ -301,10 +301,47 @@ function YMPicker({year,monthIdx,onYear,onMonth,sm}) {
   );
 }
 
-// ─── DASHBOARD ────────────────────────────────────────────────────────────────
-const DEFAULT_CARD_ORDER = ['today-glance','surplus-banner','metrics','period-burn','balance-logs','cashflow','expense-donut','charts-row','budget-row','recent-tx','installment-summary','insights-row'];
+const DEFAULT_CARD_ORDER = [
+  'quick-actions',
+  'today-glance',
+  'account-health',
+  'surplus-banner',
+  'metrics',
+  'debts-credits-summary',
+  'net-worth-graph',
+  'portfolio-summary',
+  'period-burn',
+  'balance-logs',
+  'cashflow',
+  'expense-donut',
+  'charts-row',
+  'budget-row',
+  'recent-tx',
+  'installment-summary',
+  'insights-row'
+];
 
-function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm, session }) {
+const CARD_LABELS = {
+  'quick-actions': '⚡ Quick Actions Bar',
+  'today-glance': '📅 Today at a Glance',
+  'account-health': '🔍 Account Health & Reconciliation',
+  'surplus-banner': '💡 Cash Surplus / Deficit Banner',
+  'metrics': '📊 Financial Core Metrics',
+  'debts-credits-summary': '💳 Debts & Money Owed Summary',
+  'net-worth-graph': '📈 Net Worth Trajectory Graph',
+  'portfolio-summary': '💼 Investment Portfolio Overview',
+  'period-burn': '🔥 Burn Rate Tracker',
+  'balance-logs': '📜 Account Balance History',
+  'cashflow': '🌊 Monthly Cash Flow Stream',
+  'expense-donut': '🍩 Expense Category Breakdown',
+  'charts-row': '📉 Trend Charts',
+  'budget-row': '💵 Budget vs Actual Comparison',
+  'recent-tx': '📋 Central Transactions Feed',
+  'installment-summary': '🏷️ Installment Plans Summary',
+  'insights-row': '🤖 AI Financial Insights'
+};
+
+function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm, session, setTab }) {
   // ── Load installment plans from localStorage ──
   const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
   const getInstBreakdownSimple = (total, months, interestRate, customMonthly) => {
@@ -376,7 +413,22 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     localStorage.removeItem('dashboardCardCollapsed');
   };
 
-  // ── Per-section width: 'full' | 'half' ──
+  const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+  const [hiddenCards, setHiddenCards] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardHiddenCards');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
+  const toggleCardVisibility = (id) => {
+    const next = hiddenCards.includes(id) 
+      ? hiddenCards.filter(x => x !== id) 
+      : [...hiddenCards, id];
+    setHiddenCards(next);
+    localStorage.setItem('dashboardHiddenCards', JSON.stringify(next));
+  };
   const [cardSizes, setCardSizes] = useState(() => {
     try {
       const saved = localStorage.getItem('dashboardCardSizes');
@@ -1313,6 +1365,146 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
         </div>
       );
 
+      case 'quick-actions': return (
+        <Card style={{ marginBottom: 12, background: `linear-gradient(135deg, ${C.card}, #0f172a)` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+              ⚡ Quick Actions & Module Shortcuts
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button onClick={() => setTab && setTab('transactions')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.purple}`, background: `${C.purple}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                ➕ Add Transaction
+              </button>
+              <button onClick={() => setTab && setTab('reconcile')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.blue}`, background: `${C.blue}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                🔍 Audit & Reconcile
+              </button>
+              <button onClick={() => setTab && setTab('graph')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.green}`, background: `${C.green}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                📈 Financial Graph
+              </button>
+              <button onClick={() => setTab && setTab('debts')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.amber}`, background: `${C.amber}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                💳 Debts & Payoffs
+              </button>
+              <button onClick={() => setTab && setTab('investments')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.teal}`, background: `${C.teal}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                💼 Investments
+              </button>
+            </div>
+          </div>
+        </Card>
+      );
+
+      case 'account-health': return (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <SecTitle style={{ margin: 0 }}>🔍 Account Audit & Reconciliation Status</SecTitle>
+            <button onClick={() => setTab && setTab('reconcile')} style={{ background: 'none', border: 'none', color: C.blue, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              View All Accounts →
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4, 1fr)', gap: 10 }}>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.panel}66`, border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Total Accounts</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginTop: 2 }}>{accounts.length} Accounts</div>
+            </div>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.green}11`, border: `1px solid ${C.green}44` }}>
+              <div style={{ fontSize: 10, color: C.green, textTransform: 'uppercase', fontWeight: 700 }}>Active Balances</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.green, marginTop: 2 }}>{peso(accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0))}</div>
+            </div>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.amber}11`, border: `1px solid ${C.amber}44` }}>
+              <div style={{ fontSize: 10, color: C.amber, textTransform: 'uppercase', fontWeight: 700 }}>Audit Status</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.amber, marginTop: 4 }}>Verified & Ready</div>
+            </div>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.purple}11`, border: `1px solid ${C.purple}44` }}>
+              <div style={{ fontSize: 10, color: C.purple, textTransform: 'uppercase', fontWeight: 700 }}>Account Manager</div>
+              <button onClick={() => setTab && setTab('account-manager')} style={{ border: 'none', background: 'none', color: C.purple, fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, marginTop: 4 }}>
+                Manage Accounts ⚙️
+              </button>
+            </div>
+          </div>
+        </Card>
+      );
+
+      case 'debts-credits-summary': return (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <Card style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <SecTitle style={{ margin: 0 }}>💳 Debt Obligations</SecTitle>
+              <button onClick={() => setTab && setTab('debts')} style={{ background: 'none', border: 'none', color: C.red, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                Open Debts Tab →
+              </button>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: C.red, marginBottom: 4 }}>
+              {peso(debts.reduce((s, d) => s + (Number(d.balance) || 0), 0))}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted }}>
+              Total remaining balance across {debts.length} active debt obligation(s).
+            </div>
+          </Card>
+          <Card style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <SecTitle style={{ margin: 0 }}>💵 Money Owed to You (Credits)</SecTitle>
+              <button onClick={() => setTab && setTab('credits')} style={{ background: 'none', border: 'none', color: C.green, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                Open Credits Tab →
+              </button>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: C.green, marginBottom: 4 }}>
+              {peso((credits || []).reduce((s, c) => s + (Number(c.amount) || 0), 0))}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted }}>
+              Total receivables owed to you across {(credits || []).length} borrower(s).
+            </div>
+          </Card>
+        </div>
+      );
+
+      case 'net-worth-graph': return (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <SecTitle style={{ margin: 0 }}>📈 Net Worth Trajectory (Financial Graph Preview)</SecTitle>
+            <button onClick={() => setTab && setTab('graph')} style={{ background: 'none', border: 'none', color: C.green, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              Open Interactive Graph →
+            </button>
+          </div>
+          <div style={{ height: 160 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={getGroupedHistoryData()} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
+                <defs><linearGradient id="nwG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.green} stopOpacity={0.35} /><stop offset="95%" stopColor={C.green} stopOpacity={0} /></linearGradient></defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
+                <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
+                <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Net Assets']} />
+                <Area type="monotone" dataKey="total" stroke={C.green} fill="url(#nwG)" strokeWidth={2} dot={{ fill: C.green, r: 2 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      );
+
+      case 'portfolio-summary': return (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <SecTitle style={{ margin: 0 }}>💼 Investment Portfolio Summary</SecTitle>
+            <button onClick={() => setTab && setTab('investments')} style={{ background: 'none', border: 'none', color: C.teal, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              Open Investments Tab →
+            </button>
+          </div>
+          {(() => {
+            const invAccounts = accounts.filter(a => a.type === 'Investment');
+            const totalInv = invAccounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: C.teal }}>{peso(totalInv)}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Allocated across {invAccounts.length} investment account(s)</div>
+                </div>
+                <button onClick={() => setTab && setTab('investments')} style={{ padding: '6px 14px', borderRadius: 6, border: `1px solid ${C.teal}`, background: `${C.teal}22`, color: C.teal, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  View Portfolio Assets
+                </button>
+              </div>
+            );
+          })()}
+        </Card>
+      );
+
       default: return null;
     }
   };
@@ -1371,14 +1563,23 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
             <input type="date" value={customEnd} onChange={e => handleCustomEndChange(e.target.value)} style={{ background: C.card, border: `1px solid ${C.border}`, color: C.text, borderRadius: 6, padding: '6px 10px', fontSize: 12, outline: 'none', fontFamily: 'inherit' }} />
           </div>
         )}
-        {/* Reset layout button */}
-        <button
-          onClick={resetCardOrder}
-          title="Reset dashboard layout to default"
-          style={{ marginLeft: 'auto', padding: '6px 11px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.panel, color: C.muted, cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}
-        >
-          ↺ Reset Layout
-        </button>
+        {/* Customize Layout & Reset buttons */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setShowCustomizeModal(true)}
+            title="Customize dashboard widgets and layout"
+            style={{ padding: '6px 11px', borderRadius: 6, border: `1px solid ${C.purple}`, background: `${C.purple}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}
+          >
+            ⚙️ Customize Widgets
+          </button>
+          <button
+            onClick={resetCardOrder}
+            title="Reset dashboard layout to default"
+            style={{ padding: '6px 11px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.panel, color: C.muted, cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}
+          >
+            ↺ Reset Layout
+          </button>
+        </div>
       </div>
 
       <div style={{ fontSize: 11, color: C.muted, marginBottom: 14 }}>
@@ -1388,6 +1589,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
       {/* ── Draggable sections ── */}
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 14, alignItems: 'start' }}>
         {cardOrder.map(id => {
+          if (hiddenCards.includes(id)) return null;
           const isHalf     = cardSizes[id] === 'half';
           const isCollapsed = !!cardCollapsed[id];
           return (
@@ -1503,6 +1705,91 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
             </div>
           );
         })}
+      </div>
+
+      {showCustomizeModal && (
+        <CustomizeDashboardModal 
+          cardOrder={cardOrder} 
+          setCardOrder={setCardOrder} 
+          hiddenCards={hiddenCards} 
+          toggleCardVisibility={toggleCardVisibility} 
+          resetCardOrder={resetCardOrder} 
+          onClose={() => setShowCustomizeModal(false)} 
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── CUSTOMIZE DASHBOARD MODAL ───────────────────────────────────────────────
+function CustomizeDashboardModal({ cardOrder, setCardOrder, hiddenCards, toggleCardVisibility, resetCardOrder, onClose }) {
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 9999, padding: 16
+    }}>
+      <div style={{
+        background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+        padding: '24px 28px', maxWidth: 520, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+        maxHeight: '85vh', display: 'flex', flexDirection: 'column'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: C.text }}>⚙️ Customize Dashboard Widgets</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>
+          Toggle widget visibility on your financial dashboard or reset to default layout.
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
+          {cardOrder.map((id) => {
+            const label = CARD_LABELS[id] || id;
+            const isHidden = hiddenCards.includes(id);
+
+            return (
+              <div 
+                key={id}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 14px', borderRadius: 8, background: `${C.panel}88`,
+                  border: `1px solid ${C.border}`, opacity: isHidden ? 0.5 : 1
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 600, color: C.text }}>
+                  <span>{label}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={() => toggleCardVisibility(id)}
+                    style={{
+                      padding: '4px 10px', borderRadius: 6,
+                      border: `1px solid ${isHidden ? C.muted : C.green}`,
+                      background: isHidden ? 'transparent' : `${C.green}22`,
+                      color: isHidden ? C.muted : C.green,
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    {isHidden ? '👁️ Hidden' : '✅ Visible'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+          <button 
+            onClick={() => { resetCardOrder(); localStorage.removeItem('dashboardHiddenCards'); window.location.reload(); }}
+            style={{ border: 'none', background: 'none', color: C.amber, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+          >
+            ↺ Reset Layout to Default
+          </button>
+          <BtnG onClick={onClose}>Done</BtnG>
+        </div>
       </div>
     </div>
   );
@@ -7164,7 +7451,7 @@ export default function App() {
 
           return (
             <>
-              {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session}/>}
+              {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} setTab={setTab}/>}
               {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
               {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='accounts'       &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab}/>}
