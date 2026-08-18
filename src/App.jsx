@@ -4468,52 +4468,133 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
           {canWrite && <BtnG onClick={addNew}>+ Add Debt Account</BtnG>}
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: '#0d1117', borderBottom: `1px solid ${C.border}` }}>
-              <th style={{ padding: '8px', textAlign: 'left', color: C.muted }}>Account</th>
-              <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>Balance (₱)</th>
-              <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>Limit (₱)</th>
-              <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>APR (%)</th>
-              <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>Min Pay (₱)</th>
-              <th style={{ padding: '8px', textAlign: 'center', color: C.muted }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {debts.map(d => {
+        {sm ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {debts.length === 0 ? (
+              <div style={{ textAlign: 'center', color: C.muted, padding: '16px 0', fontSize: 12 }}>No debt accounts added yet.</div>
+            ) : debts.map(d => {
               const util = d.limit > 0 ? (d.balance / d.limit) * 100 : 0;
               return (
-                <tr key={d.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                <div key={d.id} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: 12 }}>
                   {editing === d.id ? (
-                    <>
-                      <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly}/></td>
-                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
-                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.limit} onChange={e => setEditData({ ...editData, limit: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
-                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.apr} onChange={e => setEditData({ ...editData, apr: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
-                      <td style={{ padding: '6px' }}><Inp type="number" value={editData.minPayment} onChange={e => setEditData({ ...editData, minPayment: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
-                      <td style={{ padding: '6px', textAlign: 'center' }}>
-                        <button onClick={saveEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.green, marginRight: 8, fontSize: 16 }}>✓</button>
-                        <button onClick={() => setEditing(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 16 }}>×</button>
-                      </td>
-                    </>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div>
+                        <label style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>Account Name</label>
+                        <Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly}/>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <div>
+                          <label style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>Balance (₱)</label>
+                          <Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} disabled={readOnly}/>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>Limit (₱)</label>
+                          <Inp type="number" value={editData.limit} onChange={e => setEditData({ ...editData, limit: Number(e.target.value) || 0 })} disabled={readOnly}/>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <div>
+                          <label style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>APR (%)</label>
+                          <Inp type="number" value={editData.apr} onChange={e => setEditData({ ...editData, apr: Number(e.target.value) || 0 })} disabled={readOnly}/>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>Min Pay (₱)</label>
+                          <Inp type="number" value={editData.minPayment} onChange={e => setEditData({ ...editData, minPayment: Number(e.target.value) || 0 })} disabled={readOnly}/>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                        <button onClick={saveEdit} style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', background: C.green, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Save</button>
+                        <button onClick={() => setEditing(null)} style={{ flex: 1, padding: '6px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'none', color: C.muted, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                      </div>
+                    </div>
                   ) : (
-                    <>
-                      <td style={{ padding: '8px 10px', fontWeight: 600 }}>{d.name}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: C.red, fontWeight: 700 }}>{peso(d.balance)}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: C.muted }}>{peso(d.limit)}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>{d.apr}%</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: C.amber }}>{peso(d.minPayment)}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                        {canUpdate && <button onClick={() => startEdit(d)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, padding: '2px 8px', fontSize: 11, marginRight: 4 }}>Edit</button>}
-                        {canUpdate && <button onClick={() => setDebts(p => p.filter(x => x.id !== d.id))} style={{ background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, cursor: 'pointer', color: C.red, padding: '2px 8px', fontSize: 11 }}>Delete</button>}
-                      </td>
-                    </>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{d.name}</span>
+                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: util >= 50 ? `${C.red}22` : `${C.green}22`, color: util >= 50 ? C.red : C.green, fontWeight: 700 }}>
+                          {util.toFixed(0)}% Utilized
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, background: `${C.card}`, padding: 8, borderRadius: 6, marginBottom: 8, fontSize: 11 }}>
+                        <div>
+                          <div style={{ color: C.muted, fontSize: 10 }}>Balance</div>
+                          <div style={{ fontWeight: 700, color: C.red, fontSize: 13 }}>{peso(d.balance)}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: C.muted, fontSize: 10 }}>Credit Limit</div>
+                          <div style={{ fontWeight: 600, color: C.text }}>{peso(d.limit)}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: C.muted, fontSize: 10 }}>APR</div>
+                          <div style={{ fontWeight: 600, color: C.text }}>{d.apr}%</div>
+                        </div>
+                        <div>
+                          <div style={{ color: C.muted, fontSize: 10 }}>Min Payment</div>
+                          <div style={{ fontWeight: 600, color: C.amber }}>{peso(d.minPayment)}</div>
+                        </div>
+                      </div>
+                      {canUpdate && (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => startEdit(d)} style={{ flex: 1, padding: '6px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'none', color: C.muted, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>✏️ Edit Account</button>
+                          <button onClick={() => setDebts(p => p.filter(x => x.id !== d.id))} style={{ flex: 1, padding: '6px', borderRadius: 6, border: `1px solid ${C.red}33`, background: `${C.red}11`, color: C.red, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>🗑 Delete</button>
+                        </div>
+                      )}
+                    </div>
                   )}
-                </tr>
+                </div>
               );
             })}
-          </tbody>
-        </table>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#0d1117', borderBottom: `1px solid ${C.border}` }}>
+                  <th style={{ padding: '8px', textAlign: 'left', color: C.muted }}>Account</th>
+                  <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>Balance (₱)</th>
+                  <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>Limit (₱)</th>
+                  <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>APR (%)</th>
+                  <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>Min Pay (₱)</th>
+                  <th style={{ padding: '8px', textAlign: 'center', color: C.muted }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {debts.map(d => {
+                  const util = d.limit > 0 ? (d.balance / d.limit) * 100 : 0;
+                  return (
+                    <tr key={d.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                      {editing === d.id ? (
+                        <>
+                          <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly}/></td>
+                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.limit} onChange={e => setEditData({ ...editData, limit: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.apr} onChange={e => setEditData({ ...editData, apr: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.minPayment} onChange={e => setEditData({ ...editData, minPayment: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                          <td style={{ padding: '6px', textAlign: 'center' }}>
+                            <button onClick={saveEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.green, marginRight: 8, fontSize: 16 }}>✓</button>
+                            <button onClick={() => setEditing(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 16 }}>×</button>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td style={{ padding: '8px 10px', fontWeight: 600 }}>{d.name}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: C.red, fontWeight: 700 }}>{peso(d.balance)}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: C.muted }}>{peso(d.limit)}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>{d.apr}%</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: C.amber }}>{peso(d.minPayment)}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                            {canUpdate && <button onClick={() => startEdit(d)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, padding: '2px 8px', fontSize: 11, marginRight: 4 }}>Edit</button>}
+                            {canUpdate && <button onClick={() => setDebts(p => p.filter(x => x.id !== d.id))} style={{ background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, cursor: 'pointer', color: C.red, padding: '2px 8px', fontSize: 11 }}>Delete</button>}
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
       
       <Card>
