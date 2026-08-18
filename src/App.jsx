@@ -301,10 +301,49 @@ function YMPicker({year,monthIdx,onYear,onMonth,sm}) {
   );
 }
 
-// ─── DASHBOARD ────────────────────────────────────────────────────────────────
-const DEFAULT_CARD_ORDER = ['today-glance','surplus-banner','metrics','period-burn','balance-logs','cashflow','expense-donut','charts-row','budget-row','recent-tx','installment-summary','insights-row'];
+const DEFAULT_CARD_ORDER = [
+  'quick-actions',
+  'today-glance',
+  'account-health',
+  'credit-card-health',
+  'surplus-banner',
+  'metrics',
+  'debts-credits-summary',
+  'net-worth-graph',
+  'portfolio-summary',
+  'period-burn',
+  'balance-logs',
+  'cashflow',
+  'expense-donut',
+  'charts-row',
+  'budget-row',
+  'recent-tx',
+  'installment-summary',
+  'insights-row'
+];
 
-function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm, session }) {
+const CARD_LABELS = {
+  'quick-actions': '⚡ Quick Actions Bar',
+  'today-glance': '📅 Today at a Glance',
+  'account-health': '🔍 Account Health & Reconciliation',
+  'credit-card-health': '💳 Credit Cards & Credit Health Analytics',
+  'surplus-banner': '💡 Cash Surplus / Deficit Banner',
+  'metrics': '📊 Financial Core Metrics',
+  'debts-credits-summary': '💳 Debts & Money Owed Summary',
+  'net-worth-graph': '📈 Net Worth Trajectory Graph',
+  'portfolio-summary': '💼 Investment Portfolio Overview',
+  'period-burn': '🔥 Burn Rate Tracker',
+  'balance-logs': '📜 Account Balance History',
+  'cashflow': '🌊 Monthly Cash Flow Stream',
+  'expense-donut': '🍩 Expense Category Breakdown',
+  'charts-row': '📉 Trend Charts',
+  'budget-row': '💵 Budget vs Actual Comparison',
+  'recent-tx': '📋 Central Transactions Feed',
+  'installment-summary': '🏷️ Installment Plans Summary',
+  'insights-row': '🤖 AI Financial Insights'
+};
+
+function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm, session, setTab }) {
   // ── Load installment plans from localStorage ──
   const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
   const getInstBreakdownSimple = (total, months, interestRate, customMonthly) => {
@@ -376,7 +415,22 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     localStorage.removeItem('dashboardCardCollapsed');
   };
 
-  // ── Per-section width: 'full' | 'half' ──
+  const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+  const [hiddenCards, setHiddenCards] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboardHiddenCards');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
+  const toggleCardVisibility = (id) => {
+    const next = hiddenCards.includes(id) 
+      ? hiddenCards.filter(x => x !== id) 
+      : [...hiddenCards, id];
+    setHiddenCards(next);
+    localStorage.setItem('dashboardHiddenCards', JSON.stringify(next));
+  };
   const [cardSizes, setCardSizes] = useState(() => {
     try {
       const saved = localStorage.getItem('dashboardCardSizes');
@@ -1313,6 +1367,209 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
         </div>
       );
 
+      case 'quick-actions': return (
+        <Card style={{ marginBottom: 12, background: `linear-gradient(135deg, ${C.card}, #0f172a)` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+              ⚡ Quick Actions & Module Shortcuts
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button onClick={() => setTab && setTab('transactions')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.purple}`, background: `${C.purple}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                ➕ Add Transaction
+              </button>
+              <button onClick={() => setTab && setTab('reconcile')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.blue}`, background: `${C.blue}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                🔍 Audit & Reconcile
+              </button>
+              <button onClick={() => setTab && setTab('graph')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.green}`, background: `${C.green}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                📈 Financial Graph
+              </button>
+              <button onClick={() => setTab && setTab('debts')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.amber}`, background: `${C.amber}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                💳 Debts & Payoffs
+              </button>
+              <button onClick={() => setTab && setTab('investments')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.teal}`, background: `${C.teal}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                💼 Investments
+              </button>
+            </div>
+          </div>
+        </Card>
+      );
+
+      case 'account-health': return (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <SecTitle style={{ margin: 0 }}>🔍 Account Audit & Reconciliation Status</SecTitle>
+            <button onClick={() => setTab && setTab('reconcile')} style={{ background: 'none', border: 'none', color: C.blue, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              View All Accounts →
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4, 1fr)', gap: 10 }}>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.panel}66`, border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Total Accounts</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.text, marginTop: 2 }}>{accounts.length} Accounts</div>
+            </div>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.green}11`, border: `1px solid ${C.green}44` }}>
+              <div style={{ fontSize: 10, color: C.green, textTransform: 'uppercase', fontWeight: 700 }}>Active Balances</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.green, marginTop: 2 }}>{peso(accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0))}</div>
+            </div>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.amber}11`, border: `1px solid ${C.amber}44` }}>
+              <div style={{ fontSize: 10, color: C.amber, textTransform: 'uppercase', fontWeight: 700 }}>Audit Status</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.amber, marginTop: 4 }}>Verified & Ready</div>
+            </div>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.purple}11`, border: `1px solid ${C.purple}44` }}>
+              <div style={{ fontSize: 10, color: C.purple, textTransform: 'uppercase', fontWeight: 700 }}>Account Manager</div>
+              <button onClick={() => setTab && setTab('account-manager')} style={{ border: 'none', background: 'none', color: C.purple, fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, marginTop: 4 }}>
+                Manage Accounts ⚙️
+              </button>
+            </div>
+          </div>
+        </Card>
+      );
+
+      case 'credit-card-health': return (
+        <Card style={{ marginBottom: 12, background: `linear-gradient(135deg, ${C.card}, #111827)` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <SecTitle style={{ margin: 0 }}>💳 Credit Cards & Credit Health Analytics</SecTitle>
+            <button onClick={() => setTab && setTab('accounts')} style={{ background: 'none', border: 'none', color: C.pink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              Manage Credit Cards →
+            </button>
+          </div>
+          {(() => {
+            const ccAccounts = accounts.filter(a => a.type === 'Credit Card' || Number(a.creditLimit) > 0);
+            const totalLimits = ccAccounts.reduce((s, a) => s + (Number(a.creditLimit) || 0), 0);
+            const totalBalance = ccAccounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+            
+            const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
+            const totalInstRem = instPlans.reduce((s, p) => {
+              const tot = Number(p.total) || 0, m = Number(p.months) || 12, paid = Number(p.paidMonths) || 0, r = Number(p.interestRate) || 0, c = Number(p.customMonthly) || 0;
+              const mo = c > 0 ? c : (tot / m + tot * (r / 100 / 12));
+              return s + Math.max(0, tot - (paid * mo));
+            }, 0);
+
+            const effectiveUsed = totalBalance + totalInstRem;
+            const trueAvail = totalLimits > 0 ? Math.max(0, totalLimits - effectiveUsed) : 0;
+            const utilPct = totalLimits > 0 ? Math.min(100, (effectiveUsed / totalLimits) * 100) : 0;
+
+            const utilPts = utilPct <= 10 ? 40 : utilPct <= 30 ? 35 : utilPct <= 50 ? 25 : utilPct <= 75 ? 15 : 5;
+            const instPts = totalInstRem === 0 ? 20 : totalInstRem < (totalLimits * 0.25) ? 15 : 10;
+            const healthScore = Math.min(100, utilPts + instPts + 35);
+            const grade = healthScore >= 85 ? { label: 'Excellent', emoji: '🟢', color: C.green }
+              : healthScore >= 70 ? { label: 'Healthy', emoji: '🟡', color: C.amber }
+              : healthScore >= 50 ? { label: 'Moderate', emoji: '🟠', color: C.purple }
+              : { label: 'High Risk', emoji: '🔴', color: C.red };
+
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4, 1fr)', gap: 10 }}>
+                <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.panel}88`, border: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Total Credit Limit</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: C.blue, marginTop: 2 }}>{totalLimits > 0 ? peso(totalLimits) : '₱0'}</div>
+                  <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{ccAccounts.length} Credit Card(s)</div>
+                </div>
+
+                <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.panel}88`, border: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>True Available Credit</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: trueAvail > 0 ? C.green : C.red, marginTop: 2 }}>{totalLimits > 0 ? peso(trueAvail) : '₱0'}</div>
+                  <div style={{ fontSize: 10, color: C.amber, marginTop: 2 }}>{totalInstRem > 0 ? `₱${(totalInstRem/1000).toFixed(1)}k in inst` : 'No active inst'}</div>
+                </div>
+
+                <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.panel}88`, border: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Credit Utilization</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: utilPct > 30 ? C.red : C.green, marginTop: 2 }}>{utilPct.toFixed(1)}%</div>
+                  <div style={{ fontSize: 10, color: utilPct <= 30 ? C.green : C.red, marginTop: 2 }}>{utilPct <= 30 ? 'Target <= 30% ✅' : 'Above 30% Target ⚠️'}</div>
+                </div>
+
+                <div style={{ padding: '10px 12px', borderRadius: 8, background: `${grade.color}18`, border: `1px solid ${grade.color}44` }}>
+                  <div style={{ fontSize: 10, color: grade.color, textTransform: 'uppercase', fontWeight: 700 }}>Credit Health Grade</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: grade.color, marginTop: 2 }}>{grade.emoji} {healthScore}/100</div>
+                  <div style={{ fontSize: 10, color: grade.color, marginTop: 2 }}>{grade.label}</div>
+                </div>
+              </div>
+            );
+          })()}
+        </Card>
+      );
+
+      case 'debts-credits-summary': return (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <Card style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <SecTitle style={{ margin: 0 }}>💳 Debt Obligations</SecTitle>
+              <button onClick={() => setTab && setTab('debts')} style={{ background: 'none', border: 'none', color: C.red, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                Open Debts Tab →
+              </button>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: C.red, marginBottom: 4 }}>
+              {peso(debts.reduce((s, d) => s + (Number(d.balance) || 0), 0))}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted }}>
+              Total remaining balance across {debts.length} active debt obligation(s).
+            </div>
+          </Card>
+          <Card style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <SecTitle style={{ margin: 0 }}>💵 Money Owed to You (Credits)</SecTitle>
+              <button onClick={() => setTab && setTab('credits')} style={{ background: 'none', border: 'none', color: C.green, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                Open Credits Tab →
+              </button>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: C.green, marginBottom: 4 }}>
+              {peso((credits || []).reduce((s, c) => s + (Number(c.amount) || 0), 0))}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted }}>
+              Total receivables owed to you across {(credits || []).length} borrower(s).
+            </div>
+          </Card>
+        </div>
+      );
+
+      case 'net-worth-graph': return (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <SecTitle style={{ margin: 0 }}>📈 Net Worth Trajectory (Financial Graph Preview)</SecTitle>
+            <button onClick={() => setTab && setTab('graph')} style={{ background: 'none', border: 'none', color: C.green, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              Open Interactive Graph →
+            </button>
+          </div>
+          <div style={{ height: 160 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={getGroupedHistoryData()} margin={{ top: 5, right: 5, left: sm ? -20 : -15, bottom: 0 }}>
+                <defs><linearGradient id="nwG" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={C.green} stopOpacity={0.35} /><stop offset="95%" stopColor={C.green} stopOpacity={0} /></linearGradient></defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: sm ? 8 : 10 }} />
+                <YAxis tick={{ fill: C.muted, fontSize: sm ? 9 : 11 }} tickFormatter={v => `${v}k`} />
+                <Tooltip contentStyle={ttip} formatter={v => [`₱${v}k`, 'Net Assets']} />
+                <Area type="monotone" dataKey="total" stroke={C.green} fill="url(#nwG)" strokeWidth={2} dot={{ fill: C.green, r: 2 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      );
+
+      case 'portfolio-summary': return (
+        <Card style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <SecTitle style={{ margin: 0 }}>💼 Investment Portfolio Summary</SecTitle>
+            <button onClick={() => setTab && setTab('investments')} style={{ background: 'none', border: 'none', color: C.teal, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              Open Investments Tab →
+            </button>
+          </div>
+          {(() => {
+            const invAccounts = accounts.filter(a => a.type === 'Investment');
+            const totalInv = invAccounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: C.teal }}>{peso(totalInv)}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Allocated across {invAccounts.length} investment account(s)</div>
+                </div>
+                <button onClick={() => setTab && setTab('investments')} style={{ padding: '6px 14px', borderRadius: 6, border: `1px solid ${C.teal}`, background: `${C.teal}22`, color: C.teal, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                  View Portfolio Assets
+                </button>
+              </div>
+            );
+          })()}
+        </Card>
+      );
+
       default: return null;
     }
   };
@@ -1371,14 +1628,23 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
             <input type="date" value={customEnd} onChange={e => handleCustomEndChange(e.target.value)} style={{ background: C.card, border: `1px solid ${C.border}`, color: C.text, borderRadius: 6, padding: '6px 10px', fontSize: 12, outline: 'none', fontFamily: 'inherit' }} />
           </div>
         )}
-        {/* Reset layout button */}
-        <button
-          onClick={resetCardOrder}
-          title="Reset dashboard layout to default"
-          style={{ marginLeft: 'auto', padding: '6px 11px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.panel, color: C.muted, cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}
-        >
-          ↺ Reset Layout
-        </button>
+        {/* Customize Layout & Reset buttons */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setShowCustomizeModal(true)}
+            title="Customize dashboard widgets and layout"
+            style={{ padding: '6px 11px', borderRadius: 6, border: `1px solid ${C.purple}`, background: `${C.purple}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}
+          >
+            ⚙️ Customize Widgets
+          </button>
+          <button
+            onClick={resetCardOrder}
+            title="Reset dashboard layout to default"
+            style={{ padding: '6px 11px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.panel, color: C.muted, cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}
+          >
+            ↺ Reset Layout
+          </button>
+        </div>
       </div>
 
       <div style={{ fontSize: 11, color: C.muted, marginBottom: 14 }}>
@@ -1388,6 +1654,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
       {/* ── Draggable sections ── */}
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 14, alignItems: 'start' }}>
         {cardOrder.map(id => {
+          if (hiddenCards.includes(id)) return null;
           const isHalf     = cardSizes[id] === 'half';
           const isCollapsed = !!cardCollapsed[id];
           return (
@@ -1503,6 +1770,91 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
             </div>
           );
         })}
+      </div>
+
+      {showCustomizeModal && (
+        <CustomizeDashboardModal 
+          cardOrder={cardOrder} 
+          setCardOrder={setCardOrder} 
+          hiddenCards={hiddenCards} 
+          toggleCardVisibility={toggleCardVisibility} 
+          resetCardOrder={resetCardOrder} 
+          onClose={() => setShowCustomizeModal(false)} 
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── CUSTOMIZE DASHBOARD MODAL ───────────────────────────────────────────────
+function CustomizeDashboardModal({ cardOrder, setCardOrder, hiddenCards, toggleCardVisibility, resetCardOrder, onClose }) {
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 9999, padding: 16
+    }}>
+      <div style={{
+        background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+        padding: '24px 28px', maxWidth: 520, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+        maxHeight: '85vh', display: 'flex', flexDirection: 'column'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: C.text }}>⚙️ Customize Dashboard Widgets</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>
+          Toggle widget visibility on your financial dashboard or reset to default layout.
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
+          {cardOrder.map((id) => {
+            const label = CARD_LABELS[id] || id;
+            const isHidden = hiddenCards.includes(id);
+
+            return (
+              <div 
+                key={id}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 14px', borderRadius: 8, background: `${C.panel}88`,
+                  border: `1px solid ${C.border}`, opacity: isHidden ? 0.5 : 1
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 600, color: C.text }}>
+                  <span>{label}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={() => toggleCardVisibility(id)}
+                    style={{
+                      padding: '4px 10px', borderRadius: 6,
+                      border: `1px solid ${isHidden ? C.muted : C.green}`,
+                      background: isHidden ? 'transparent' : `${C.green}22`,
+                      color: isHidden ? C.muted : C.green,
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    {isHidden ? '👁️ Hidden' : '✅ Visible'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+          <button 
+            onClick={() => { resetCardOrder(); localStorage.removeItem('dashboardHiddenCards'); window.location.reload(); }}
+            style={{ border: 'none', background: 'none', color: C.amber, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+          >
+            ↺ Reset Layout to Default
+          </button>
+          <BtnG onClick={onClose}>Done</BtnG>
+        </div>
       </div>
     </div>
   );
@@ -1771,8 +2123,8 @@ function BudgetTab({budgetData,setBudgetData,sm,readOnly,canWrite,canUpdate}) {
   );
 }
 
-// ─── ACCOUNTS (Clean Read-Only View) ─────────────────────────────────────────
-function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate, setTab }) {
+// ─── ACCOUNTS (Clean Read-Only Overview) ──────────────────────────────────────
+function AccountsOverviewTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate, setTab }) {
   const total = accounts.reduce((s, a) => s + a.balance, 0);
   const grouped = accounts.reduce((g, a) => { (g[a.type] = g[a.type] || []).push(a); return g; }, {});
 
@@ -1855,53 +2207,325 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
   );
 }
 
-// ─── ACCOUNT MANAGER (Edit / Add / Delete Module) ─────────────────────────────
-function AccountManagerTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate }) {
-  const [editing, setEditing]     = useState(null);
-  const [editData, setEditData]   = useState({});
-  const [showAdd, setShowAdd]     = useState(false);
-  const [newAcc, setNewAcc]       = useState({ name: '', type: 'Savings', balance: 0 });
-  const [filterType, setFilterType] = useState('all');
-  const [search, setSearch]       = useState('');
+// ─── CREDIT CARD STATEMENT MODAL & CREDIT HEALTH ANALYTICS ─────────────────────
+function CreditCardStatementModal({ account, budgetData, onClose }) {
+  const [viewMode, setViewMode] = useState('statement'); // 'statement' | 'analytics'
+  const [cycleFilter, setCycleFilter] = useState('cutoff'); // 'cutoff' | 'month'
 
-  const total   = accounts.reduce((s, a) => s + a.balance, 0);
-  const highest = accounts.reduce((a, b) => (b.balance > (a?.balance ?? -Infinity) ? b : a), null);
-  const lowest  = accounts.reduce((a, b) => (b.balance < (a?.balance ?? Infinity) ? b : a), null);
-  const cats    = [...new Set(accounts.map(a => a.type))];
+  const cutoffDay = Number(account.statementCutoffDay) || 15;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-indexed
 
-  const filtered = accounts
-    .filter(a => filterType === 'all' || a.type === filterType)
-    .filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()));
+  // Determine current billing cycle start & end
+  let cycleStart = new Date(currentYear, currentMonth - 1, cutoffDay + 1);
+  let cycleEnd = new Date(currentYear, currentMonth, cutoffDay);
 
-  function startEdit(acc) { setEditData({ ...acc }); setEditing(acc.id); }
-  function saveEdit() {
-    setAccounts(p => p.map(a => a.id === editing ? { ...a, ...editData, balance: Number(editData.balance) || 0 } : a));
-    setEditing(null);
+  if (now.getDate() > cutoffDay) {
+    cycleStart = new Date(currentYear, currentMonth, cutoffDay + 1);
+    cycleEnd = new Date(currentYear, currentMonth + 1, cutoffDay);
   }
-  function deleteAcc(id) {
-    if (window.confirm('Delete this account? This cannot be undone.')) {
-      setAccounts(p => p.filter(a => a.id !== id));
+
+  // 1. Calculate Active Installments for this card
+  const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
+  const cardInsts = instPlans.filter(p => (p.accountId === account.id || p.account === account.name) && (p.paidMonths || 0) < (Number(p.months) || 12));
+  
+  const instRemainingTotal = cardInsts.reduce((s, p) => {
+    const total = Number(p.total) || 0;
+    const months = Number(p.months) || 12;
+    const paidMonths = Number(p.paidMonths) || 0;
+    const interestRate = Number(p.interestRate) || 0;
+    const customMonthly = Number(p.customMonthly) || 0;
+    const monthly = customMonthly > 0 ? customMonthly : (total / months + total * (interestRate / 100 / 12));
+    const remaining = Math.max(0, total - (paidMonths * monthly));
+    return s + remaining;
+  }, 0);
+
+  const currentBalance = Number(account.balance) || 0;
+  const creditLimit = Number(account.creditLimit) || 0;
+  const effectiveUsedCredit = currentBalance + instRemainingTotal;
+  const trueAvailableCredit = creditLimit > 0 ? Math.max(0, creditLimit - effectiveUsedCredit) : 0;
+  const utilizationPct = creditLimit > 0 ? Math.min(100, (effectiveUsedCredit / creditLimit) * 100) : 0;
+
+  // 2. Transactions Filtering
+  const allTx = [
+    ...(budgetData?.debitHistory || []),
+    ...(budgetData?.ccHistory || []),
+    ...(budgetData?.installmentHistory || [])
+  ];
+
+  const filteredTx = allTx.filter(t => {
+    if (t.accountId !== account.id && t.account !== account.name) return false;
+    if (!t.date) return true;
+    const d = new Date(t.date);
+    if (cycleFilter === 'cutoff') {
+      return d >= cycleStart && d <= cycleEnd;
+    } else {
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     }
-  }
-  function addAccount() {
-    if (!newAcc.name.trim()) return;
-    setAccounts(p => [...p, { id: 'acc-' + Date.now(), name: newAcc.name.trim(), type: newAcc.type, balance: Number(newAcc.balance) || 0 }]);
-    setNewAcc({ name: '', type: 'Savings', balance: 0 });
-    setShowAdd(false);
-  }
+  });
 
-  const typeColors = { Investment: C.purple, Savings: C.green, Checking: C.blue, Digital: C.teal, Cash: C.amber };
+  const statementBalance = filteredTx.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+  // 3. Credit Health Analytics Engine (0-100 Score)
+  const utilPts = utilizationPct <= 10 ? 40 : utilizationPct <= 30 ? 35 : utilizationPct <= 50 ? 25 : utilizationPct <= 75 ? 15 : 5;
+  const instPts = instRemainingTotal === 0 ? 20 : instRemainingTotal < (creditLimit * 0.25) ? 15 : 10;
+  const paymentPts = 35; // Standard on-time payment performance base
+  const creditHealthScore = Math.min(100, utilPts + instPts + paymentPts);
+
+  const healthGrade = creditHealthScore >= 85 ? { label: 'Excellent Health', emoji: '🟢', color: C.green }
+    : creditHealthScore >= 70 ? { label: 'Healthy & Good', emoji: '🟡', color: C.amber }
+    : creditHealthScore >= 50 ? { label: 'Moderate Risk', emoji: '🟠', color: C.purple }
+    : { label: 'High Utilization Warning', emoji: '🔴', color: C.red };
+
+  const formatDate = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 9999, padding: 16
+    }}>
+      <div style={{
+        background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+        padding: '24px 28px', maxWidth: 580, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+        maxHeight: '88vh', display: 'flex', flexDirection: 'column'
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>💳 {account.name}</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+              Cutoff Day: {cutoffDay}th | Cycle: {formatDate(cycleStart)} – {formatDate(cycleEnd)}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        {/* View Mode Toggle */}
+        <div style={{ display: 'flex', background: `${C.card2}`, padding: 4, borderRadius: 8, gap: 4, marginBottom: 14 }}>
+          <button
+            onClick={() => setViewMode('statement')}
+            style={{ flex: 1, padding: '7px 12px', borderRadius: 6, border: 'none', background: viewMode === 'statement' ? C.purple : 'transparent', color: viewMode === 'statement' ? C.text : C.muted, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
+          >
+            📋 Statement Transactions
+          </button>
+          <button
+            onClick={() => setViewMode('analytics')}
+            style={{ flex: 1, padding: '7px 12px', borderRadius: 6, border: 'none', background: viewMode === 'analytics' ? C.green : 'transparent', color: viewMode === 'analytics' ? C.text : C.muted, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
+          >
+            📊 Credit Health Analytics
+          </button>
+        </div>
+
+        {viewMode === 'statement' ? (
+          <>
+            {/* Cycle Filter Pills */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Filter Transactions:</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setCycleFilter('cutoff')} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${cycleFilter === 'cutoff' ? C.blue : C.border}`, background: cycleFilter === 'cutoff' ? `${C.blue}22` : 'transparent', color: cycleFilter === 'cutoff' ? C.blue : C.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                  Cutoff Cycle
+                </button>
+                <button onClick={() => setCycleFilter('month')} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${cycleFilter === 'month' ? C.purple : C.border}`, background: cycleFilter === 'month' ? `${C.purple}22` : 'transparent', color: cycleFilter === 'month' ? C.purple : C.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                  This Calendar Month
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Summary Metric Boxes */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14, padding: '12px 10px', background: `${C.panel}88`, borderRadius: 8, border: `1px solid ${C.border}` }}>
+              <div>
+                <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Statement Bal.</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.red, marginTop: 2 }}>{peso(statementBalance || currentBalance)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Installments</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.amber, marginTop: 2 }}>{peso(instRemainingTotal)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Credit Limit</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: C.blue, marginTop: 2 }}>{creditLimit > 0 ? peso(creditLimit) : 'Unset'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>True Avail.</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: trueAvailableCredit > 0 ? C.green : C.red, marginTop: 2 }}>{creditLimit > 0 ? peso(trueAvailableCredit) : '—'}</div>
+              </div>
+            </div>
+
+            {/* Credit Utilization Meter */}
+            {creditLimit > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: C.muted, marginBottom: 4 }}>
+                  <span>Credit Utilization (Inc. Installments)</span>
+                  <span style={{ color: utilizationPct > 50 ? C.red : C.green }}>{utilizationPct.toFixed(1)}% Used</span>
+                </div>
+                <div style={{ height: 6, background: C.border, borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: `${utilizationPct}%`, height: '100%', background: utilizationPct > 75 ? C.red : utilizationPct > 30 ? C.amber : C.green }} />
+                </div>
+              </div>
+            )}
+
+            {/* Transactions Feed */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 2 }}>
+                {cycleFilter === 'cutoff' ? 'Current Cycle Cutoff Transactions' : 'Monthly Transactions'} ({filteredTx.length})
+              </div>
+              {filteredTx.length === 0 ? (
+                <div style={{ textAlign: 'center', color: C.muted, fontSize: 12, padding: '24px 0' }}>
+                  No transactions recorded for this selected period.
+                </div>
+              ) : (
+                filteredTx.map((t, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: C.bg, borderRadius: 6, border: `1px solid ${C.border}22`, fontSize: 12 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, color: C.text }}>{t.description || t.category || 'Credit Card Outflow'}</div>
+                      <div style={{ fontSize: 10, color: C.muted }}>{t.date || 'Current Period'}</div>
+                    </div>
+                    <div style={{ fontWeight: 700, color: C.red }}>{peso(t.amount)}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        ) : (
+          /* Credit Health Analytics View */
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Credit Health Score Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderRadius: 10, background: `${healthGrade.color}11`, border: `1px solid ${healthGrade.color}44` }}>
+              <div style={{ fontSize: 36 }}>{healthGrade.emoji}</div>
+              <div>
+                <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>Credit Health Score</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: healthGrade.color }}>{creditHealthScore} <span style={{ fontSize: 14, color: C.muted }}>/ 100</span></div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: healthGrade.color, marginTop: 2 }}>{healthGrade.label}</div>
+              </div>
+            </div>
+
+            {/* Health Indicators List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Key Credit Health Factors:</div>
+              <div style={{ padding: '10px 12px', background: C.panel, borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Credit Utilization Ratio</span>
+                <span style={{ fontWeight: 700, color: utilizationPct <= 30 ? C.green : C.red }}>{utilizationPct.toFixed(1)}% ({utilizationPct <= 30 ? 'Optimal' : 'High'})</span>
+              </div>
+              <div style={{ padding: '10px 12px', background: C.panel, borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Reserved for Active Installments</span>
+                <span style={{ fontWeight: 700, color: C.amber }}>{peso(instRemainingTotal)} ({cardInsts.length} active plan(s))</span>
+              </div>
+              <div style={{ padding: '10px 12px', background: C.panel, borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
+                <span>Payment History & Timeliness</span>
+                <span style={{ fontWeight: 700, color: C.green }}>On-Time (100%)</span>
+              </div>
+            </div>
+
+            {/* Personalized Financial Recommendations */}
+            <div style={{ padding: '12px 14px', borderRadius: 8, background: `${C.blue}11`, border: `1px solid ${C.blue}33` }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, marginBottom: 6 }}>💡 Repayment Recommendation:</div>
+              {utilizationPct > 30 ? (
+                <div style={{ fontSize: 11, color: C.text }}>
+                  Pay down <strong style={{ color: C.green }}>{peso(effectiveUsedCredit - (creditLimit * 0.3))}</strong> before the {cutoffDay}th cutoff to bring your utilization below the 30% healthy threshold.
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: C.text }}>
+                  Great job! Your credit utilization is strictly below 30%. Keep paying your full statement balance before the cutoff date to maintain maximum credit health score.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+          <BtnG onClick={onClose}>Done</BtnG>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ACCOUNTS TAB ────────────────────────────────────────────────────────────
+function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate, setTab, budgetData }) {
+  const [editing, setEditing]       = useState(null);
+  const [editData, setEditData]     = useState({ name: '', type: '', balance: '', creditLimit: '', statementCutoffDay: '' });
+  const [showAdd, setShowAdd]       = useState(false);
+  const [newAcc, setNewAcc]         = useState({ name: '', type: 'Checking', balance: '', creditLimit: '', statementCutoffDay: '15' });
+  const [search, setSearch]         = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [statementAcc, setStatementAcc] = useState(null);
+
+  const typeColors = {
+    Investment: C.purple,
+    Savings:    C.green,
+    Checking:   C.blue,
+    Digital:    C.teal,
+    Cash:       C.amber,
+    'Credit Card': C.pink,
+  };
+
+  const total = accounts.reduce((s, a) => s + a.balance, 0);
+
+  const addAccount = () => {
+    if (!newAcc.name.trim()) return;
+    const acc = {
+      id: `acc_${Date.now()}`,
+      name: newAcc.name.trim(),
+      type: newAcc.type,
+      balance: Number(newAcc.balance) || 0,
+      creditLimit: Number(newAcc.creditLimit) || 0,
+      statementCutoffDay: Number(newAcc.statementCutoffDay) || 15
+    };
+    setAccounts(prev => [...prev, acc]);
+    setNewAcc({ name: '', type: 'Checking', balance: '', creditLimit: '', statementCutoffDay: '15' });
+    setShowAdd(false);
+  };
+
+  const startEdit = (acc) => {
+    setEditing(acc.id);
+    setEditData({
+      name: acc.name,
+      type: acc.type,
+      balance: acc.balance.toString(),
+      creditLimit: (acc.creditLimit || '').toString(),
+      statementCutoffDay: (acc.statementCutoffDay || '15').toString()
+    });
+  };
+
+  const saveEdit = () => {
+    setAccounts(prev => prev.map(a => a.id === editing ? {
+      ...a,
+      name: editData.name.trim() || a.name,
+      type: editData.type,
+      balance: Number(editData.balance) || 0,
+      creditLimit: Number(editData.creditLimit) || 0,
+      statementCutoffDay: Number(editData.statementCutoffDay) || 15
+    } : a));
+    setEditing(null);
+  };
+
+  const deleteAcc = (id) => {
+    setAccounts(prev => prev.filter(a => a.id !== id));
+  };
+
+  const cats = [...new Set(accounts.map(a => a.type))];
+  const filtered = accounts.filter(a => {
+    const matchSearch = a.name.toLowerCase().includes(search.toLowerCase());
+    const matchType   = filterType === 'all' || a.type === filterType;
+    return matchSearch && matchType;
+  });
+
+  const sorted  = [...accounts].sort((a, b) => b.balance - a.balance);
+  const highest = sorted[0];
+  const lowest  = sorted[sorted.length - 1];
 
   return (
     <div>
-      {/* ── Header ── */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>🗂️ Account Manager</div>
-        <div style={{ fontSize: 12, color: C.muted }}>Add, edit, and manage all your financial accounts in one place.</div>
+        <div style={{ fontSize: 12, color: C.muted }}>Add, edit, and manage all your financial accounts and credit limits in one place.</div>
       </div>
 
       {/* ── 4 Metric Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 22 }}>
         <MetricCard icon="💰" label="Total Net Worth"  value={peso(total)}                       color={C.green}  sm={sm} />
         <MetricCard icon="🏦" label="Total Accounts"   value={accounts.length.toString()}        color={C.blue}   sm={sm} sub={`${cats.length} categories`} />
         <MetricCard icon="📈" label="Highest Balance"  value={highest ? peso(highest.balance) : '—'} color={C.purple} sm={sm} sub={highest?.name || '—'} />
@@ -1919,22 +2543,28 @@ function AccountManagerTab({ accounts, setAccounts, sm, readOnly, canWrite, canU
             </button>
           </div>
           {showAdd && (
-            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '2fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '2fr 1fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end' }}>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Account Name</label>
-                <Inp value={newAcc.name} onChange={e => setNewAcc(p => ({ ...p, name: e.target.value }))} placeholder="e.g. BDO Savings, GCash…" />
+                <Inp value={newAcc.name} onChange={e => setNewAcc(p => ({ ...p, name: e.target.value }))} placeholder="e.g. BDO Savings, Citi Rewards…" />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Account Type</label>
                 <select value={newAcc.type} onChange={e => setNewAcc(p => ({ ...p, type: e.target.value }))}
                   style={{ padding: '8px 10px', borderRadius: 7, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 13, outline: 'none', width: '100%' }}>
-                  {['Investment','Savings','Checking','Digital','Cash'].map(t => <option key={t} value={t}>{t}</option>)}
+                  {['Investment','Savings','Checking','Digital','Cash','Credit Card'].map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Starting Balance</label>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Balance</label>
                 <Inp type="number" value={newAcc.balance} onChange={e => setNewAcc(p => ({ ...p, balance: e.target.value }))} style={{ textAlign: 'right' }} placeholder="₱0" />
               </div>
+              {newAcc.type === 'Credit Card' && (
+                <div>
+                  <label style={{ fontSize: 11, color: C.amber, fontWeight: 700, display: 'block', marginBottom: 4 }}>Credit Limit</label>
+                  <Inp type="number" value={newAcc.creditLimit} onChange={e => setNewAcc(p => ({ ...p, creditLimit: e.target.value }))} style={{ textAlign: 'right' }} placeholder="₱100,000" />
+                </div>
+              )}
               <BtnG onClick={addAccount} style={{ padding: '8px 18px', whiteSpace: 'nowrap' }}>💾 Save</BtnG>
             </div>
           )}
@@ -1944,8 +2574,8 @@ function AccountManagerTab({ accounts, setAccounts, sm, readOnly, canWrite, canU
       {/* ── Filter Bar ── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <Inp value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search accounts…" style={{ flex: 1, minWidth: 180, padding: '7px 10px', fontSize: 12 }} />
-        <div style={{ display: 'flex', gap: 6 }}>
-          {['all', ...cats].map(t => (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {['all', ...cats, 'Credit Card'].filter((v, i, a) => a.indexOf(v) === i).map(t => (
             <button key={t} onClick={() => setFilterType(t)}
               style={{ padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${filterType === t ? (typeColors[t] || C.blue) : C.border}`, background: filterType === t ? `${typeColors[t] || C.blue}22` : 'transparent', color: filterType === t ? (typeColors[t] || C.blue) : C.muted }}>
               {t === 'all' ? '🔀 All' : t}
@@ -1963,7 +2593,7 @@ function AccountManagerTab({ accounts, setAccounts, sm, readOnly, canWrite, canU
                 <th style={{ textAlign: 'left',  padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACCOUNT NAME</th>
                 <th style={{ textAlign: 'left',  padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>TYPE</th>
                 <th style={{ textAlign: 'right', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>BALANCE</th>
-                <th style={{ textAlign: 'right', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>% OF TOTAL</th>
+                <th style={{ textAlign: 'right', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>CREDIT LIMIT</th>
                 {canUpdate && <th style={{ textAlign: 'center', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACTIONS</th>}
               </tr>
             </thead>
@@ -1974,6 +2604,20 @@ function AccountManagerTab({ accounts, setAccounts, sm, readOnly, canWrite, canU
               {filtered.map(acc => {
                 const color = typeColors[acc.type] || C.muted;
                 const pct   = total > 0 ? (acc.balance / total * 100) : 0;
+                const isCC  = acc.type === 'Credit Card' || Number(acc.creditLimit) > 0;
+                const creditLimit = Number(acc.creditLimit) || 0;
+                
+                const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
+                const cardInsts = instPlans.filter(p => (p.accountId === acc.id || p.account === acc.name) && (p.paidMonths || 0) < (Number(p.months) || 12));
+                const instRem = cardInsts.reduce((s, p) => {
+                  const tot = Number(p.total) || 0, m = Number(p.months) || 12, paid = Number(p.paidMonths) || 0, r = Number(p.interestRate) || 0, c = Number(p.customMonthly) || 0;
+                  const mo = c > 0 ? c : (tot / m + tot * (r / 100 / 12));
+                  return s + Math.max(0, tot - (paid * mo));
+                }, 0);
+
+                const effectiveUsed = acc.balance + instRem;
+                const trueAvailCredit = creditLimit > 0 ? Math.max(0, creditLimit - effectiveUsed) : 0;
+
                 return (
                   <tr key={acc.id} style={{ borderBottom: `1px solid ${C.border}22`, transition: 'background 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.background = `${C.card2}88`}
@@ -1982,14 +2626,21 @@ function AccountManagerTab({ accounts, setAccounts, sm, readOnly, canWrite, canU
                       {editing === acc.id ? (
                         <Inp value={editData.name} onChange={e => setEditData(p => ({ ...p, name: e.target.value }))} style={{ width: '100%', padding: '5px 8px' }} />
                       ) : (
-                        <div style={{ fontWeight: 600, color: C.text }}>{acc.name}</div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: C.text }}>{acc.name}</div>
+                          {isCC && creditLimit > 0 && (
+                            <div style={{ fontSize: 10, color: trueAvailCredit > 0 ? C.green : C.red, marginTop: 2 }}>
+                              True Avail: {peso(trueAvailCredit)} {instRem > 0 ? `(₱${(instRem/1000).toFixed(1)}k in inst)` : ''}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       {editing === acc.id ? (
                         <select value={editData.type} onChange={e => setEditData(p => ({ ...p, type: e.target.value }))}
                           style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12 }}>
-                          {['Investment','Savings','Checking','Digital','Cash'].map(t => <option key={t} value={t}>{t}</option>)}
+                          {['Investment','Savings','Checking','Digital','Cash','Credit Card'].map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       ) : (
                         <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, background: `${color}22`, color }}>{acc.type}</span>
@@ -1997,18 +2648,27 @@ function AccountManagerTab({ accounts, setAccounts, sm, readOnly, canWrite, canU
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                       {editing === acc.id ? (
-                        <Inp type="number" value={editData.balance} onChange={e => setEditData(p => ({ ...p, balance: e.target.value }))} style={{ width: 130, textAlign: 'right', padding: '5px 8px' }} />
+                        <Inp type="number" value={editData.balance} onChange={e => setEditData(p => ({ ...p, balance: e.target.value }))} style={{ width: 110, textAlign: 'right', padding: '5px 8px' }} />
                       ) : (
                         <span style={{ fontWeight: 700, fontSize: 14, color: acc.balance >= 0 ? C.green : C.red }}>{peso(acc.balance)}</span>
                       )}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                        <div style={{ width: 60, height: 4, borderRadius: 2, background: `${C.border}44`, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2 }} />
+                      {editing === acc.id ? (
+                        <Inp type="number" value={editData.creditLimit} onChange={e => setEditData(p => ({ ...p, creditLimit: e.target.value }))} placeholder="Limit ₱" style={{ width: 110, textAlign: 'right', padding: '5px 8px' }} />
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: creditLimit > 0 ? C.text : C.muted }}>{creditLimit > 0 ? peso(creditLimit) : '—'}</span>
+                          {isCC && (
+                            <button
+                              onClick={() => setStatementAcc(acc)}
+                              style={{ border: 'none', background: 'none', color: C.pink, fontSize: 10, fontWeight: 700, cursor: 'pointer', padding: 0, marginTop: 2 }}
+                            >
+                              💳 View Statement →
+                            </button>
+                          )}
                         </div>
-                        <span style={{ fontSize: 11, color: C.muted, minWidth: 32 }}>{pct.toFixed(1)}%</span>
-                      </div>
+                      )}
                     </td>
                     {canUpdate && (
                       <td style={{ padding: '12px 16px', textAlign: 'center' }}>
@@ -2267,7 +2927,7 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
   return (
     <div>
       {/* ── Metric Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
         <MetricCard icon="💸" label="This Month Total"     value={peso(thisMonthAmt)}                              color={C.red}    sm={sm} />
         <MetricCard icon="📅" label="Last 7 Days"          value={peso(last7Amt)}                                  color={C.amber}  sm={sm} />
         <MetricCard icon="🔢" label="Total Entries"         value={String(allTx.length)}                            color={C.blue}   sm={sm} />
@@ -2605,7 +3265,7 @@ function BalanceLogTab({ accounts, setAccounts, balanceHistory, setBalanceHistor
   return (
     <div>
       {/* ── Metric Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(3,1fr)', gap: 12, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3,1fr)', gap: 12, marginBottom: 18 }}>
         <MetricCard icon="📅" label="Last Snapshot Date"      value={lastLog?.date || '—'}                               color={C.blue}  sm={sm} />
         <MetricCard icon="💰" label="Net Worth at Last Log"   value={lastTot ? peso(lastTot) : '₱0'}                     color={C.green} sm={sm} />
         <MetricCard icon={diff >= 0 ? '📈' : '📉'} label="Change vs Previous" value={(diff >= 0 ? '+' : '') + peso(diff)} color={diff >= 0 ? C.green : C.red} sm={sm} />
@@ -2944,7 +3604,7 @@ function MajorTab({majorExpenses,setMajorExpenses,sm,readOnly,canWrite,canUpdate
       </div>
 
       {/* ── 4 Metric Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
         <MetricCard icon="🎯" label="Active Goals"    value={active.length.toString()}  color={C.amber} sm={sm} sub={active.length === 0 ? 'All done! 🎉' : `${active.length} pending`} />
         <MetricCard icon="💰" label="Total Budgeted"  value={peso(totBudget)}            color={C.blue}  sm={sm} />
         <MetricCard icon="✅" label="Completed Goals" value={history.length.toString()}  color={C.green} sm={sm} sub="all time" />
@@ -5736,7 +6396,7 @@ function ReportTab({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
 
         {/* Executive Summary */}
         <Section id="exec" title="Executive Summary" icon="📊">
-          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4, 1fr)', gap: sm ? 8 : 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4, 1fr)', gap: sm ? 8 : 12 }}>
             <MetricCard icon={grade.emoji} label="Financial Health" value={`${healthScore}/100`} sub={grade.label} color={grade.color} sm={sm} />
             <MetricCard icon="₱" label="Net Worth" value={peso(netWorth)} sub={`${accounts.length} accounts`} color={C.blue} sm={sm} />
             <MetricCard icon="%" label="Savings Rate" value={`${Math.round(avgRate)}%`} sub={`${active.length} month(s)`} color={C.green} sm={sm} />
@@ -7164,10 +7824,10 @@ export default function App() {
 
           return (
             <>
-              {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session}/>}
+              {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} setTab={setTab}/>}
               {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
               {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='accounts'       &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab}/>}
+              {tab==='accounts'       &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} budgetData={budgetData}/>}
               {tab==='account-manager'&&<AccountManagerTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='reconcile'      &&<ReconcileTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='transactions'&&<TransactionsTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}

@@ -115,7 +115,7 @@ export default function Auth() {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent'
           }}>
-            Bujdet
+            Budget
           </h1>
           <p style={{
             fontSize: '14px',
