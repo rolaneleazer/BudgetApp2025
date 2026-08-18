@@ -345,8 +345,8 @@ const CARD_LABELS = {
 };
 
 function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_DEBTS, balanceHistory, sm, session, setTab }) {
-  // ── Load installment plans from localStorage ──
-  const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
+  // ── Load installment plans from budgetData (Database) ──
+  const instPlans = budgetData?.installmentPlans || [];
   const getInstBreakdownSimple = (total, months, interestRate, customMonthly) => {
     const p = Number(total) || 0, m = Number(months) || 12, r = Number(interestRate) || 0, c = Number(customMonthly) || 0;
     if (c > 0) return Math.ceil(c);
@@ -1439,7 +1439,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
             const totalLimits = ccAccounts.reduce((s, a) => s + (Number(a.creditLimit) || 0), 0);
             const totalBalance = ccAccounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
             
-            const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
+            const instPlans = budgetData?.installmentPlans || [];
             const totalInstRem = instPlans.reduce((s, p) => {
               const tot = Number(p.total) || 0, m = Number(p.months) || 12, paid = Number(p.paidMonths) || 0, r = Number(p.interestRate) || 0, c = Number(p.customMonthly) || 0;
               const mo = c > 0 ? c : (tot / m + tot * (r / 100 / 12));
@@ -2228,7 +2228,7 @@ function CreditCardStatementModal({ account, budgetData, onClose }) {
   }
 
   // 1. Calculate Active Installments for this card
-  const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
+  const instPlans = budgetData?.installmentPlans || [];
   const cardInsts = instPlans.filter(p => (p.accountId === account.id || p.account === account.name) && (p.paidMonths || 0) < (Number(p.months) || 12));
   
   const instRemainingTotal = cardInsts.reduce((s, p) => {
@@ -2526,11 +2526,11 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
       </div>
 
       {/* ── 4 Metric Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 22 }}>
-        <MetricCard icon="💰" label="Total Net Worth"  value={peso(total)}                       color={C.green}  sm={sm} />
-        <MetricCard icon="🏦" label="Total Accounts"   value={accounts.length.toString()}        color={C.blue}   sm={sm} sub={`${cats.length} categories`} />
-        <MetricCard icon="📈" label="Highest Balance"  value={highest ? peso(highest.balance) : '—'} color={C.purple} sm={sm} sub={highest?.name || '—'} />
-        <MetricCard icon="📉" label="Lowest Balance"   value={lowest ? peso(lowest.balance) : '—'}  color={C.red}    sm={sm} sub={lowest?.name || '—'} />
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: sm ? 8 : 12, marginBottom: sm ? 14 : 22 }}>
+        <MetricCard icon="💰" label="Net Worth"  value={peso(total)}                       color={C.green}  sm={sm} />
+        <MetricCard icon="🏦" label="Accounts"   value={accounts.length.toString()}        color={C.blue}   sm={sm} sub={`${cats.length} types`} />
+        <MetricCard icon="📈" label="Highest"  value={highest ? peso(highest.balance) : '—'} color={C.purple} sm={sm} sub={highest?.name || '—'} />
+        <MetricCard icon="📉" label="Lowest"   value={lowest ? peso(lowest.balance) : '—'}  color={C.red}    sm={sm} sub={lowest?.name || '—'} />
       </div>
 
       {/* ── Add New Account Panel ── */}
@@ -2544,15 +2544,15 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
             </button>
           </div>
           {showAdd && (
-            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '2fr 1fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end' }}>
-              <div>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : '2fr 1fr 1fr 1fr auto', gap: 10, alignItems: 'flex-end' }}>
+              <div style={{ gridColumn: sm ? '1 / -1' : undefined }}>
                 <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Account Name</label>
                 <Inp value={newAcc.name} onChange={e => setNewAcc(p => ({ ...p, name: e.target.value }))} placeholder="e.g. BDO Savings, Citi Rewards…" />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Account Type</label>
                 <select value={newAcc.type} onChange={e => setNewAcc(p => ({ ...p, type: e.target.value }))}
-                  style={{ padding: '8px 10px', borderRadius: 7, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 13, outline: 'none', width: '100%' }}>
+                  style={{ padding: '8px 10px', borderRadius: 7, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: sm ? 12 : 13, outline: 'none', width: '100%' }}>
                   {['Investment','Savings','Checking','Digital','Cash','Credit Card'].map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
@@ -2566,20 +2566,22 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
                   <Inp type="number" value={newAcc.creditLimit} onChange={e => setNewAcc(p => ({ ...p, creditLimit: e.target.value }))} style={{ textAlign: 'right' }} placeholder="₱100,000" />
                 </div>
               )}
-              <BtnG onClick={addAccount} style={{ padding: '8px 18px', whiteSpace: 'nowrap' }}>💾 Save</BtnG>
+              <div style={{ gridColumn: sm ? '1 / -1' : undefined }}>
+                <BtnG onClick={addAccount} style={{ padding: '8px 18px', whiteSpace: 'nowrap', width: sm ? '100%' : undefined }}>💾 Save Account</BtnG>
+              </div>
             </div>
           )}
         </Card>
       )}
 
       {/* ── Filter Bar ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Inp value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search accounts…" style={{ flex: 1, minWidth: 180, padding: '7px 10px', fontSize: 12 }} />
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', flexDirection: sm ? 'column' : 'row', gap: 8, marginBottom: 14, alignItems: sm ? 'stretch' : 'center' }}>
+        <Inp value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search accounts…" style={{ flex: 1, padding: '7px 10px', fontSize: 12 }} />
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none', paddingBottom: 2 }}>
           {['all', ...cats, 'Credit Card'].filter((v, i, a) => a.indexOf(v) === i).map(t => (
             <button key={t} onClick={() => setFilterType(t)}
-              style={{ padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${filterType === t ? (typeColors[t] || C.blue) : C.border}`, background: filterType === t ? `${typeColors[t] || C.blue}22` : 'transparent', color: filterType === t ? (typeColors[t] || C.blue) : C.muted }}>
-              {t === 'all' ? '🔀 All' : t}
+              style={{ padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${filterType === t ? (typeColors[t] || C.blue) : C.border}`, background: filterType === t ? `${typeColors[t] || C.blue}22` : 'transparent', color: filterType === t ? (typeColors[t] || C.blue) : C.muted, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {t === 'all' ? 'All' : t}
             </button>
           ))}
         </div>
@@ -2591,11 +2593,11 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: `${C.card2}`, borderBottom: `1px solid ${C.border}` }}>
-                <th style={{ textAlign: 'left',  padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACCOUNT NAME</th>
-                <th style={{ textAlign: 'left',  padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>TYPE</th>
-                <th style={{ textAlign: 'right', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>BALANCE</th>
-                <th style={{ textAlign: 'right', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>CREDIT LIMIT</th>
-                {canUpdate && <th style={{ textAlign: 'center', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACTIONS</th>}
+                <th style={{ textAlign: 'left',  padding: sm ? '10px 12px' : '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACCOUNT NAME</th>
+                <th style={{ textAlign: 'left',  padding: sm ? '10px 12px' : '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>TYPE</th>
+                <th style={{ textAlign: 'right', padding: sm ? '10px 12px' : '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>BALANCE</th>
+                {!sm && <th style={{ textAlign: 'right', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>CREDIT LIMIT</th>}
+                {canUpdate && <th style={{ textAlign: 'center', padding: sm ? '10px 8px' : '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACTIONS</th>}
               </tr>
             </thead>
             <tbody>
@@ -2608,7 +2610,7 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
                 const isCC  = acc.type === 'Credit Card' || Number(acc.creditLimit) > 0;
                 const creditLimit = Number(acc.creditLimit) || 0;
                 
-                const instPlans = (() => { try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; } })();
+                const instPlans = budgetData?.installmentPlans || [];
                 const cardInsts = instPlans.filter(p => (p.accountId === acc.id || p.account === acc.name) && (p.paidMonths || 0) < (Number(p.months) || 12));
                 const instRem = cardInsts.reduce((s, p) => {
                   const tot = Number(p.total) || 0, m = Number(p.months) || 12, paid = Number(p.paidMonths) || 0, r = Number(p.interestRate) || 0, c = Number(p.customMonthly) || 0;
@@ -2654,23 +2656,25 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
                         <span style={{ fontWeight: 700, fontSize: 14, color: acc.balance >= 0 ? C.green : C.red }}>{peso(acc.balance)}</span>
                       )}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      {editing === acc.id ? (
-                        <Inp type="number" value={editData.creditLimit} onChange={e => setEditData(p => ({ ...p, creditLimit: e.target.value }))} placeholder="Limit ₱" style={{ width: 110, textAlign: 'right', padding: '5px 8px' }} />
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: creditLimit > 0 ? C.text : C.muted }}>{creditLimit > 0 ? peso(creditLimit) : '—'}</span>
-                          {isCC && (
-                            <button
-                              onClick={() => setStatementAcc(acc)}
-                              style={{ border: 'none', background: 'none', color: C.pink, fontSize: 10, fontWeight: 700, cursor: 'pointer', padding: 0, marginTop: 2 }}
-                            >
-                              💳 View Statement →
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </td>
+                    {!sm && (
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        {editing === acc.id ? (
+                          <Inp type="number" value={editData.creditLimit} onChange={e => setEditData(p => ({ ...p, creditLimit: e.target.value }))} placeholder="Limit ₱" style={{ width: 110, textAlign: 'right', padding: '5px 8px' }} />
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: creditLimit > 0 ? C.text : C.muted }}>{creditLimit > 0 ? peso(creditLimit) : '—'}</span>
+                            {isCC && (
+                              <button
+                                onClick={() => setStatementAcc(acc)}
+                                style={{ border: 'none', background: 'none', color: C.pink, fontSize: 10, fontWeight: 700, cursor: 'pointer', padding: 0, marginTop: 2 }}
+                              >
+                                💳 Statement →
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    )}
                     {canUpdate && (
                       <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                         {editing === acc.id ? (
@@ -2893,13 +2897,8 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
       if (tx.source === 'installment') {
         newBudgetData.installmentHistory = (prev.installmentHistory || []).filter(h => h.id !== tx.id);
         if (tx.planId) {
-          try {
-            const saved = JSON.parse(localStorage.getItem('bg_installments') || '[]');
-            const updated = saved.map(p => p.id === tx.planId ? { ...p, paidMonths: Math.max(0, p.paidMonths - 1) } : p);
-            localStorage.setItem('bg_installments', JSON.stringify(updated));
-          } catch (e) {
-            console.error("Failed to decrement paidMonths in localStorage:", e);
-          }
+          const currentPlans = prev.installmentPlans || [];
+          newBudgetData.installmentPlans = currentPlans.map(p => p.id === tx.planId ? { ...p, paidMonths: Math.max(0, p.paidMonths - 1) } : p);
         }
       } else if (tx.source === 'cc') {
         newBudgetData.ccHistory = (prev.ccHistory || []).filter(h => h.id !== tx.id);
@@ -3734,38 +3733,91 @@ function MajorTab({majorExpenses,setMajorExpenses,sm,readOnly,canWrite,canUpdate
 
 // ─── CREDITS ──────────────────────────────────────────────────────────────────
 function CreditsTab({ credits, setCredits, sm, readOnly, canWrite, canUpdate }) {
-  const tot = credits.filter(c => !c.done).reduce((s, c) => s + c.amount, 0);
-  const collected = credits.filter(c => c.done).reduce((s, c) => s + c.amount, 0);
-  function upd(id, f, v) { 
+  const [showArchive, setShowArchive] = useState(false);
+  const activeCredits   = credits.filter(c => !c.done);
+  const archivedCredits = credits.filter(c => c.done);
+  const tot       = activeCredits.reduce((s, c) => s + c.amount, 0);
+  const collected = archivedCredits.reduce((s, c) => s + c.amount, 0);
+
+  function upd(id, f, v) {
     if (readOnly) return;
-    setCredits(p => p.map(c => c.id === id ? { ...c, [f]: f === 'amount' ? (Number(v) || 0) : v } : c)); 
+    setCredits(p => p.map(c => c.id === id ? { ...c, [f]: f === 'amount' ? (Number(v) || 0) : v } : c));
   }
+
+  const CreditItem = ({ c, archived }) => (
+    <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${C.border}22`, opacity: archived ? 0.65 : 1 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+        <Inp value={c.name} onChange={ev => upd(c.id, 'name', ev.target.value)}
+          style={{ flex: 1, opacity: archived ? 0.8 : 1 }} placeholder="Who owes you?" disabled={readOnly || archived}/>
+        {canUpdate && (
+          <button onClick={() => upd(c.id, 'done', !c.done)}
+            style={{ minWidth: 80, background: 'none', border: `1px solid ${c.done ? C.green : C.border}`, borderRadius: 6, padding: '8px 6px', cursor: 'pointer', color: c.done ? C.green : C.muted, fontSize: 11, whiteSpace: 'nowrap' }}>
+            {c.done ? '✓ Paid' : 'Pending'}
+          </button>
+        )}
+        {canUpdate && (
+          <button onClick={() => setCredits(p => p.filter(x => x.id !== c.id))}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18 }}>×</button>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Amount</div>
+          <Inp type="number" value={c.amount || ''} onChange={ev => upd(c.id, 'amount', ev.target.value)} placeholder="0" disabled={readOnly || archived}/>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: sm ? 8 : 12, marginBottom: 14 }}>
-        <MetricCard label="Total Owed" value={fmtK(tot)} color={C.amber} sm={sm} />
-        <MetricCard label="Collected" value={fmtK(collected)} color={C.green} sm={sm} />
+        <MetricCard label="Outstanding" value={fmtK(tot)} color={C.amber} sm={sm} sub={`${activeCredits.length} pending`}/>
+        <MetricCard label="Collected" value={fmtK(collected)} color={C.green} sm={sm} sub={`${archivedCredits.length} paid`}/>
       </div>
+
       <Card>
+        {/* ── Header ── */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <SecTitle>Money Owed to Me</SecTitle>
-          {canWrite && (
-            <BtnG style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => setCredits(p => [...p, { id: Date.now(), name: 'New Person', amount: 0, done: false }])}>+ Add Credit</BtnG>
-          )}
-        </div>
-        {credits.map(c => (
-          <div key={c.id} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.border}22` }}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-              <Inp value={c.name} onChange={ev => upd(c.id, 'name', ev.target.value)} style={{ flex: 1, opacity: c.done ? 0.5 : 1 }} placeholder="Who owes you?" disabled={readOnly}/>
-              {canUpdate && <button onClick={() => upd(c.id, 'done', !c.done)} style={{ minWidth: 80, background: 'none', border: `1px solid ${c.done ? C.green : C.border}`, borderRadius: 6, padding: '8px 6px', cursor: 'pointer', color: c.done ? C.green : C.muted, fontSize: 11, whiteSpace: 'nowrap' }}>{c.done ? '✓ Paid' : 'Pending'}</button>}
-              {canUpdate && <button onClick={() => setCredits(p => p.filter(x => x.id !== c.id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18 }}>×</button>}
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <div style={{ flex: 1 }}><div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Amount</div><Inp type="number" value={c.amount || ''} onChange={ev => upd(c.id, 'amount', ev.target.value)} placeholder="0" disabled={readOnly}/></div>
-            </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {archivedCredits.length > 0 && (
+              <button
+                onClick={() => setShowArchive(p => !p)}
+                style={{ padding: '5px 11px', borderRadius: 6, border: `1px solid ${showArchive ? C.green : C.border}`, background: showArchive ? `${C.green}18` : 'transparent', color: showArchive ? C.green : C.muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                {showArchive ? '✅ Hide Paid' : `📦 History (${archivedCredits.length})`}
+              </button>
+            )}
+            {canWrite && (
+              <BtnG style={{ padding: '6px 12px', fontSize: 12 }}
+                onClick={() => setCredits(p => [...p, { id: Date.now(), name: 'New Person', amount: 0, done: false }])}>
+                + Add Credit
+              </BtnG>
+            )}
           </div>
-        ))}
-        {credits.length === 0 && <div style={{ textAlign: 'center', color: C.muted, padding: '20px 0', fontSize: 14 }}>No credits listed yet.</div>}
+        </div>
+
+        {/* ── Active (unpaid) credits ── */}
+        {activeCredits.length === 0 && (
+          <div style={{ textAlign: 'center', color: C.muted, padding: '16px 0', fontSize: 13 }}>
+            🎉 No outstanding credits! All money has been collected.
+          </div>
+        )}
+        {activeCredits.map(c => <CreditItem key={c.id} c={c} archived={false} />)}
+
+        {/* ── Archived (paid) credits ── */}
+        {showArchive && archivedCredits.length > 0 && (
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}33` }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.green, textTransform: 'uppercase', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              ✅ Paid / Archived ({archivedCredits.length})
+            </div>
+            {archivedCredits.map(c => <CreditItem key={c.id} c={c} archived={true} />)}
+          </div>
+        )}
+
+        {credits.length === 0 && (
+          <div style={{ textAlign: 'center', color: C.muted, padding: '20px 0', fontSize: 14 }}>No credits listed yet.</div>
+        )}
       </Card>
     </div>
   );
@@ -3879,7 +3931,7 @@ function InvestmentsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpda
 }
 
 // ─── DEBT MANAGER ─────────────────────────────────────────────────────────────
-function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budgetData, setBudgetData, sm, readOnly, canWrite, canUpdate }) {
+function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budgetData, setBudgetData, sm, readOnly, canWrite, canUpdate, ownerName = '' }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState(null);
 
@@ -3888,9 +3940,7 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
   const avgUtilization = totalLimit > 0 ? (totalOwed / totalLimit) * 100 : 0;
 
   // ── Installment Plan Tracker ───────────────────────────────────────────
-  const [instPlans, setInstPlans] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('bg_installments') || '[]'); } catch { return []; }
-  });
+  const instPlans = budgetData?.installmentPlans || [];
   const [showInstForm, setShowInstForm]     = useState(false);
   const [editingPlanId, setEditingPlanId]   = useState(null);
   const [newInst, setNewInst]               = useState({
@@ -3942,8 +3992,7 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
   };
 
   const saveInstPlans = (plans) => {
-    setInstPlans(plans);
-    try { localStorage.setItem('bg_installments', JSON.stringify(plans)); } catch {}
+    setBudgetData(prev => ({ ...prev, installmentPlans: plans }));
   };
 
   const addInstPlan = () => {
@@ -4004,10 +4053,9 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
   };
 
   const confirmInstallmentPayment = (plan, monthly) => {
-    // 1. Increment paidMonths
-    saveInstPlans(instPlans.map(p => p.id === plan.id ? { ...p, paidMonths: Math.min(p.paidMonths + 1, p.months) } : p));
+    const updatedPlans = instPlans.map(p => p.id === plan.id ? { ...p, paidMonths: Math.min(p.paidMonths + 1, p.months) } : p);
 
-    // 2. Account Deduction
+    // 1. Account Deduction
     if (payAccountId) {
       setAccounts(prev => prev.map(a => a.id === payAccountId ? { ...a, balance: a.balance - monthly } : a));
     }
@@ -4015,64 +4063,44 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
     const account = accounts.find(a => a.id === payAccountId);
     const accountName = account ? account.name : 'Unknown Account';
 
-    // 3. Budget & History Updates
-    if (payLogBudget) {
-      const key = payDate.slice(0, 7);
-      const period = payPeriod;
+    // 2. Budget, History & Installment Plan Updates
+    setBudgetData(prev => {
+      const newTx = {
+        id: 'inst-tx-' + Date.now(),
+        accountId: payAccountId || 'none',
+        accountName: payAccountId ? accountName : 'No Account Deducted',
+        amount: monthly,
+        description: `Installment Payment: ${plan.item} (${plan.cardName})`,
+        date: payDate,
+        period: payPeriod,
+        planId: plan.id,
+        timestamp: new Date().toISOString()
+      };
 
-      setBudgetData(prev => {
-        // Add expense line item to budget
+      let nextState = {
+        ...prev,
+        installmentPlans: updatedPlans,
+        installmentHistory: [newTx, ...(prev.installmentHistory || [])]
+      };
+
+      if (payLogBudget) {
+        const key = payDate.slice(0, 7);
         const monthData = prev[key] || makeMonthData();
-        const periodData = monthData[period] || makePeriod();
+        const periodData = monthData[payPeriod] || makePeriod();
         const expenseName = `Installment: ${plan.item} (${plan.cardName})`;
         const newExpense = { name: expenseName, budget: monthly, amount: monthly, done: true };
 
-        // Log transaction history
-        const newTx = {
-          id: 'inst-tx-' + Date.now(),
-          accountId: payAccountId || 'none',
-          accountName: payAccountId ? accountName : 'No Account Deducted',
-          amount: monthly,
-          description: `Installment Payment: ${plan.item} (${plan.cardName})`,
-          date: payDate,
-          period: period,
-          planId: plan.id,
-          timestamp: new Date().toISOString()
+        nextState[key] = {
+          ...monthData,
+          [payPeriod]: {
+            ...periodData,
+            expenses: [...periodData.expenses, newExpense]
+          }
         };
+      }
 
-        return {
-          ...prev,
-          [key]: {
-            ...monthData,
-            [period]: {
-              ...periodData,
-              expenses: [...periodData.expenses, newExpense]
-            }
-          },
-          installmentHistory: [newTx, ...(prev.installmentHistory || [])]
-        };
-      });
-    } else {
-      // Just log transaction history, no budget impact
-      setBudgetData(prev => {
-        const newTx = {
-          id: 'inst-tx-' + Date.now(),
-          accountId: payAccountId || 'none',
-          accountName: payAccountId ? accountName : 'No Account Deducted',
-          amount: monthly,
-          description: `Installment Payment: ${plan.item} (${plan.cardName})`,
-          date: payDate,
-          period: payPeriod,
-          planId: plan.id,
-          timestamp: new Date().toISOString()
-        };
-
-        return {
-          ...prev,
-          installmentHistory: [newTx, ...(prev.installmentHistory || [])]
-        };
-      });
-    }
+      return nextState;
+    });
 
     setPayingPlanId(null);
   };
@@ -4091,7 +4119,7 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
       setAccounts(prev => prev.map(a => a.id === tx.accountId ? { ...a, balance: a.balance + tx.amount } : a));
     }
 
-    // 2. Remove budget expense & transaction log
+    // 2. Remove budget expense, transaction log & decrement paidMonths
     const key = (tx.date || '').slice(0, 7);
     const expName = `Installment: ${tx.description.replace('Installment Payment: ', '')}`;
 
@@ -4099,8 +4127,13 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
       const md = prev[key] || makeMonthData();
       const pd = md[tx.period] || makePeriod();
 
+      const updatedPlans = tx.planId
+        ? (prev.installmentPlans || []).map(p => p.id === tx.planId ? { ...p, paidMonths: Math.max(0, p.paidMonths - 1) } : p)
+        : (prev.installmentPlans || []);
+
       const newBudgetData = {
         ...prev,
+        installmentPlans: updatedPlans,
         installmentHistory: (prev.installmentHistory || []).filter(h => h.id !== tx.id)
       };
 
@@ -4116,11 +4149,6 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
 
       return newBudgetData;
     });
-
-    // 3. Decrement paidMonths on matching plan
-    if (tx.planId) {
-      saveInstPlans(instPlans.map(p => p.id === tx.planId ? { ...p, paidMonths: Math.max(0, p.paidMonths - 1) } : p));
-    }
   };
   const deleteInstPlan = (id) => { if (window.confirm('Delete this installment plan?')) saveInstPlans(instPlans.filter(p => p.id !== id)); };
   const activeInstPlans    = instPlans.filter(p => p.paidMonths < p.months);
@@ -4618,8 +4646,15 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
       <Card style={{ marginBottom: 0, border: `1px solid ${C.amber}33` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showInstForm ? 14 : 0 }}>
           <div>
-            <SecTitle style={{ margin: 0 }}>📦 Installment Plan Tracker</SecTitle>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+              <SecTitle style={{ margin: 0 }}>📦 Installment Plan Tracker</SecTitle>
+              {ownerName && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.amber, background: `${C.amber}18`, border: `1px solid ${C.amber}44`, borderRadius: 10, padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                  👤 {ownerName}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
               Monthly CC installment obligation: <span style={{ color: C.amber, fontWeight: 700 }}>{peso(totalMonthlyInst)}/mo</span>
               {' · '}{activeInstPlans.length} active · {completedInstPlans.length} completed
             </div>
@@ -7207,6 +7242,7 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('budget-fake-mode', fakeMode);
+      localStorage.removeItem('bg_installments');
     } catch (_) {}
   }, [fakeMode]);
 
@@ -7647,7 +7683,7 @@ export default function App() {
   const NAV_TABS=[
     {id:'dashboard',   label:'Dashboard',          icon:'📊',group:'main'},
     {id:'accounts',       label:'Accounts',              icon:'🏦',group:'manage'},
-    {id:'account-manager', label:'Account Manager',       icon:'🗂️',group:'manage'},
+
     {id:'reconcile',       label:'Reconcile & Audit',     icon:'🔍',group:'manage'},
     {id:'transactions',label:'Transactions',       icon:'💸',group:'manage'},
     // Balance Log removed — superseded by Reconcile & Audit tab (data preserved)
@@ -7940,12 +7976,12 @@ export default function App() {
               {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
               {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='accounts'       &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} budgetData={budgetData}/>}
-              {tab==='account-manager'&&<AccountManagerTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='account-manager'&&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} budgetData={budgetData}/>}
               {tab==='reconcile'      &&<ReconcileTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='transactions'&&<TransactionsTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='balancelog'  &&<BalanceLogTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='investments'&&<InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} ownerName={displayName}/>}
               {tab==='credits'  &&<CreditsTab credits={credits} setCredits={setCredits} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='expenses' &&<MajorTab majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='calendar'  &&<CalendarTab budgetData={budgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
