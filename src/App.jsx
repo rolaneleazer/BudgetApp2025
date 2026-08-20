@@ -2301,7 +2301,21 @@ function CreditCardStatementModal({ account, budgetData, onClose }) {
               Cutoff Day: {cutoffDay}th | Cycle: {formatDate(cycleStart)} – {formatDate(cycleEnd)}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer' }}>✕</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={() => window.print()}
+              style={{
+                padding: '5px 10px', borderRadius: 6,
+                border: `1px solid ${C.green}55`, background: `${C.green}22`,
+                color: C.green, cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                display: 'flex', alignItems: 'center', gap: 4
+              }}
+              title="Print or Save PDF Statement"
+            >
+              📥 Print / Export PDF
+            </button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer' }}>✕</button>
+          </div>
         </div>
 
         {/* View Mode Toggle */}
@@ -3934,13 +3948,31 @@ function InvestmentsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpda
 function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budgetData, setBudgetData, sm, readOnly, canWrite, canUpdate, ownerName = '' }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState(null);
+  const [statementAcc, setStatementAcc] = useState(null);
 
   const totalOwed = debts.reduce((sum, d) => sum + d.balance, 0);
   const totalLimit = debts.reduce((sum, d) => sum + d.limit, 0);
-  const avgUtilization = totalLimit > 0 ? (totalOwed / totalLimit) * 100 : 0;
 
   // ── Installment Plan Tracker ───────────────────────────────────────────
   const instPlans = budgetData?.installmentPlans || [];
+
+  const getCardInstallmentRemaining = (d) => {
+    const cardInsts = instPlans.filter(p => (p.cardId === d.id || p.accountId === d.id || p.account === d.name) && (p.paidMonths || 0) < (Number(p.months) || 12));
+    return cardInsts.reduce((s, p) => {
+      const total = Number(p.total) || 0;
+      const months = Number(p.months) || 12;
+      const paidMonths = Number(p.paidMonths) || 0;
+      const customMonthly = Number(p.customMonthly) || 0;
+      const monthly = customMonthly > 0 ? customMonthly : (total / months);
+      const rem = Math.max(0, total - (paidMonths * monthly));
+      return s + rem;
+    }, 0);
+  };
+
+  const totalInstallmentsRemaining = debts.reduce((sum, d) => sum + getCardInstallmentRemaining(d), 0);
+  const totalEffectiveUsed = totalOwed + totalInstallmentsRemaining;
+  const totalAvailableCredit = totalLimit > 0 ? Math.max(0, totalLimit - totalEffectiveUsed) : 0;
+  const avgUtilization = totalLimit > 0 ? (totalEffectiveUsed / totalLimit) * 100 : 0;
   const [showInstForm, setShowInstForm]     = useState(false);
   const [editingPlanId, setEditingPlanId]   = useState(null);
   const [newInst, setNewInst]               = useState({
@@ -4381,89 +4413,6 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
     setTimeout(() => setCcSuccessMsg(''), 3000);
   };
 
-  const handleDeleteCCTransaction = (tx) => {
-    if (!confirm(`Refund ₱${tx.amount.toLocaleString()} from ${tx.cardName} balance and delete the logged expense?`)) return;
-
-    // 1. Deduct balance from outstanding card balance
-    setDebts(prev => prev.map(d => d.id === tx.cardId ? { ...d, balance: Math.max(0, d.balance - tx.amount) } : d));
-
-    // 2. Remove expense & history log
-    const key = tx.date.slice(0, 7);
-    const period = tx.period;
-    const expenseName = `[${tx.category}] ${tx.description} (${tx.cardName})`;
-
-    setBudgetData(prev => {
-      const monthData = prev[key] || makeMonthData();
-      const periodData = monthData[period] || makePeriod();
-
-      const updatedExpenses = periodData.expenses.filter(e => e.name !== expenseName || e.amount !== tx.amount);
-      const prevHistory = prev.ccHistory || [];
-      const updatedHistory = prevHistory.filter(h => h.id !== tx.id);
-
-      return {
-        ...prev,
-        [key]: {
-          ...monthData,
-          [period]: {
-            ...periodData,
-            expenses: updatedExpenses
-          }
-        },
-        ccHistory: updatedHistory
-      };
-    });
-  };
-
-  const handleBulkClearTransactions = (filteredList) => {
-    if (filteredList.length === 0) return;
-    const confirmText = prompt(`Are you sure you want to delete all ${filteredList.length} filtered transactions and adjust card balances? This action cannot be undone.\n\nType "WIPE" to confirm:`);
-    if (confirmText !== "WIPE") return;
-
-    // 1. Rollback card balances
-    setDebts(prev => {
-      return prev.map(card => {
-        const txsForCard = filteredList.filter(tx => tx.cardId === card.id);
-        const sumToDeduct = txsForCard.reduce((sum, tx) => sum + tx.amount, 0);
-        return {
-          ...card,
-          balance: Math.max(0, card.balance - sumToDeduct)
-        };
-      });
-    });
-
-    // 2. Clear from budgets and history
-    setBudgetData(prev => {
-      let updatedData = { ...prev };
-      
-      // Group filtered transactions by month (key) and payroll period
-      filteredList.forEach(tx => {
-        const key = tx.date.slice(0, 7);
-        const period = tx.period;
-        const expenseName = `[${tx.category}] ${tx.description} (${tx.cardName})`;
-
-        const monthData = updatedData[key];
-        if (monthData) {
-          const periodData = monthData[period];
-          if (periodData) {
-            updatedData[key] = {
-              ...monthData,
-              [period]: {
-                ...periodData,
-                expenses: periodData.expenses.filter(e => e.name !== expenseName || e.amount !== tx.amount)
-              }
-            };
-          }
-        }
-      });
-
-      // Clear from ccHistory list
-      const idsToRemove = new Set(filteredList.map(tx => tx.id));
-      updatedData.ccHistory = (prev.ccHistory || []).filter(tx => !idsToRemove.has(tx.id));
-
-      return updatedData;
-    });
-  };
-
   function startEdit(d) {
     setEditData({ ...d });
     setEditing(d.id);
@@ -4484,10 +4433,11 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
         <MetricCard label="Total Outstanding Debt" value={peso(totalOwed)} color={C.red} sm={sm} />
         <MetricCard label="Total Credit Limit" value={peso(totalLimit)} color={C.blue} sm={sm} />
-        <MetricCard label="Avg Card Utilization" value={avgUtilization.toFixed(1) + '%'} color={avgUtilization >= 50 ? C.red : avgUtilization >= 30 ? C.amber : C.green} sub="Target: <30%" sm={sm} />
+        <MetricCard label="Available Credit Limit" value={peso(totalAvailableCredit)} color={totalAvailableCredit > 0 ? C.green : C.red} sub={totalInstallmentsRemaining > 0 ? `Less ₱${(totalInstallmentsRemaining/1000).toFixed(1)}k inst` : 'Full Limit Free'} sm={sm} />
+        <MetricCard label="Avg Card Utilization" value={avgUtilization.toFixed(1) + '%'} color={avgUtilization >= 50 ? C.red : avgUtilization >= 30 ? C.amber : C.green} sub="Inc. Installments" sm={sm} />
       </div>
 
       <Card>
@@ -4501,7 +4451,10 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
             {debts.length === 0 ? (
               <div style={{ textAlign: 'center', color: C.muted, padding: '16px 0', fontSize: 12 }}>No debt accounts added yet.</div>
             ) : debts.map(d => {
-              const util = d.limit > 0 ? (d.balance / d.limit) * 100 : 0;
+              const instRem = getCardInstallmentRemaining(d);
+              const totalUsed = (Number(d.balance) || 0) + instRem;
+              const availCredit = d.limit > 0 ? Math.max(0, d.limit - totalUsed) : 0;
+              const util = d.limit > 0 ? (totalUsed / d.limit) * 100 : 0;
               return (
                 <div key={d.id} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: 12 }}>
                   {editing === d.id ? (
@@ -4545,26 +4498,27 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, background: `${C.card}`, padding: 8, borderRadius: 6, marginBottom: 8, fontSize: 11 }}>
                         <div>
-                          <div style={{ color: C.muted, fontSize: 10 }}>Balance</div>
+                          <div style={{ color: C.muted, fontSize: 10 }}>Current Balance</div>
                           <div style={{ fontWeight: 700, color: C.red, fontSize: 13 }}>{peso(d.balance)}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: C.muted, fontSize: 10 }}>Available Limit</div>
+                          <div style={{ fontWeight: 800, color: availCredit > 0 ? C.green : C.red, fontSize: 13 }}>{peso(availCredit)}</div>
                         </div>
                         <div>
                           <div style={{ color: C.muted, fontSize: 10 }}>Credit Limit</div>
                           <div style={{ fontWeight: 600, color: C.text }}>{peso(d.limit)}</div>
                         </div>
                         <div>
-                          <div style={{ color: C.muted, fontSize: 10 }}>APR</div>
-                          <div style={{ fontWeight: 600, color: C.text }}>{d.apr}%</div>
-                        </div>
-                        <div>
-                          <div style={{ color: C.muted, fontSize: 10 }}>Min Payment</div>
-                          <div style={{ fontWeight: 600, color: C.amber }}>{peso(d.minPayment)}</div>
+                          <div style={{ color: C.muted, fontSize: 10 }}>Active Installments</div>
+                          <div style={{ fontWeight: 600, color: C.amber }}>{instRem > 0 ? peso(instRem) : '₱0'}</div>
                         </div>
                       </div>
                       {canUpdate && (
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => startEdit(d)} style={{ flex: 1, padding: '6px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'none', color: C.muted, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>✏️ Edit Account</button>
-                          <button onClick={() => setDebts(p => p.filter(x => x.id !== d.id))} style={{ flex: 1, padding: '6px', borderRadius: 6, border: `1px solid ${C.red}33`, background: `${C.red}11`, color: C.red, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>🗑 Delete</button>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <button onClick={() => setStatementAcc({ id: d.id, name: d.name, balance: d.balance, creditLimit: d.limit, statementCutoffDay: d.statementCutoffDay || 15 })} style={{ flex: 1, minWidth: 140, padding: '6px', borderRadius: 6, border: `1px solid ${C.purple}55`, background: `${C.purple}18`, color: C.purple, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>💳 Statement & Report</button>
+                          <button onClick={() => startEdit(d)} style={{ flex: 1, minWidth: 80, padding: '6px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'none', color: C.muted, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>✏️ Edit</button>
+                          <button onClick={() => setDebts(p => p.filter(x => x.id !== d.id))} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.red}33`, background: `${C.red}11`, color: C.red, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>🗑 Delete</button>
                         </div>
                       )}
                     </div>
@@ -4580,7 +4534,9 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                 <tr style={{ background: '#0d1117', borderBottom: `1px solid ${C.border}` }}>
                   <th style={{ padding: '8px', textAlign: 'left', color: C.muted }}>Account</th>
                   <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>Balance (₱)</th>
+                  <th style={{ padding: '8px', textAlign: 'right', color: C.amber }}>Installments (₱)</th>
                   <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>Limit (₱)</th>
+                  <th style={{ padding: '8px', textAlign: 'right', color: C.green }}>Available Credit (₱)</th>
                   <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>APR (%)</th>
                   <th style={{ padding: '8px', textAlign: 'right', color: C.muted }}>Min Pay (₱)</th>
                   <th style={{ padding: '8px', textAlign: 'center', color: C.muted }}>Actions</th>
@@ -4588,14 +4544,18 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
               </thead>
               <tbody>
                 {debts.map(d => {
-                  const util = d.limit > 0 ? (d.balance / d.limit) * 100 : 0;
+                  const instRem = getCardInstallmentRemaining(d);
+                  const totalUsed = (Number(d.balance) || 0) + instRem;
+                  const availCredit = d.limit > 0 ? Math.max(0, d.limit - totalUsed) : 0;
                   return (
                     <tr key={d.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
                       {editing === d.id ? (
                         <>
                           <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly}/></td>
                           <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                          <td style={{ padding: '6px', textAlign: 'right', color: C.amber }}>{peso(instRem)}</td>
                           <td style={{ padding: '6px' }}><Inp type="number" value={editData.limit} onChange={e => setEditData({ ...editData, limit: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                          <td style={{ padding: '6px', textAlign: 'right', color: C.green, fontWeight: 700 }}>{peso(availCredit)}</td>
                           <td style={{ padding: '6px' }}><Inp type="number" value={editData.apr} onChange={e => setEditData({ ...editData, apr: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
                           <td style={{ padding: '6px' }}><Inp type="number" value={editData.minPayment} onChange={e => setEditData({ ...editData, minPayment: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
                           <td style={{ padding: '6px', textAlign: 'center' }}>
@@ -4610,7 +4570,8 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                           <td style={{ padding: '8px 10px', textAlign: 'right', color: C.muted }}>{peso(d.limit)}</td>
                           <td style={{ padding: '8px 10px', textAlign: 'right' }}>{d.apr}%</td>
                           <td style={{ padding: '8px 10px', textAlign: 'right', color: C.amber }}>{peso(d.minPayment)}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                          <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <button onClick={() => setStatementAcc({ id: d.id, name: d.name, balance: d.balance, creditLimit: d.limit, statementCutoffDay: d.statementCutoffDay || 15 })} style={{ background: 'none', border: `1px solid ${C.purple}55`, borderRadius: 4, cursor: 'pointer', color: C.purple, padding: '2px 8px', fontSize: 11, marginRight: 4, fontWeight: 700 }}>💳 Statement & Report</button>
                             {canUpdate && <button onClick={() => startEdit(d)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, cursor: 'pointer', color: C.muted, padding: '2px 8px', fontSize: 11, marginRight: 4 }}>Edit</button>}
                             {canUpdate && <button onClick={() => setDebts(p => p.filter(x => x.id !== d.id))} style={{ background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, cursor: 'pointer', color: C.red, padding: '2px 8px', fontSize: 11 }}>Delete</button>}
                           </td>
@@ -5274,6 +5235,13 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
             })()}
           </Card>
         </div>
+      )}
+      {statementAcc && (
+        <CreditCardStatementModal 
+          account={statementAcc} 
+          budgetData={budgetData} 
+          onClose={() => setStatementAcc(null)} 
+        />
       )}
     </div>
   );
