@@ -64,6 +64,7 @@ check("MCP Tool Registrations", () => {
 check("Financial Modules Calculations", () => {
   const modules = [
     "dashboard",
+    "account-dashboard",
     "history",
     "monthly",
     "accounts",

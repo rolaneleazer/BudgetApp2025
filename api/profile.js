@@ -117,6 +117,7 @@ export default async function handler(req, res) {
     const permissionsMap = {};
     const defaultModules = [
       "dashboard",
+      "account-dashboard",
       "history",
       "budget",
       "accounts",
@@ -135,6 +136,7 @@ export default async function handler(req, res) {
     
     const baselineUserModules = new Set([
       "dashboard",
+      "account-dashboard",
       "history",
       "budget",
       "accounts",
@@ -155,7 +157,7 @@ export default async function handler(req, res) {
       } else if (role === "viewer") {
         permissionsMap[mod] = "read";
       } else if (role === "guest") {
-        permissionsMap[mod] = mod === "dashboard" ? "read" : "none";
+        permissionsMap[mod] = (mod === "dashboard" || mod === "account-dashboard") ? "read" : "none";
       } else {
         // Standard user role: allow baseline user modules, hide advanced/new modules by default unless granted in DB
         permissionsMap[mod] = baselineUserModules.has(mod) ? "update" : "none";

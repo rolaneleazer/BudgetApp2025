@@ -86,6 +86,7 @@ const defaultDebts = [
 
 const moduleNames = [
   "dashboard",
+  "account-dashboard",
   "history",
   "monthly",
   "accounts",
@@ -659,10 +660,71 @@ function dashboardSnapshot(profile) {
   };
 }
 
+function summarizeAccountDashboard(profile) {
+  const accountsSummary = summarizeAccounts(profile.accounts);
+  const budgetData = profile.budgetData || {};
+  const manualList = (budgetData.debitHistory || []).map((d) => ({
+    id: d.id,
+    accountId: d.accountId || "",
+    accountName: d.accountName || "Unknown Account",
+    amount: numberValue(d.amount),
+    description: d.description || "",
+    date: d.date || "",
+    isCredit: Boolean(d.isCredit),
+    direction: d.isCredit ? "in" : "out",
+    source: "manual",
+  }));
+  const ccList = (budgetData.ccHistory || []).map((d) => ({
+    id: d.id,
+    accountId: d.accountId || d.cardId || "cc",
+    accountName: d.cardName || d.accountName || "Credit Card",
+    amount: numberValue(d.amount),
+    description: d.description || "",
+    date: d.date || "",
+    isCredit: false,
+    direction: "out",
+    source: "cc",
+  }));
+  const instList = (budgetData.installmentHistory || []).map((d) => ({
+    id: d.id,
+    accountId: d.accountId || "none",
+    accountName: d.accountName || "Installment",
+    amount: numberValue(d.amount),
+    description: d.description || "",
+    date: d.date || "",
+    isCredit: false,
+    direction: "out",
+    source: "installment",
+  }));
+
+  const transactionLogs = [...manualList, ...ccList, ...instList].sort((a, b) =>
+    String(b.date || "").localeCompare(String(a.date || ""))
+  );
+  const totalMoneyIn = transactionLogs
+    .filter((t) => t.isCredit)
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalMoneyOut = transactionLogs
+    .filter((t) => !t.isCredit)
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  return {
+    totalBalance: accountsSummary.total,
+    totalMoneyIn,
+    totalMoneyOut,
+    netCashFlow: totalMoneyIn - totalMoneyOut,
+    byType: accountsSummary.byType,
+    accounts: accountsSummary.accounts,
+    transactionCount: transactionLogs.length,
+    transactionLogs,
+  };
+}
+
 export function buildModulePayload(profile, moduleName, args = {}) {
   switch (moduleName) {
     case "dashboard":
       return dashboardSnapshot(profile);
+    case "account-dashboard":
+      return summarizeAccountDashboard(profile);
     case "history":
       return summarizeHistory(profile.budgetData, profile.balanceHistory);
     case "monthly":
@@ -873,6 +935,7 @@ export function createBudgetMcpServer() {
         userId: profile.userId,
         updatedAt: profile.updatedAt,
         dashboard: buildModulePayload(profile, "dashboard"),
+        accountDashboard: buildModulePayload(profile, "account-dashboard"),
         history: buildModulePayload(profile, "history"),
         monthly: buildModulePayload(profile, "monthly"),
         accounts: buildModulePayload(profile, "accounts"),

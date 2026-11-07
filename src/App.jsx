@@ -1375,6 +1375,9 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
               ⚡ Quick Actions & Module Shortcuts
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button onClick={() => setTab && setTab('account-dashboard')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.blue}`, background: `${C.blue}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                🏧 Account Dashboard
+              </button>
               <button onClick={() => setTab && setTab('transactions')} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${C.purple}`, background: `${C.purple}22`, color: C.text, cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
                 ➕ Add Transaction
               </button>
@@ -2124,6 +2127,2636 @@ function BudgetTab({budgetData,setBudgetData,sm,readOnly,canWrite,canUpdate}) {
   );
 }
 
+// ─── PHILIPPINE BANK & E-WALLET BRAND DIRECTORY (SOLID COLORS + CUSTOM LOGO) ──
+function getPhBankBrand(nameOrAcc = '', typeArg = '', accObjArg = null) {
+  const accObj = (nameOrAcc && typeof nameOrAcc === 'object') ? nameOrAcc : accObjArg;
+  const rawName = (nameOrAcc && typeof nameOrAcc === 'object') ? (nameOrAcc.name || '') : (nameOrAcc || '');
+  const type = (nameOrAcc && typeof nameOrAcc === 'object') ? (nameOrAcc.type || '') : (typeArg || '');
+  const n = rawName.toLowerCase();
+
+  let base = {
+    code: 'BANK', fullName: 'Philippine Bank Account', tagline: 'Personal Banking & Passbook',
+    primary: '#1e3a8a', secondary: '#60a5fa', accent: '#93c5fd',
+    solidBg: '#172554',
+    logoBg: '#1e3a8a', logoText: '#93c5fd', logoSub: '#ffffff'
+  };
+
+  if (n.includes('bdo') || n.includes('banco de oro')) {
+    base = {
+      code: 'BDO', fullName: 'BDO Unibank', tagline: 'We Find Ways',
+      primary: '#0033a0', secondary: '#fdb913', accent: '#fdb913',
+      solidBg: '#002b7f',
+      logoBg: '#0033a0', logoText: '#fdb913', logoSub: '#ffffff'
+    };
+  } else if (n.includes('bpi') || n.includes('bank of the phil')) {
+    base = {
+      code: 'BPI', fullName: 'Bank of the Philippine Islands', tagline: 'Do More with BPI',
+      primary: '#8b1116', secondary: '#f7d060', accent: '#ff5c5c',
+      solidBg: '#7a0d12',
+      logoBg: '#9e1318', logoText: '#ffffff', logoSub: '#f7d060'
+    };
+  } else if (n.includes('sb') || n.includes('security bank') || n.includes('esaving')) {
+    base = {
+      code: 'SB', fullName: 'Security Bank PH', tagline: 'BetterBanking',
+      primary: '#002d72', secondary: '#78be20', accent: '#78be20',
+      solidBg: '#002657',
+      logoBg: '#002d72', logoText: '#78be20', logoSub: '#ffffff'
+    };
+  } else if (n.includes('rcbc') || n.includes('rizal commercial')) {
+    base = {
+      code: 'RCBC', fullName: 'RCBC Bankard / Unibank', tagline: 'We Believe in You',
+      primary: '#0054a6', secondary: '#38bdf8', accent: '#38bdf8',
+      solidBg: '#003d7a',
+      logoBg: '#0054a6', logoText: '#ffffff', logoSub: '#7dd3fc'
+    };
+  } else if (n.includes('metrobank') || n.includes('mbtc')) {
+    base = {
+      code: 'MBTC', fullName: 'Metrobank Philippines', tagline: "You're in Good Hands",
+      primary: '#003882', secondary: '#38bdf8', accent: '#38bdf8',
+      solidBg: '#002966',
+      logoBg: '#003087', logoText: '#ffffff', logoSub: '#38bdf8'
+    };
+  } else if (n.includes('unionbank') || n.includes('ubp')) {
+    base = {
+      code: 'UB', fullName: 'UnionBank of the Philippines', tagline: 'Own the Future',
+      primary: '#c2410c', secondary: '#fdba74', accent: '#ffb74d',
+      solidBg: '#9a3412',
+      logoBg: '#ea580c', logoText: '#ffffff', logoSub: '#ffe0b2'
+    };
+  } else if (n.includes('landbank') || n.includes('lbp')) {
+    base = {
+      code: 'LBP', fullName: 'Land Bank of the Philippines', tagline: 'Serving the Nation',
+      primary: '#006837', secondary: '#ffd100', accent: '#4ade80',
+      solidBg: '#064e3b',
+      logoBg: '#007a33', logoText: '#ffd100', logoSub: '#ffffff'
+    };
+  } else if (n.includes('pnb') || n.includes('philippine national')) {
+    base = {
+      code: 'PNB', fullName: 'Philippine National Bank', tagline: 'You First',
+      primary: '#0038a8', secondary: '#fcd116', accent: '#fcd116',
+      solidBg: '#002868',
+      logoBg: '#0038a8', logoText: '#fcd116', logoSub: '#ffffff'
+    };
+  } else if (n.includes('chinabank') || n.includes('cbc')) {
+    base = {
+      code: 'CBC', fullName: 'Chinabank Philippines', tagline: 'Focused on You',
+      primary: '#a60f24', secondary: '#f2a900', accent: '#fbbf24',
+      solidBg: '#7f1d1d',
+      logoBg: '#c8102e', logoText: '#f2a900', logoSub: '#ffffff'
+    };
+  } else if (n.includes('eastwest') || n.includes('ewb')) {
+    base = {
+      code: 'EWB', fullName: 'EastWest Bank', tagline: 'Your Dream Our Focus',
+      primary: '#5c2d91', secondary: '#f472b6', accent: '#c084fc',
+      solidBg: '#4c1d95',
+      logoBg: '#5c2d91', logoText: '#ffffff', logoSub: '#f472b6'
+    };
+  } else if (n.includes('gcash')) {
+    base = {
+      code: 'GCash', fullName: 'GCash E-Wallet (G-Xchange)', tagline: 'Kaya Mo, GCash Mo',
+      primary: '#0057e7', secondary: '#93c5fd', accent: '#60a5fa',
+      solidBg: '#0047b3',
+      logoBg: '#007dfe', logoText: '#ffffff', logoSub: '#bae6fd'
+    };
+  } else if (n.includes('maya') || n.includes('ownbank')) {
+    base = {
+      code: 'MAYA', fullName: n.includes('ownbank') ? 'Maya Bank / OwnBank PH' : 'Maya Bank Philippines', tagline: "It's Everything & A Bank",
+      primary: '#064e3b', secondary: '#34d399', accent: '#34d399',
+      solidBg: '#063729',
+      logoBg: '#062c21', logoText: '#00e676', logoSub: '#ffffff'
+    };
+  } else if (n.includes('gotyme')) {
+    base = {
+      code: 'GoTyme', fullName: 'GoTyme Bank PH', tagline: "It's Go Time",
+      primary: '#0b2545', secondary: '#00d6c9', accent: '#22d3ee',
+      solidBg: '#0a2239',
+      logoBg: '#0a192f', logoText: '#00d6c9', logoSub: '#ffffff'
+    };
+  } else if (n.includes('seabank') || n.includes('maribank')) {
+    base = {
+      code: 'Sea', fullName: 'SeaBank / MariBank PH', tagline: 'Daily High Interest Savings',
+      primary: '#b83b14', secondary: '#fdba74', accent: '#ffab91',
+      solidBg: '#9a3412',
+      logoBg: '#ea580c', logoText: '#ffffff', logoSub: '#ffe0b2'
+    };
+  } else if (n.includes('cimb')) {
+    base = {
+      code: 'CIMB', fullName: 'CIMB Bank Philippines', tagline: 'Moving Forward With You',
+      primary: '#991b1b', secondary: '#fca5a5', accent: '#fca5a5',
+      solidBg: '#7f1d1d',
+      logoBg: '#dc2626', logoText: '#ffffff', logoSub: '#fecaca'
+    };
+  } else if (n.includes('mp2') || n.includes('pagibig') || n.includes('pag-ibig')) {
+    base = {
+      code: 'MP2', fullName: 'Pag-IBIG Fund MP2 Savings', tagline: 'Republic of the Philippines Gov Savings',
+      primary: '#1e3a8a', secondary: '#fbbf24', accent: '#f59e0b',
+      solidBg: '#1e3a8a',
+      logoBg: '#0038a8', logoText: '#fcd116', logoSub: '#ef4444'
+    };
+  } else if (n.includes('sla') || n.includes('capcon') || n.includes('coop')) {
+    base = {
+      code: 'SLA', fullName: 'Savings & Loan Association PH', tagline: 'Capital Contribution & Member Savings',
+      primary: '#4c1d95', secondary: '#fbbf24', accent: '#c4b5fd',
+      solidBg: '#3b1578',
+      logoBg: '#5b21b6', logoText: '#fbbf24', logoSub: '#ede9fe'
+    };
+  } else if (n.includes('git') || n.includes('business')) {
+    base = {
+      code: 'BIZ', fullName: 'Business Commercial Account', tagline: 'Corporate Checking & Operations',
+      primary: '#1e3a8a', secondary: '#38bdf8', accent: '#60a5fa',
+      solidBg: '#172554',
+      logoBg: '#1e40af', logoText: '#38bdf8', logoSub: '#ffffff'
+    };
+  } else if (n.includes('atome') || n.includes('zed')) {
+    base = {
+      code: 'CARD', fullName: 'Digital Credit PH', tagline: 'Smart Payment Facility',
+      primary: '#14532d', secondary: '#bef264', accent: '#bef264',
+      solidBg: '#14532d',
+      logoBg: '#166534', logoText: '#bef264', logoSub: '#ffffff'
+    };
+  } else if (type === 'Investment') {
+    base = {
+      code: 'INV', fullName: 'Philippine Investment Account', tagline: 'Wealth & Capital Growth',
+      primary: '#4c1d95', secondary: '#c084fc', accent: '#d8b4fe',
+      solidBg: '#3b0764',
+      logoBg: '#4c1d95', logoText: '#e9d5ff', logoSub: '#ffffff'
+    };
+  } else if (type === 'Savings') {
+    base = {
+      code: 'SAV', fullName: 'Philippine Savings Bank Account', tagline: 'Personal Passbook Savings',
+      primary: '#065f46', secondary: '#34d399', accent: '#6ee7b7',
+      solidBg: '#064e3b',
+      logoBg: '#065f46', logoText: '#6ee7b7', logoSub: '#ffffff'
+    };
+  } else if (type === 'Digital') {
+    base = {
+      code: 'DIGI', fullName: 'Philippine Digital Bank / E-Wallet', tagline: 'Instant Digital Banking',
+      primary: '#155e75', secondary: '#22d3ee', accent: '#67e8f9',
+      solidBg: '#083344',
+      logoBg: '#155e75', logoText: '#67e8f9', logoSub: '#ffffff'
+    };
+  }
+
+  const finalSolidBg = accObj?.customBgColor || base.solidBg;
+  const finalSecondary = accObj?.customAccentColor || base.secondary;
+  const finalTextColor = accObj?.customTextColor || '#ffffff';
+  const finalFullName = (accObj?.customSubtitle && accObj.customSubtitle.trim()) ? accObj.customSubtitle.trim() : base.fullName;
+
+  return {
+    ...base,
+    solidBg: finalSolidBg,
+    bgGrad: finalSolidBg, // Solid background only — no gradient
+    secondary: finalSecondary,
+    textColor: finalTextColor,
+    fullName: finalFullName,
+    defaultSolidBg: base.solidBg,
+    defaultSecondary: base.secondary,
+    defaultFullName: base.fullName,
+    customLogoUrl: accObj?.customLogoUrl || '',
+    customLogoBg: accObj?.customLogoBg || '#ffffff',
+    customLogoFit: accObj?.customLogoFit || 'contain',
+    customLogoShape: accObj?.customLogoShape || 'rounded'
+  };
+}
+
+const SOLID_BANK_SWATCHES = [
+  { label: 'BDO Navy', bg: '#002b7f', accent: '#fdb913' },
+  { label: 'BPI Crimson', bg: '#7a0d12', accent: '#f7d060' },
+  { label: 'Security Bank Blue', bg: '#002657', accent: '#78be20' },
+  { label: 'Metrobank Blue', bg: '#002966', accent: '#38bdf8' },
+  { label: 'RCBC Cerulean', bg: '#003d7a', accent: '#38bdf8' },
+  { label: 'UnionBank Orange', bg: '#9a3412', accent: '#fdba74' },
+  { label: 'LandBank Emerald', bg: '#064e3b', accent: '#ffd100' },
+  { label: 'GCash Blue', bg: '#0047b3', accent: '#93c5fd' },
+  { label: 'Maya Forest', bg: '#063729', accent: '#34d399' },
+  { label: 'GoTyme Deep Navy', bg: '#0a2239', accent: '#00d6c9' },
+  { label: 'Chinabank Red', bg: '#7f1d1d', accent: '#f2a900' },
+  { label: 'EastWest Royal', bg: '#3b1578', accent: '#f472b6' },
+  { label: 'Classic Slate', bg: '#1e293b', accent: '#60a5fa' },
+  { label: 'Midnight Dark', bg: '#0f172a', accent: '#38bdf8' },
+  { label: 'Warm Espresso', bg: '#3e2723', accent: '#fbbf24' },
+  { label: 'Deep Teal', bg: '#134e4a', accent: '#2dd4bf' }
+];
+
+function PhBankLogoBadge({ brand, acc, size = 54 }) {
+  const b = brand || getPhBankBrand(acc);
+  const logoUrl = acc?.customLogoUrl || b.customLogoUrl || '';
+  const logoBg = acc?.customLogoBg || b.customLogoBg || '#ffffff';
+  const logoFit = acc?.customLogoFit || b.customLogoFit || 'contain';
+  const logoShape = acc?.customLogoShape || b.customLogoShape || 'rounded';
+  const isSmall = size < 44;
+
+  const badgeWidth = logoUrl && logoShape === 'wide' ? Math.round(size * 1.45) : size;
+  const badgeRadius = logoShape === 'circle' ? '50%' : Math.round(size * 0.24);
+
+  if (logoUrl) {
+    const resolvedPlateBg = logoBg === 'card' ? b.solidBg : logoBg;
+    return (
+      <div style={{
+        width: badgeWidth,
+        height: size,
+        borderRadius: badgeRadius,
+        background: resolvedPlateBg,
+        border: `2px solid ${b.secondary}`,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        overflow: 'hidden',
+        padding: logoFit === 'contain' ? Math.max(2, Math.round(size * 0.08)) : 0,
+        userSelect: 'none'
+      }}>
+        <img
+          src={logoUrl}
+          alt={b.code || 'Bank Logo'}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: logoFit,
+            display: 'block',
+            borderRadius: logoFit === 'cover' ? badgeRadius : 2
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      width: size,
+      height: size,
+      borderRadius: badgeRadius,
+      background: b.logoBg,
+      border: `2px solid ${b.secondary}`,
+      boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      position: 'relative',
+      overflow: 'hidden',
+      userSelect: 'none'
+    }}>
+      {/* Official-Style Philippine Bank Emblem SVG / Monogram (Clean Solid Colors) */}
+      {b.code === 'BDO' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+          <div style={{ fontWeight: 900, fontSize: isSmall ? 12 : 18, color: '#ffffff', letterSpacing: '-0.03em', lineHeight: 1, fontFamily: 'Arial Black, Inter, sans-serif' }}>
+            BDO
+          </div>
+          <div style={{ width: '74%', height: isSmall ? 3 : 4, borderRadius: 2, background: '#fdb913', marginTop: isSmall ? 2 : 3 }} />
+        </div>
+      ) : b.code === 'BPI' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+          <svg width={size * 0.36} height={size * 0.26} viewBox="0 0 24 16" style={{ marginBottom: 1 }}>
+            <polygon points="12,1 22,8 12,15 2,8" fill="#f7d060" />
+            <circle cx="12" cy="8" r="3" fill="#b11116" />
+          </svg>
+          <div style={{ fontWeight: 900, fontSize: isSmall ? 11 : 15, color: '#ffffff', letterSpacing: '0.03em', lineHeight: 1, fontFamily: 'Georgia, serif' }}>
+            BPI
+          </div>
+        </div>
+      ) : b.code === 'SB' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <svg width={size * 0.64} height={size * 0.48} viewBox="0 0 44 28">
+            <circle cx="17" cy="14" r="9.5" fill="none" stroke="#ffffff" strokeWidth="3.2" />
+            <circle cx="27" cy="14" r="9.5" fill="none" stroke="#78be20" strokeWidth="3.2" />
+          </svg>
+          {!isSmall && <div style={{ fontSize: 8, fontWeight: 900, color: '#ffffff', letterSpacing: '0.04em', marginTop: 1 }}>SECURITY</div>}
+        </div>
+      ) : b.code === 'MBTC' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <svg width={size * 0.6} height={size * 0.46} viewBox="0 0 40 28">
+            <circle cx="14" cy="14" r="8" fill="#00a3e0" opacity="0.9" />
+            <circle cx="26" cy="14" r="8" fill="#ffffff" opacity="0.9" />
+            <path d="M20 7.8 A8 8 0 0 1 20 20.2 A8 8 0 0 1 20 7.8 Z" fill="#003087" />
+          </svg>
+          <div style={{ fontWeight: 900, fontSize: isSmall ? 8 : 10, color: '#ffffff', letterSpacing: '-0.02em', lineHeight: 1 }}>
+            Metrobank
+          </div>
+        </div>
+      ) : b.code === 'RCBC' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <svg width={size * 0.44} height={size * 0.34} viewBox="0 0 32 22" style={{ marginBottom: 1 }}>
+            <polygon points="16,2 30,20 2,20" fill="#00b5e2" />
+            <polygon points="16,7 24,18 8,18" fill="#ffffff" />
+          </svg>
+          <div style={{ fontWeight: 900, fontSize: isSmall ? 10 : 13, color: '#ffffff', letterSpacing: '0.02em', lineHeight: 1 }}>
+            RCBC
+          </div>
+        </div>
+      ) : b.code === 'UB' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: isSmall ? 13 : 19, color: '#ffffff', letterSpacing: '-0.05em', lineHeight: 1 }}>
+            UB
+          </div>
+          <div style={{ fontSize: isSmall ? 6 : 8, fontWeight: 800, color: '#ffe0b2', marginTop: 2 }}>
+            UnionBank
+          </div>
+        </div>
+      ) : b.code === 'LBP' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <svg width={size * 0.48} height={size * 0.38} viewBox="0 0 32 24">
+            <ellipse cx="16" cy="12" rx="12" ry="7" fill="#ffd100" />
+            <path d="M6 12 Q16 5 26 12 Q16 19 6 12 Z" fill="#007a33" />
+            <circle cx="16" cy="12" r="3" fill="#ffd100" />
+          </svg>
+          <div style={{ fontWeight: 900, fontSize: isSmall ? 8 : 10, color: '#ffffff', lineHeight: 1, marginTop: 1 }}>
+            LANDBANK
+          </div>
+        </div>
+      ) : b.code === 'MP2' ? (
+        <svg width={size * 0.72} height={size * 0.72} viewBox="0 0 40 40">
+          <path d="M20 6 L34 18 L29 18 L29 33 L11 33 L11 18 L6 18 Z" fill="#fcd116" stroke="#ffffff" strokeWidth="1.5" />
+          <path d="M20 15 C17 12, 13 15, 16 19 L20 23 L24 19 C27 15, 23 12, 20 15 Z" fill="#ce1126" />
+        </svg>
+      ) : b.code === 'GCash' ? (
+        <div style={{ fontWeight: 900, fontSize: isSmall ? 15 : 22, color: '#ffffff', letterSpacing: -1, fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center' }}>
+          <span>G</span>
+          <span style={{ width: isSmall ? 5 : 6, height: isSmall ? 5 : 6, borderRadius: '50%', background: '#bae6fd', marginLeft: 2 }} />
+        </div>
+      ) : b.code === 'MAYA' ? (
+        <div style={{ fontWeight: 900, fontSize: isSmall ? 11 : 15, color: '#00e676', letterSpacing: '-0.04em', textTransform: 'lowercase', fontFamily: 'Inter, sans-serif' }}>
+          maya
+        </div>
+      ) : b.code === 'GoTyme' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: isSmall ? 10 : 13, color: '#00d6c9', letterSpacing: '-0.03em', lineHeight: 1 }}>
+            GoTyme
+          </div>
+          <div style={{ width: '60%', height: 2.5, background: '#ffffff', borderRadius: 2, marginTop: 3 }} />
+        </div>
+      ) : (
+        <>
+          <div style={{
+            fontWeight: 900,
+            fontSize: b.code.length > 4 ? (isSmall ? 9 : 11) : b.code.length === 4 ? (isSmall ? 10 : 13) : (isSmall ? 13 : 16),
+            color: b.logoText,
+            letterSpacing: '-0.03em',
+            lineHeight: 1
+          }}>
+            {b.code}
+          </div>
+          <div style={{
+            width: '62%', height: 3, borderRadius: 2,
+            background: b.secondary, marginTop: 3
+          }} />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── CUSTOMIZE ACCOUNT COLOR & UPLOAD LOGO MODAL ─────────────────────────────
+function AccountCustomizeModal({ account, onSave, onClose, sm }) {
+  const defaultBrand = getPhBankBrand(account?.name, account?.type);
+  const [customBgColor, setCustomBgColor] = useState(account?.customBgColor || defaultBrand.defaultSolidBg || '#002b7f');
+  const [customAccentColor, setCustomAccentColor] = useState(account?.customAccentColor || defaultBrand.defaultSecondary || '#fdb913');
+  const [customTextColor, setCustomTextColor] = useState(account?.customTextColor || '#ffffff');
+  const [customSubtitle, setCustomSubtitle] = useState(account?.customSubtitle || '');
+  const [customLogoUrl, setCustomLogoUrl] = useState(account?.customLogoUrl || '');
+  const [customLogoBg, setCustomLogoBg] = useState(account?.customLogoBg || '#ffffff');
+  const [customLogoFit, setCustomLogoFit] = useState(account?.customLogoFit || 'contain');
+  const [customLogoShape, setCustomLogoShape] = useState(account?.customLogoShape || 'rounded');
+  const [uploadErr, setUploadErr] = useState('');
+  const fileInputRef = useRef(null);
+
+  if (!account) return null;
+
+  const handleLogoFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setUploadErr('Please select an image file (PNG, JPG, SVG, or WebP).');
+      return;
+    }
+    setUploadErr('');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 240;
+        let w = img.width;
+        let h = img.height;
+        if (w > h && w > MAX_DIM) {
+          h = Math.round((h * MAX_DIM) / w);
+          w = MAX_DIM;
+        } else if (h >= w && h > MAX_DIM) {
+          w = Math.round((w * MAX_DIM) / h);
+          h = MAX_DIM;
+        }
+        canvas.width = Math.max(1, w);
+        canvas.height = Math.max(1, h);
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        // Preserve PNG transparency for bank logos
+        const dataUrl = canvas.toDataURL('image/png');
+        setCustomLogoUrl(dataUrl);
+      };
+      img.onerror = () => setUploadErr('Could not load the selected image.');
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleResetDefault = () => {
+    setCustomBgColor(defaultBrand.defaultSolidBg || '#002b7f');
+    setCustomAccentColor(defaultBrand.defaultSecondary || '#fdb913');
+    setCustomTextColor('#ffffff');
+    setCustomSubtitle('');
+    setCustomLogoUrl('');
+    setCustomLogoBg('#ffffff');
+    setCustomLogoFit('contain');
+    setCustomLogoShape('rounded');
+    setUploadErr('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const previewAcc = {
+    ...account,
+    customBgColor,
+    customAccentColor,
+    customTextColor,
+    customSubtitle,
+    customLogoUrl,
+    customLogoBg,
+    customLogoFit,
+    customLogoShape
+  };
+  const previewBrand = getPhBankBrand(previewAcc);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(2, 6, 16, 0.85)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 10050,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: sm ? 10 : 20
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 640, maxHeight: '92vh',
+          background: C.card, border: `2px solid ${C.border}`,
+          borderRadius: 16, boxShadow: '0 24px 64px rgba(0,0,0,0.75)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden'
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '16px 22px', background: C.card2,
+          borderBottom: `1px solid ${C.border}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        }}>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 900, color: C.text }}>
+              🎨 Customize Account Color & Logo — {account.name}
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+              Choose a solid background color (no gradient) and upload your own official bank or e-wallet logo image.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, padding: '6px 12px', cursor: 'pointer', fontSize: 13, fontWeight: 800 }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div style={{ padding: sm ? 14 : 22, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* 1. LIVE SOLID-COLOR CARD PREVIEW */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              👀 Live Account Card Preview (Solid Color Background)
+            </div>
+            <div style={{
+              background: previewBrand.solidBg,
+              border: `2.5px solid ${previewBrand.secondary}`,
+              borderRadius: 14,
+              padding: '16px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 14,
+              flexWrap: 'wrap',
+              boxShadow: '0 10px 24px rgba(0,0,0,0.4)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <PhBankLogoBadge brand={previewBrand} acc={previewAcc} size={58} />
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: previewBrand.textColor }}>
+                    {account.name}
+                  </div>
+                  <div style={{ fontSize: 12, color: previewBrand.textColor, opacity: 0.85, fontWeight: 600, marginTop: 2 }}>
+                    {previewBrand.fullName}
+                  </div>
+                  <span style={{
+                    display: 'inline-block', marginTop: 5, fontSize: 11, padding: '2px 10px',
+                    borderRadius: 12, background: 'rgba(0,0,0,0.35)', color: previewBrand.secondary,
+                    border: `1px solid ${previewBrand.secondary}88`, fontWeight: 800
+                  }}>
+                    {account.type || 'Savings'}
+                  </span>
+                </div>
+              </div>
+              <div style={{
+                background: 'rgba(4, 10, 22, 0.65)',
+                padding: '10px 14px',
+                borderRadius: 10,
+                border: '1px solid rgba(255,255,255,0.2)',
+                textAlign: 'right'
+              }}>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: 800, textTransform: 'uppercase' }}>Balance</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: '#ffffff' }}>{peso(account.balance)}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. UPLOAD CUSTOM LOGO IMAGE */}
+          <div style={{ background: `${C.panel}88`, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>
+              🖼️ Step 1: Upload Official Bank Logo Image
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
+              Upload a PNG, JPG, SVG, or WebP logo from your device, or paste an image link below.
+            </div>
+
+            {uploadErr && (
+              <div style={{ padding: '8px 10px', borderRadius: 6, background: `${C.red}22`, border: `1px solid ${C.red}`, color: C.red, fontSize: 11, marginBottom: 10 }}>
+                {uploadErr}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                onChange={handleLogoFileUpload}
+                style={{ display: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  padding: '9px 16px', borderRadius: 8,
+                  border: `1.5px solid ${C.blue}`, background: `${C.blue}22`,
+                  color: C.text, fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6
+                }}
+              >
+                📁 Upload Logo Image From Device
+              </button>
+              {customLogoUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomLogoUrl('');
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  style={{
+                    padding: '9px 14px', borderRadius: 8,
+                    border: `1px solid ${C.red}66`, background: `${C.red}18`,
+                    color: C.red, fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                  }}
+                >
+                  🗑️ Remove Uploaded Logo
+                </button>
+              )}
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                🔗 Or Paste Logo Image URL (Optional)
+              </label>
+              <Inp
+                type="text"
+                value={customLogoUrl.startsWith('data:') ? '' : customLogoUrl}
+                onChange={e => setCustomLogoUrl(e.target.value)}
+                placeholder={customLogoUrl.startsWith('data:') ? '✓ Custom image uploaded from device (paste URL to replace)' : 'https://example.com/bank-logo.png'}
+              />
+            </div>
+
+            {/* Logo Frame Options */}
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                  Logo Frame Shape
+                </label>
+                <select
+                  value={customLogoShape}
+                  onChange={e => setCustomLogoShape(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12 }}
+                >
+                  <option value="rounded">🔲 Square Rounded</option>
+                  <option value="wide">▭ Wide Rectangular Banner</option>
+                  <option value="circle">⚪ Circle Badge</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                  Logo Plate Background
+                </label>
+                <select
+                  value={customLogoBg}
+                  onChange={e => setCustomLogoBg(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12 }}
+                >
+                  <option value="#ffffff">⬜ White Plate (Best for PNGs)</option>
+                  <option value="#0f172a">⬛ Dark Plate</option>
+                  <option value="card">🎨 Match Card Color</option>
+                  <option value="transparent">🚫 Transparent</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                  Logo Image Fit
+                </label>
+                <select
+                  value={customLogoFit}
+                  onChange={e => setCustomLogoFit(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12 }}
+                >
+                  <option value="contain">🗖 Fit Full Logo (No Crop)</option>
+                  <option value="cover">⬛ Fill Entire Box (Cover)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. CUSTOM SOLID BACKGROUND COLOR & ACCENT COLOR */}
+          <div style={{ background: `${C.panel}88`, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>
+              🎨 Step 2: Choose Solid Background & Border Color (No Gradient)
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
+              Pick any custom solid color using the color picker, or tap one of the preset bank colors below.
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                  Solid Card Background Color
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="color"
+                    value={customBgColor}
+                    onChange={e => setCustomBgColor(e.target.value)}
+                    style={{ width: 42, height: 36, padding: 0, border: `1px solid ${C.border}`, borderRadius: 6, background: 'none', cursor: 'pointer' }}
+                  />
+                  <Inp
+                    type="text"
+                    value={customBgColor}
+                    onChange={e => setCustomBgColor(e.target.value)}
+                    placeholder="#002b7f"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                  Border & Accent Color
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="color"
+                    value={customAccentColor}
+                    onChange={e => setCustomAccentColor(e.target.value)}
+                    style={{ width: 42, height: 36, padding: 0, border: `1px solid ${C.border}`, borderRadius: 6, background: 'none', cursor: 'pointer' }}
+                  />
+                  <Inp
+                    type="text"
+                    value={customAccentColor}
+                    onChange={e => setCustomAccentColor(e.target.value)}
+                    placeholder="#fdb913"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                  Card Title Text Color
+                </label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => setCustomTextColor('#ffffff')}
+                    style={{
+                      flex: 1, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 800,
+                      border: `1.5px solid ${customTextColor === '#ffffff' ? C.blue : C.border}`,
+                      background: customTextColor === '#ffffff' ? `${C.blue}22` : C.bg,
+                      color: C.text
+                    }}
+                  >
+                    ☀️ White
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomTextColor('#0f172a')}
+                    style={{
+                      flex: 1, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 800,
+                      border: `1.5px solid ${customTextColor === '#0f172a' ? C.blue : C.border}`,
+                      background: customTextColor === '#0f172a' ? `${C.blue}22` : C.bg,
+                      color: C.text
+                    }}
+                  >
+                    🌙 Dark
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Solid Color Swatches */}
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 6 }}>
+              Quick Solid Color Presets:
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 6 }}>
+              {SOLID_BANK_SWATCHES.map(sw => {
+                const isSelected = customBgColor.toLowerCase() === sw.bg.toLowerCase();
+                return (
+                  <button
+                    key={sw.label}
+                    type="button"
+                    onClick={() => {
+                      setCustomBgColor(sw.bg);
+                      setCustomAccentColor(sw.accent);
+                      setCustomTextColor('#ffffff');
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
+                      background: C.bg,
+                      border: `1.5px solid ${isSelected ? sw.accent : C.border}`,
+                      textAlign: 'left'
+                    }}
+                  >
+                    <span style={{
+                      width: 20, height: 20, borderRadius: 5,
+                      background: sw.bg, border: `2px solid ${sw.accent}`,
+                      flexShrink: 0, display: 'inline-block'
+                    }} />
+                    <span style={{ fontSize: 11, fontWeight: isSelected ? 800 : 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {sw.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. OPTIONAL BANK SUBTITLE / PASSBOOK NOTE */}
+          <div>
+            <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+              🏷️ Custom Bank Subtitle / Account Note (Optional)
+            </label>
+            <Inp
+              type="text"
+              value={customSubtitle}
+              onChange={e => setCustomSubtitle(e.target.value)}
+              placeholder={`Default: ${defaultBrand.defaultFullName}`}
+            />
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div style={{
+          padding: '14px 22px', background: C.card2, borderTop: `1px solid ${C.border}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10
+        }}>
+          <button
+            type="button"
+            onClick={handleResetDefault}
+            style={{
+              padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.border}`,
+              background: 'transparent', color: C.muted, fontSize: 12, fontWeight: 700, cursor: 'pointer'
+            }}
+          >
+            🔄 Reset to Default
+          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '9px 16px', borderRadius: 8, border: `1px solid ${C.border}`,
+                background: 'transparent', color: C.text, fontSize: 12, fontWeight: 700, cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onSave({
+                  customBgColor,
+                  customAccentColor,
+                  customTextColor,
+                  customSubtitle: customSubtitle.trim(),
+                  customLogoUrl,
+                  customLogoBg,
+                  customLogoFit,
+                  customLogoShape
+                });
+              }}
+              style={{
+                padding: '9px 20px', borderRadius: 8, border: 'none',
+                background: C.green, color: '#051b11', fontSize: 13, fontWeight: 900, cursor: 'pointer'
+              }}
+            >
+              💾 Save Account Appearance
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ACCOUNT DASHBOARD & IN/OUT TRANSACTION LOGS ─────────────────────────────
+function AccountDashboardTab({
+  accounts = [],
+  setAccounts,
+  budgetData = {},
+  setBudgetData,
+  balanceHistory = [],
+  sm,
+  readOnly,
+  canWrite,
+  canUpdate,
+  setTab,
+  session,
+  ownerName
+}) {
+  const [selectedAccFilter, setSelectedAccFilter] = useState('all');
+  const [activeModalAccId, setActiveModalAccId] = useState(null);
+  const [customizingAccId, setCustomizingAccId] = useState(null);
+  const [modalFlowFilter, setModalFlowFilter] = useState('all'); // 'all' | 'in' | 'out'
+  const [modalSearch, setModalSearch] = useState('');
+
+  const handleSaveAccountAppearance = (accId, appearanceUpdates) => {
+    if (!setAccounts) return;
+    setAccounts(prev => prev.map(a => a.id === accId ? { ...a, ...appearanceUpdates } : a));
+    setCustomizingAccId(null);
+  };
+  const [flowFilter, setFlowFilter] = useState('all'); // 'all' | 'in' | 'out'
+  const [sourceFilter, setSourceFilter] = useState('all'); // 'all' | 'manual' | 'cc' | 'installment'
+  const [periodRange, setPeriodRange] = useState('all'); // 'all' | 'this-month' | '30d' | '7d' | 'custom'
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [allocMode, setAllocMode] = useState('account'); // 'account' | 'type'
+  const [moneyMasked, setMoneyMasked] = useState(() => {
+    try {
+      return localStorage.getItem('dashboardMoneyMasked') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleMoneyMask = () => {
+    const next = !moneyMasked;
+    setMoneyMasked(next);
+    try {
+      localStorage.setItem('dashboardMoneyMasked', String(next));
+    } catch {}
+  };
+  const confidentialValue = (val) => (moneyMasked ? '*****' : val);
+
+  // Quick In / Out Transaction Form State
+  const [showQuickForm, setShowQuickForm] = useState(false);
+  const [quickType, setQuickType] = useState('credit'); // 'credit' (Money In) | 'debit' (Money Out)
+  const [quickAccId, setQuickAccId] = useState(accounts[0]?.id || '');
+  const [quickAmount, setQuickAmount] = useState('');
+  const [quickDesc, setQuickDesc] = useState('');
+  const [quickDate, setQuickDate] = useState(new Date().toISOString().slice(0, 10));
+  const [quickPeriod, setQuickPeriod] = useState(new Date().getDate() <= 15 ? '5th' : '20th');
+  const [quickExcludeBudget, setQuickExcludeBudget] = useState(false);
+  const [quickSuccessMsg, setQuickSuccessMsg] = useState('');
+  const [editingTx, setEditingTx] = useState(null);
+
+  useEffect(() => {
+    if (accounts.length > 0 && !quickAccId) {
+      setQuickAccId(accounts[0].id);
+    }
+    if (selectedAccFilter !== 'all' && !accounts.some(a => a.id === selectedAccFilter)) {
+      setSelectedAccFilter('all');
+    }
+  }, [accounts, quickAccId, selectedAccFilter]);
+
+  const typeColors = {
+    Investment: C.purple,
+    Savings: C.green,
+    Checking: C.blue,
+    Digital: C.teal,
+    Cash: C.amber,
+    'Credit Card': C.pink,
+  };
+
+  const handleQuickDateChange = (val) => {
+    setQuickDate(val);
+    const day = Number((val || '').split('-')[2]) || 1;
+    setQuickPeriod(day <= 15 ? '5th' : '20th');
+  };
+
+  const openQuickFormFor = (type, accId) => {
+    setEditingTx(null);
+    setQuickType(type);
+    if (accId && accId !== 'all') {
+      setQuickAccId(accId);
+    } else if (selectedAccFilter !== 'all') {
+      setQuickAccId(selectedAccFilter);
+    } else if (accounts[0]?.id) {
+      setQuickAccId(accounts[0].id);
+    }
+    setQuickAmount('');
+    setQuickDesc('');
+    setQuickExcludeBudget(false);
+    setShowQuickForm(true);
+  };
+
+  const handleStartEditTx = (tx) => {
+    setQuickAccId(tx.accountId && tx.accountId !== 'none' ? tx.accountId : (accounts[0]?.id || ''));
+    setQuickAmount(String(tx.amount || ''));
+    setQuickDesc(tx.description || '');
+    setQuickDate(tx.date || new Date().toISOString().slice(0, 10));
+    setQuickPeriod(tx.period || (new Date().getDate() <= 15 ? '5th' : '20th'));
+    setQuickType(tx.isCredit ? 'credit' : 'debit');
+    setQuickExcludeBudget(!!tx.excludeFromBudget);
+    setEditingTx(tx);
+    setShowQuickForm(true);
+  };
+
+  const handleCancelEditTx = () => {
+    setEditingTx(null);
+    setQuickAmount('');
+    setQuickDesc('');
+    setQuickExcludeBudget(false);
+  };
+
+  const handleSaveQuickTx = () => {
+    const accId = quickAccId || accounts[0]?.id;
+    if (!accId) return alert('Please select an account first.');
+    if (!quickAmount || Number(quickAmount) <= 0) return alert('Please enter a valid amount.');
+    if (!quickDesc.trim()) return alert('Please enter a transaction description.');
+    const account = accounts.find(a => a.id === accId);
+    if (!account) return alert('Selected account not found.');
+
+    const amount = Number(quickAmount);
+    const dateStr = quickDate;
+    const period = quickPeriod;
+    const key = dateStr.slice(0, 7);
+    const isCredit = quickType === 'credit';
+
+    // If editing an existing transaction, revert its prior balance & budget expense first
+    if (editingTx) {
+      if (editingTx.accountId && editingTx.accountId !== 'none') {
+        setAccounts(prev => prev.map(a => a.id === editingTx.accountId ? {
+          ...a,
+          balance: editingTx.isCredit ? a.balance - editingTx.amount : a.balance + editingTx.amount
+        } : a));
+      }
+      const oldKey = (editingTx.date || '').slice(0, 7);
+      const oldExpName = editingTx.source === 'installment'
+        ? `Installment: ${editingTx.description.replace('Installment Payment: ', '')}`
+        : (editingTx.source === 'cc' ? `${editingTx.description} (CC)` : `${editingTx.description} (${editingTx.accountName})`);
+
+      setBudgetData(prev => {
+        const md = prev[oldKey] || makeMonthData();
+        const pd = md[editingTx.period] || makePeriod();
+        const updatedBudgetData = { ...prev };
+
+        if (editingTx.source === 'installment') {
+          updatedBudgetData.installmentHistory = (prev.installmentHistory || []).filter(h => h.id !== editingTx.id);
+        } else if (editingTx.source === 'cc') {
+          updatedBudgetData.ccHistory = (prev.ccHistory || []).filter(h => h.id !== editingTx.id);
+        } else {
+          updatedBudgetData.debitHistory = (prev.debitHistory || []).filter(h => h.id !== editingTx.id);
+        }
+
+        if (!editingTx.isCredit && !editingTx.excludeFromBudget) {
+          updatedBudgetData[oldKey] = {
+            ...md,
+            [editingTx.period]: {
+              ...pd,
+              expenses: pd.expenses.filter(e => !(e.name === oldExpName && e.amount === editingTx.amount))
+            }
+          };
+        }
+        return updatedBudgetData;
+      });
+    }
+
+    // Apply new balance change
+    setAccounts(prev => prev.map(a => a.id === accId ? {
+      ...a,
+      balance: isCredit ? a.balance + amount : a.balance - amount
+    } : a));
+
+    // Record in debitHistory (and monthly budget if budgeted debit)
+    setBudgetData(prev => {
+      const newItem = {
+        id: editingTx ? editingTx.id : ('deb-' + Date.now()),
+        accountId: accId,
+        accountName: account.name,
+        amount,
+        description: quickDesc.trim(),
+        date: dateStr,
+        period,
+        isCredit,
+        excludeFromBudget: isCredit ? true : quickExcludeBudget,
+        timestamp: new Date().toISOString()
+      };
+
+      if (!isCredit && !quickExcludeBudget) {
+        const monthData = prev[key] || makeMonthData();
+        const periodData = monthData[period] || makePeriod();
+        const newExpense = { name: `${quickDesc.trim()} (${account.name})`, budget: amount, amount, done: true };
+        return {
+          ...prev,
+          [key]: { ...monthData, [period]: { ...periodData, expenses: [...periodData.expenses, newExpense] } },
+          debitHistory: [newItem, ...(prev.debitHistory || []).filter(h => h.id !== newItem.id)]
+        };
+      }
+      return {
+        ...prev,
+        debitHistory: [newItem, ...(prev.debitHistory || []).filter(h => h.id !== newItem.id)]
+      };
+    });
+
+    setQuickAmount('');
+    setQuickDesc('');
+    const wasEditing = editingTx;
+    setEditingTx(null);
+    setQuickSuccessMsg(wasEditing ? 'Transaction updated!' : (isCredit ? 'Money In logged & added to account!' : 'Money Out logged & deducted from account!'));
+    setTimeout(() => setQuickSuccessMsg(''), 3000);
+  };
+
+  const handleDeleteTx = (tx) => {
+    const msg = tx.isCredit
+      ? `Remove this Money In entry and deduct ₱${(tx.amount || 0).toLocaleString()} from ${tx.accountName}?`
+      : `Refund ₱${(tx.amount || 0).toLocaleString()} back to ${tx.accountName || 'account'} and remove this entry?`;
+    if (!confirm(msg)) return;
+
+    if (tx.accountId && tx.accountId !== 'none') {
+      setAccounts(prev => prev.map(a => a.id === tx.accountId ? {
+        ...a,
+        balance: tx.isCredit ? a.balance - tx.amount : a.balance + tx.amount
+      } : a));
+    }
+
+    const key = (tx.date || '').slice(0, 7);
+    const expName = tx.source === 'installment'
+      ? `Installment: ${tx.description.replace('Installment Payment: ', '')}`
+      : (tx.source === 'cc' ? `${tx.description} (CC)` : `${tx.description} (${tx.accountName})`);
+
+    setBudgetData(prev => {
+      const md = prev[key] || makeMonthData();
+      const pd = md[tx.period] || makePeriod();
+      const newBudgetData = { ...prev };
+
+      if (tx.source === 'installment') {
+        newBudgetData.installmentHistory = (prev.installmentHistory || []).filter(h => h.id !== tx.id);
+        if (tx.planId) {
+          const currentPlans = prev.installmentPlans || [];
+          newBudgetData.installmentPlans = currentPlans.map(p => p.id === tx.planId ? { ...p, paidMonths: Math.max(0, p.paidMonths - 1) } : p);
+        }
+      } else if (tx.source === 'cc') {
+        newBudgetData.ccHistory = (prev.ccHistory || []).filter(h => h.id !== tx.id);
+      } else {
+        newBudgetData.debitHistory = (prev.debitHistory || []).filter(h => h.id !== tx.id);
+      }
+
+      if (!tx.isCredit && !tx.excludeFromBudget && md[tx.period]) {
+        newBudgetData[key] = {
+          ...md,
+          [tx.period]: {
+            ...pd,
+            expenses: pd.expenses.filter(e => !(e.name === expName && e.amount === tx.amount))
+          }
+        };
+      }
+      return newBudgetData;
+    });
+  };
+
+  // ── 1. Build Unified In & Out Account Transactions List ──
+  const allRawTx = useMemo(() => {
+    const manualList = (budgetData.debitHistory || []).map(d => ({
+      ...d,
+      accountId: d.accountId || '',
+      accountName: d.accountName || accounts.find(a => a.id === d.accountId)?.name || 'Unknown Account',
+      amount: Number(d.amount) || 0,
+      isCredit: !!d.isCredit,
+      direction: d.isCredit ? 'in' : 'out',
+      source: 'manual',
+      sourceLabel: d.isCredit ? 'Money In (Deposit)' : 'Money Out (Withdrawal)'
+    }));
+
+    const ccList = (budgetData.ccHistory || []).map(d => {
+      const matchedAcc = accounts.find(a => a.id === d.accountId || a.id === d.cardId || a.name === d.cardName || a.name === d.account);
+      return {
+        ...d,
+        accountId: matchedAcc?.id || d.accountId || d.cardId || 'cc',
+        accountName: matchedAcc?.name || d.cardName || d.accountName || d.account || 'Credit Card',
+        amount: Number(d.amount) || 0,
+        isCredit: false,
+        direction: 'out',
+        source: 'cc',
+        sourceLabel: 'CC Charge'
+      };
+    });
+
+    const instList = (budgetData.installmentHistory || []).map(d => ({
+      ...d,
+      accountId: d.accountId || 'none',
+      accountName: d.accountName || accounts.find(a => a.id === d.accountId)?.name || 'Installment',
+      amount: Number(d.amount) || 0,
+      isCredit: false,
+      direction: 'out',
+      source: 'installment',
+      sourceLabel: 'Installment Deduction'
+    }));
+
+    const combined = [...manualList, ...ccList, ...instList].sort((a, b) => {
+      const dateCmp = (b.date || '').localeCompare(a.date || '');
+      if (dateCmp !== 0) return dateCmp;
+      return (b.timestamp || '').localeCompare(a.timestamp || '');
+    });
+
+    // Compute running balanceAfter per account working backwards from live balance
+    const runningMap = {};
+    accounts.forEach(a => {
+      runningMap[a.id] = Number(a.balance) || 0;
+    });
+
+    return combined.map(tx => {
+      let balanceAfter = null;
+      if (tx.accountId && runningMap[tx.accountId] !== undefined) {
+        balanceAfter = runningMap[tx.accountId];
+        // Step backwards for prior transaction on this same account
+        runningMap[tx.accountId] = tx.isCredit
+          ? runningMap[tx.accountId] - tx.amount
+          : runningMap[tx.accountId] + tx.amount;
+      }
+      return { ...tx, balanceAfter };
+    });
+  }, [budgetData.debitHistory, budgetData.ccHistory, budgetData.installmentHistory, accounts]);
+
+  // ── 2. Date Period Filter Helper ──
+  const now = new Date();
+  const thisMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const last7DateStr = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+  const last30DateStr = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
+
+  const isTxInPeriod = (tx) => {
+    const d = tx.date || '';
+    if (periodRange === 'this-month') return d.slice(0, 7) === thisMonthPrefix;
+    if (periodRange === '7d') return d >= last7DateStr;
+    if (periodRange === '30d') return d >= last30DateStr;
+    if (periodRange === 'custom') {
+      if (customFrom && d < customFrom) return false;
+      if (customTo && d > customTo) return false;
+      return true;
+    }
+    return true;
+  };
+
+  const periodFilteredTx = allRawTx.filter(isTxInPeriod);
+
+  // ── 3. Per-Account Summaries (Balance + Money In + Money Out) ──
+  const totalAllBalances = accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+
+  const accountStats = accounts.map(acc => {
+    const accTxs = periodFilteredTx.filter(t => t.accountId === acc.id || t.accountName === acc.name);
+    const inTxs = accTxs.filter(t => t.isCredit);
+    const outTxs = accTxs.filter(t => !t.isCredit);
+    const moneyIn = inTxs.reduce((s, t) => s + t.amount, 0);
+    const moneyOut = outTxs.reduce((s, t) => s + t.amount, 0);
+    const netFlow = moneyIn - moneyOut;
+    return {
+      ...acc,
+      balance: Number(acc.balance) || 0,
+      moneyIn,
+      moneyOut,
+      netFlow,
+      inCount: inTxs.length,
+      outCount: outTxs.length,
+      txCount: accTxs.length,
+      lastTx: accTxs[0] || null
+    };
+  });
+
+  // ── 4. Active Scope Metrics (All Accounts vs Selected Account) ──
+  const scopedAccounts = selectedAccFilter === 'all'
+    ? accounts
+    : accounts.filter(a => a.id === selectedAccFilter);
+  const scopedBalance = scopedAccounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+
+  const scopedPeriodTx = periodFilteredTx.filter(t => {
+    if (selectedAccFilter === 'all') return true;
+    const selAcc = accounts.find(a => a.id === selectedAccFilter);
+    return t.accountId === selectedAccFilter || (selAcc && t.accountName === selAcc.name);
+  });
+
+  const totalMoneyIn = scopedPeriodTx.filter(t => t.isCredit).reduce((s, t) => s + t.amount, 0);
+  const totalMoneyInCount = scopedPeriodTx.filter(t => t.isCredit).length;
+  const totalMoneyOut = scopedPeriodTx.filter(t => !t.isCredit).reduce((s, t) => s + t.amount, 0);
+  const totalMoneyOutCount = scopedPeriodTx.filter(t => !t.isCredit).length;
+  const netCashFlow = totalMoneyIn - totalMoneyOut;
+
+  // ── 5. Filtered Transaction Logs for the Table ──
+  const tableTransactions = scopedPeriodTx.filter(t => {
+    if (flowFilter === 'in' && !t.isCredit) return false;
+    if (flowFilter === 'out' && t.isCredit) return false;
+    if (sourceFilter !== 'all' && t.source !== sourceFilter) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const hay = `${t.description || ''} ${t.accountName || ''} ${t.sourceLabel || ''} ${t.date || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // ── 6. Cash Flow Chart Data (Money In vs Money Out over time) ──
+  const cashFlowChartData = useMemo(() => {
+    if (scopedPeriodTx.length === 0) return [];
+    const uniqueDates = new Set(scopedPeriodTx.map(t => t.date).filter(Boolean));
+    const useMonthlyGrouping = uniqueDates.size > 18 || periodRange === 'all';
+    const buckets = {};
+
+    scopedPeriodTx.forEach(tx => {
+      const d = tx.date || 'Unknown';
+      const key = useMonthlyGrouping && d.length >= 7 ? d.slice(0, 7) : d;
+      if (!buckets[key]) {
+        buckets[key] = { key, label: useMonthlyGrouping && d.length >= 7 ? shortKey(key) : d.slice(5), moneyIn: 0, moneyOut: 0, netFlow: 0 };
+      }
+      if (tx.isCredit) {
+        buckets[key].moneyIn += tx.amount;
+      } else {
+        buckets[key].moneyOut += tx.amount;
+      }
+      buckets[key].netFlow = buckets[key].moneyIn - buckets[key].moneyOut;
+    });
+
+    return Object.values(buckets)
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .slice(-14);
+  }, [scopedPeriodTx, periodRange]);
+
+  // ── 7. Asset Allocation Donut Data ──
+  const allocationData = useMemo(() => {
+    const palette = [C.blue, C.green, C.purple, C.teal, C.amber, C.pink, C.orange];
+    if (allocMode === 'type') {
+      const byType = {};
+      accounts.forEach(a => {
+        const val = Math.max(0, Number(a.balance) || 0);
+        if (val > 0) {
+          byType[a.type || 'Other'] = (byType[a.type || 'Other'] || 0) + val;
+        }
+      });
+      return Object.entries(byType).map(([name, value], i) => ({
+        name,
+        value,
+        color: typeColors[name] || palette[i % palette.length]
+      }));
+    }
+    return accounts
+      .filter(a => (Number(a.balance) || 0) > 0)
+      .map((a, i) => ({
+        name: a.name,
+        value: Number(a.balance) || 0,
+        color: typeColors[a.type] || palette[i % palette.length]
+      }));
+  }, [accounts, allocMode]);
+
+  const selectedAccountObj = selectedAccFilter !== 'all' ? accounts.find(a => a.id === selectedAccFilter) : null;
+  const SRC_CLR = { manual: C.blue, cc: C.purple, installment: C.amber };
+  const SRC_PILL = { manual: '💸', cc: '💳', installment: '📦' };
+
+  return (
+    <div>
+      {/* ── Personalized User Header & Global Controls ── */}
+      <Card style={{ marginBottom: 16, background: `radial-gradient(circle at top right, ${C.blue}22, transparent 55%), linear-gradient(135deg, ${C.card2}, ${C.card})` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 10,
+              background: `linear-gradient(135deg, ${C.blue}33, ${C.purple}33)`,
+              border: `1px solid ${C.blue}55`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22
+            }}>
+              🏧
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: sm ? 17 : 20, fontWeight: 800, color: C.text }}>
+                  Account Dashboard
+                </span>
+                {ownerName && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 12, background: `${C.blue}22`, border: `1px solid ${C.blue}44`, color: C.blue }}>
+                    👤 {ownerName}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                Personal account balances, cash flow analytics, and complete Money In & Money Out transaction logs.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={toggleMoneyMask}
+              style={{
+                padding: '7px 12px', borderRadius: 7,
+                border: `1px solid ${moneyMasked ? C.amber : C.border}`,
+                background: moneyMasked ? `${C.amber}22` : 'rgba(255,255,255,0.03)',
+                color: moneyMasked ? C.amber : C.muted,
+                cursor: 'pointer', fontSize: 12, fontWeight: 700
+              }}
+            >
+              {moneyMasked ? '🙈 Balances Hidden' : '👁️ Hide Balances'}
+            </button>
+            {canWrite && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => openQuickFormFor('credit', selectedAccFilter)}
+                  style={{
+                    padding: '7px 13px', borderRadius: 7,
+                    border: `1px solid ${C.green}`,
+                    background: `${C.green}22`,
+                    color: C.green, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', gap: 5
+                  }}
+                >
+                  ➕ Money In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openQuickFormFor('debit', selectedAccFilter)}
+                  style={{
+                    padding: '7px 13px', borderRadius: 7,
+                    border: `1px solid ${C.red}`,
+                    background: `${C.red}22`,
+                    color: C.red, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', gap: 5
+                  }}
+                >
+                  ➖ Money Out
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => setTab && setTab('accounts')}
+              style={{
+                padding: '7px 13px', borderRadius: 7,
+                border: `1px solid ${C.purple}55`,
+                background: `${C.purple}18`,
+                color: C.purple, cursor: 'pointer', fontSize: 12, fontWeight: 700
+              }}
+            >
+              🗂️ Manage Accounts →
+            </button>
+          </div>
+        </div>
+
+        {/* ── Period Range & Account Quick Selector Bar ── */}
+        <div style={{
+          marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginRight: 2 }}>Period:</span>
+            {[
+              ['all', 'All Time'],
+              ['this-month', `This Month (${MONTH_NAMES[CUR_MONTH].slice(0, 3)})`],
+              ['30d', 'Last 30 Days'],
+              ['7d', 'Last 7 Days'],
+              ['custom', 'Custom Date']
+            ].map(([val, lbl]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setPeriodRange(val)}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: periodRange === val ? 700 : 500,
+                  border: `1px solid ${periodRange === val ? C.blue : C.border}`,
+                  background: periodRange === val ? `${C.blue}22` : 'transparent',
+                  color: periodRange === val ? C.blue : C.muted,
+                  cursor: 'pointer'
+                }}
+              >
+                {lbl}
+              </button>
+            ))}
+            {periodRange === 'custom' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+                <Inp type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} style={{ width: 'auto', padding: '4px 8px', fontSize: 11 }} />
+                <span style={{ fontSize: 11, color: C.muted }}>to</span>
+                <Inp type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} style={{ width: 'auto', padding: '4px 8px', fontSize: 11 }} />
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>Viewing:</span>
+            <button
+              type="button"
+              onClick={() => setSelectedAccFilter('all')}
+              style={{
+                padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 700,
+                border: `1px solid ${selectedAccFilter === 'all' ? C.teal : C.border}`,
+                background: selectedAccFilter === 'all' ? `${C.teal}22` : 'transparent',
+                color: selectedAccFilter === 'all' ? C.teal : C.muted,
+                cursor: 'pointer'
+              }}
+            >
+              🏦 All Accounts ({accounts.length})
+            </button>
+            {selectedAccountObj && (
+              <span style={{
+                padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 700,
+                border: `1px solid ${C.amber}`, background: `${C.amber}22`, color: C.amber,
+                display: 'inline-flex', alignItems: 'center', gap: 6
+              }}>
+                🎯 {selectedAccountObj.name}
+                <button
+                  type="button"
+                  onClick={() => setSelectedAccFilter('all')}
+                  style={{ background: 'none', border: 'none', color: C.amber, cursor: 'pointer', fontSize: 12, padding: 0, fontWeight: 900 }}
+                  title="Clear account filter"
+                >
+                  ✕
+                </button>
+              </span>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      {/* ── 4 Core KPI Metric Cards (Balance, Total In, Total Out, Net Flow) ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4, 1fr)', gap: sm ? 8 : 12, marginBottom: 16 }}>
+        <MetricCard
+          icon="🏦"
+          label={selectedAccountObj ? `${selectedAccountObj.name} Balance` : 'Total Account Balance'}
+          value={confidentialValue(peso(scopedBalance))}
+          sub={selectedAccountObj ? `${selectedAccountObj.type} Account` : `Across ${accounts.length} account${accounts.length !== 1 ? 's' : ''}`}
+          color={C.blue}
+          sm={sm}
+          masked={moneyMasked}
+          onToggleMask={toggleMoneyMask}
+        />
+        <MetricCard
+          icon="📥"
+          label="Total Money In (Inflows)"
+          value={confidentialValue('+' + peso(totalMoneyIn))}
+          sub={`${totalMoneyInCount} deposit${totalMoneyInCount !== 1 ? 's' : ''} / credit${totalMoneyInCount !== 1 ? 's' : ''}`}
+          color={C.green}
+          sm={sm}
+          masked={moneyMasked}
+          onToggleMask={toggleMoneyMask}
+        />
+        <MetricCard
+          icon="📤"
+          label="Total Money Out (Outflows)"
+          value={confidentialValue('−' + peso(totalMoneyOut))}
+          sub={`${totalMoneyOutCount} withdrawal${totalMoneyOutCount !== 1 ? 's' : ''} / debit${totalMoneyOutCount !== 1 ? 's' : ''}`}
+          color={C.red}
+          sm={sm}
+          masked={moneyMasked}
+          onToggleMask={toggleMoneyMask}
+        />
+        <MetricCard
+          icon={netCashFlow >= 0 ? '📈' : '📉'}
+          label="Net Cash Flow (In − Out)"
+          value={confidentialValue((netCashFlow >= 0 ? '+' : '−') + peso(Math.abs(netCashFlow)))}
+          sub={netCashFlow >= 0 ? 'Positive Net Inflow' : 'Net Outflow Exceeds Inflow'}
+          color={netCashFlow >= 0 ? C.teal : C.amber}
+          sm={sm}
+          masked={moneyMasked}
+          onToggleMask={toggleMoneyMask}
+        />
+      </div>
+
+      {/* ── Inline Quick Money In / Money Out Logger ── */}
+      {showQuickForm && canWrite && (
+        <Card style={{ marginBottom: 16, border: `1px solid ${quickType === 'credit' ? C.green : C.red}55` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <SecTitle style={{ margin: 0 }}>
+              {editingTx
+                ? '✏️ Edit Account Transaction'
+                : (quickType === 'credit' ? '🟢 Log Money In (Deposit / Credit)' : '🔴 Log Money Out (Withdrawal / Debit)')}
+            </SecTitle>
+            <button
+              type="button"
+              onClick={() => { handleCancelEditTx(); setShowQuickForm(false); }}
+              style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 6, color: C.muted, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+            >
+              ✕ Close
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', background: C.card2, padding: 4, borderRadius: 8, gap: 4 }}>
+              <button
+                type="button"
+                onClick={() => setQuickType('credit')}
+                style={{
+                  flex: 1, padding: '8px 12px', border: 'none', borderRadius: 6,
+                  background: quickType === 'credit' ? `linear-gradient(135deg, ${C.green}, ${C.teal})` : 'transparent',
+                  color: quickType === 'credit' ? '#fff' : C.muted,
+                  fontWeight: 700, fontSize: 12, cursor: 'pointer'
+                }}
+              >
+                🟢 Money In (Deposit / Income / Transfer In)
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickType('debit')}
+                style={{
+                  flex: 1, padding: '8px 12px', border: 'none', borderRadius: 6,
+                  background: quickType === 'debit' ? `linear-gradient(135deg, ${C.red}, ${C.orange})` : 'transparent',
+                  color: quickType === 'debit' ? '#fff' : C.muted,
+                  fontWeight: 700, fontSize: 12, cursor: 'pointer'
+                }}
+              >
+                🔴 Money Out (Withdrawal / Expense / Transfer Out)
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr 1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                  {quickType === 'credit' ? 'Deposit To Account' : 'Deduct From Account'}
+                </label>
+                <select
+                  value={quickAccId}
+                  onChange={e => setQuickAccId(e.target.value)}
+                  disabled={readOnly}
+                  style={{ padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 13, width: '100%', outline: 'none' }}
+                >
+                  <option value="" disabled>Select Account</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name} ({peso(acc.balance)})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Description</label>
+                <Inp
+                  type="text"
+                  value={quickDesc}
+                  onChange={e => setQuickDesc(e.target.value)}
+                  placeholder={quickType === 'credit' ? 'e.g. Salary Deposit, Client Payment, Interest' : 'e.g. ATM Withdrawal, Bill Payment, Grocery'}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Amount (₱)</label>
+                <Inp
+                  type="number"
+                  value={quickAmount}
+                  onChange={e => setQuickAmount(e.target.value)}
+                  placeholder="0"
+                  style={{ textAlign: 'right' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Date</label>
+                <Inp type="date" value={quickDate} onChange={e => handleQuickDateChange(e.target.value)} />
+              </div>
+            </div>
+
+            {quickType === 'debit' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', paddingTop: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>Payroll Period:</span>
+                  <select
+                    value={quickPeriod}
+                    onChange={e => setQuickPeriod(e.target.value)}
+                    style={{ padding: '4px 8px', borderRadius: 5, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 11 }}
+                  >
+                    <option value="5th">5th Payroll (1st–15th)</option>
+                    <option value="20th">20th Payroll (16th–31st)</option>
+                  </select>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.text, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={quickExcludeBudget}
+                    onChange={e => setQuickExcludeBudget(e.target.checked)}
+                    style={{ accentColor: C.blue, cursor: 'pointer' }}
+                  />
+                  Exclude from Monthly Budget <span style={{ fontSize: 11, color: C.muted }}>(only deducts from account balance)</span>
+                </label>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={handleSaveQuickTx}
+                style={{
+                  padding: '8px 20px', borderRadius: 7, border: 'none',
+                  background: editingTx
+                    ? `linear-gradient(135deg, ${C.blue}, ${C.teal})`
+                    : (quickType === 'credit'
+                      ? `linear-gradient(135deg, ${C.green}, ${C.teal})`
+                      : `linear-gradient(135deg, ${C.red}, ${C.orange})`),
+                  color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer'
+                }}
+              >
+                {editingTx ? '💾 Save Changes' : (quickType === 'credit' ? '➕ Record Money In' : '➖ Record Money Out')}
+              </button>
+              {editingTx && (
+                <button
+                  type="button"
+                  onClick={handleCancelEditTx}
+                  style={{ padding: '8px 14px', borderRadius: 7, border: `1px solid ${C.border}`, background: 'none', color: C.muted, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                >
+                  Cancel Edit
+                </button>
+              )}
+              {quickSuccessMsg && <span style={{ fontSize: 12, color: C.green, fontWeight: 700 }}>✓ {quickSuccessMsg}</span>}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Per-Account Vibrant Philippine Bank Cards Grid (Senior-Friendly) ── */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: sm ? 17 : 20, fontWeight: 900, color: C.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+              🇵🇭 My Philippine Bank & E-Wallet Accounts
+            </div>
+            <div style={{ fontSize: 13, color: C.amber, fontWeight: 700, marginTop: 3 }}>
+              👆 Tap any bank card below to pop open its Passbook & Money In / Money Out Transaction Logs!
+            </div>
+          </div>
+          {selectedAccFilter !== 'all' && (
+            <button
+              type="button"
+              onClick={() => setSelectedAccFilter('all')}
+              style={{ padding: '7px 14px', borderRadius: 8, border: `1px solid ${C.blue}`, background: `${C.blue}22`, color: C.blue, cursor: 'pointer', fontSize: 12, fontWeight: 800 }}
+            >
+              Show All Accounts ({accounts.length})
+            </button>
+          )}
+        </div>
+
+        {accountStats.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px 16px', color: C.muted, fontSize: 14 }}>
+            <div style={{ fontSize: 34, marginBottom: 8 }}>🏦</div>
+            <div style={{ fontWeight: 800, color: C.text, marginBottom: 4, fontSize: 16 }}>No accounts added yet</div>
+            <div style={{ marginBottom: 14 }}>Create your Philippine bank, savings, e-wallet (GCash/Maya), or investment accounts to start tracking your Money In and Money Out.</div>
+            <BtnG onClick={() => setTab && setTab('accounts')}>+ Add Your First Account</BtnG>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+            {accountStats.map(acc => {
+              const brand = getPhBankBrand(acc);
+              const sharePct = totalAllBalances > 0 ? Math.max(0, Math.min(100, (acc.balance / totalAllBalances) * 100)) : 0;
+
+              return (
+                <div
+                  key={acc.id}
+                  onClick={() => {
+                    setModalFlowFilter('all');
+                    setModalSearch('');
+                    setActiveModalAccId(acc.id);
+                  }}
+                  style={{
+                    background: brand.solidBg,
+                    border: `2px solid ${brand.secondary}`,
+                    boxShadow: '0 10px 26px rgba(0,0,0,0.38)',
+                    borderRadius: 16,
+                    padding: '18px 20px',
+                    cursor: 'pointer',
+                    transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: 14,
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-3px)';
+                    e.currentTarget.style.boxShadow = `0 16px 34px rgba(0,0,0,0.52), 0 0 0 2px ${brand.secondary}`;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 10px 26px rgba(0,0,0,0.38)';
+                  }}
+                >
+                  {/* Top Row: Official/Uploaded Bank Logo + Bank Name + Type Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <PhBankLogoBadge brand={brand} acc={acc} size={56} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: brand.textColor, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+                        {acc.name}
+                      </div>
+                      <div style={{ fontSize: 12, color: brand.textColor, opacity: 0.85, fontWeight: 600, marginTop: 2 }}>
+                        {brand.fullName}
+                      </div>
+                      <span style={{
+                        display: 'inline-block', marginTop: 5, fontSize: 11, padding: '2px 10px',
+                        borderRadius: 12, background: 'rgba(0,0,0,0.38)', color: brand.secondary,
+                        border: `1px solid ${brand.secondary}88`, fontWeight: 800
+                      }}>
+                        {acc.type || 'Savings'} · {sharePct.toFixed(1)}% Share
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Center Box: Big Senior-Friendly Balance Display */}
+                  <div style={{
+                    background: 'rgba(4, 10, 22, 0.68)',
+                    borderRadius: 12,
+                    padding: '12px 16px',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.82)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Available Balance (Balanse)
+                      </div>
+                      <div style={{ fontSize: sm ? 24 : 28, fontWeight: 900, color: '#ffffff', marginTop: 2, letterSpacing: '-0.02em' }}>
+                        {confidentialValue(peso(acc.balance))}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 700 }}>Transactions</div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: brand.secondary }}>{acc.txCount} Logs</div>
+                    </div>
+                  </div>
+
+                  {/* Per-Account Money In & Money Out Summary Boxes */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ background: 'rgba(4, 18, 12, 0.78)', border: `1.5px solid ${C.green}`, borderRadius: 10, padding: '9px 12px' }}>
+                      <div style={{ fontSize: 11, color: '#6ee7b7', fontWeight: 800, textTransform: 'uppercase' }}>
+                        🟢 Money In ({acc.inCount})
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 900, color: '#4ade80', marginTop: 3 }}>
+                        {confidentialValue('+' + peso(acc.moneyIn))}
+                      </div>
+                    </div>
+                    <div style={{ background: 'rgba(24, 6, 8, 0.78)', border: `1.5px solid ${C.red}`, borderRadius: 10, padding: '9px 12px' }}>
+                      <div style={{ fontSize: 11, color: '#fca5a5', fontWeight: 800, textTransform: 'uppercase' }}>
+                        🔴 Money Out ({acc.outCount})
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 900, color: '#f87171', marginTop: 3 }}>
+                        {confidentialValue('−' + peso(acc.moneyOut))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Prominent Senior-Friendly Passbook Modal CTA + Customize Color/Logo Button */}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalFlowFilter('all');
+                        setModalSearch('');
+                        setActiveModalAccId(acc.id);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        border: `1.5px solid ${brand.secondary}`,
+                        background: '#ffffff',
+                        color: '#091326',
+                        fontSize: 13,
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                      }}
+                    >
+                      📖 Open Passbook ({acc.txCount})
+                    </button>
+                    {canUpdate && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCustomizingAccId(acc.id);
+                        }}
+                        title="Customize Solid Background Color & Upload Bank Logo"
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 10,
+                          border: '1.5px solid rgba(255,255,255,0.45)',
+                          background: 'rgba(0,0,0,0.45)',
+                          color: '#ffffff',
+                          fontSize: 12,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        🎨 Color & Logo
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* ── Visual Analytics Row: Money In vs Out Cash Flow Chart + Allocation Donut ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '3fr 2fr', gap: 14, marginBottom: 16 }}>
+        <Card style={{ marginBottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+            <SecTitle style={{ margin: 0 }}>
+              📊 Money In vs. Money Out Cash Flow {selectedAccountObj ? `— ${selectedAccountObj.name}` : ''}
+            </SecTitle>
+            <span style={{ fontSize: 11, color: C.muted }}>
+              {cashFlowChartData.length} period point{cashFlowChartData.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          {cashFlowChartData.length === 0 ? (
+            <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '56px 0' }}>
+              No Money In or Money Out transactions recorded for this period yet.
+            </div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={sm ? 190 : 225}>
+                <ComposedChart data={cashFlowChartData} margin={{ top: 8, right: 10, left: sm ? -18 : -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                  <XAxis dataKey="label" tick={{ fill: C.muted, fontSize: 10 }} />
+                  <YAxis tick={{ fill: C.muted, fontSize: 10 }} tickFormatter={v => v >= 1000 || v <= -1000 ? `${Math.round(v / 1000)}k` : v} />
+                  <Tooltip contentStyle={ttip} formatter={(v, name) => [peso(v), name]} />
+                  <ReferenceLine y={0} stroke={C.border} />
+                  <Bar dataKey="moneyIn" name="Money In (+)" fill={C.green} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="moneyOut" name="Money Out (−)" fill={C.red} radius={[4, 4, 0, 0]} />
+                  <Line type="monotone" dataKey="netFlow" name="Net Cash Flow" stroke={C.blue} strokeWidth={2} dot={{ fill: C.blue, r: 3 }} />
+                </ComposedChart>
+              </ResponsiveContainer>
+              <Legend items={[['Money In (+)', C.green], ['Money Out (−)', C.red], ['Net Flow', C.blue]]} />
+            </>
+          )}
+        </Card>
+
+        <Card style={{ marginBottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <SecTitle style={{ margin: 0 }}>🍩 Account Balance Distribution</SecTitle>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[['account', 'By Account'], ['type', 'By Type']].map(([m, lbl]) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setAllocMode(m)}
+                  style={{
+                    padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 700,
+                    border: `1px solid ${allocMode === m ? C.blue : C.border}`,
+                    background: allocMode === m ? `${C.blue}22` : 'transparent',
+                    color: allocMode === m ? C.blue : C.muted,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+          {allocationData.length === 0 ? (
+            <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '56px 0' }}>
+              No positive account balances to chart.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <ResponsiveContainer width={135} height={135}>
+                <PieChart>
+                  <Pie data={allocationData} dataKey="value" cx="50%" cy="50%" innerRadius={36} outerRadius={58}>
+                    {allocationData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={ttip} formatter={v => peso(v)} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ flex: 1, minWidth: 140, maxHeight: 175, overflowY: 'auto' }}>
+                {allocationData.map(d => {
+                  const tot = allocationData.reduce((s, x) => s + x.value, 0);
+                  const pct = tot > 0 ? ((d.value / tot) * 100).toFixed(1) : '0.0';
+                  return (
+                    <div key={d.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, fontSize: 11 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 2, background: d.color, display: 'inline-block', flexShrink: 0 }} />
+                        <span style={{ color: C.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.name}</span>
+                      </span>
+                      <span style={{ color: C.muted, flexShrink: 0, marginLeft: 6 }}>
+                        {confidentialValue(fmtK(d.value))} <strong style={{ color: d.color }}>({pct}%)</strong>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* ── Dedicated Money In & Out Transaction Logs Table ── */}
+      <Card style={{ marginBottom: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <SecTitle style={{ margin: 0 }}>
+              📜 Account Transaction Logs (Money In & Money Out)
+              {selectedAccountObj ? ` — ${selectedAccountObj.name}` : ''}
+            </SecTitle>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+              Complete audit trail of every deposit/credit (IN) and withdrawal/deduction (OUT) across your accounts.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 11 }}>
+            <span style={{ padding: '4px 10px', borderRadius: 6, background: `${C.green}15`, border: `1px solid ${C.green}33`, color: C.green, fontWeight: 700 }}>
+              IN: +{confidentialValue(peso(tableTransactions.filter(t => t.isCredit).reduce((s, t) => s + t.amount, 0)))}
+            </span>
+            <span style={{ padding: '4px 10px', borderRadius: 6, background: `${C.red}15`, border: `1px solid ${C.red}33`, color: C.red, fontWeight: 700 }}>
+              OUT: −{confidentialValue(peso(tableTransactions.filter(t => !t.isCredit).reduce((s, t) => s + t.amount, 0)))}
+            </span>
+            <span style={{ color: C.muted, fontWeight: 600 }}>
+              {tableTransactions.length} log{tableTransactions.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+
+        {/* ── Filter Controls Bar ── */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 10,
+          padding: 12, borderRadius: 8, background: `${C.panel}88`, border: `1px solid ${C.border}`, marginBottom: 14
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            {/* Flow Direction Filter Pills */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>Flow:</span>
+              {[
+                ['all', `🔀 All Movements (${scopedPeriodTx.length})`, C.blue],
+                ['in', `🟢 Money In (${totalMoneyInCount})`, C.green],
+                ['out', `🔴 Money Out (${totalMoneyOutCount})`, C.red]
+              ].map(([val, lbl, col]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setFlowFilter(val)}
+                  style={{
+                    padding: '5px 12px', borderRadius: 16, fontSize: 11,
+                    fontWeight: flowFilter === val ? 700 : 500,
+                    border: `1px solid ${flowFilter === val ? col : C.border}`,
+                    background: flowFilter === val ? `${col}22` : 'transparent',
+                    color: flowFilter === val ? col : C.muted,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+
+            {/* Source Filter Pills */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>Source:</span>
+              {[
+                ['all', 'All'],
+                ['manual', '💸 Manual In/Out'],
+                ['cc', '💳 CC Charge'],
+                ['installment', '📦 Installment']
+              ].map(([val, lbl]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setSourceFilter(val)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 14, fontSize: 11,
+                    fontWeight: sourceFilter === val ? 700 : 500,
+                    border: `1px solid ${sourceFilter === val ? C.purple : C.border}`,
+                    background: sourceFilter === val ? `${C.purple}22` : 'transparent',
+                    color: sourceFilter === val ? C.purple : C.muted,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ flex: '1 1 220px' }}>
+              <Inp
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="🔍 Search transaction description, account name, or date…"
+                style={{ padding: '7px 10px', fontSize: 12 }}
+              />
+            </div>
+            <select
+              value={selectedAccFilter}
+              onChange={e => setSelectedAccFilter(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, outline: 'none' }}
+            >
+              <option value="all">🏦 All Accounts ({accounts.length})</option>
+              {accounts.map(a => (
+                <option key={a.id} value={a.id}>{a.name} ({peso(a.balance)})</option>
+              ))}
+            </select>
+            {(flowFilter !== 'all' || sourceFilter !== 'all' || selectedAccFilter !== 'all' || searchQuery || periodRange !== 'all') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFlowFilter('all');
+                  setSourceFilter('all');
+                  setSelectedAccFilter('all');
+                  setSearchQuery('');
+                  setPeriodRange('all');
+                }}
+                style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 6, color: C.muted, padding: '6px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Transaction Logs Table ── */}
+        {tableTransactions.length === 0 ? (
+          <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '36px 16px' }}>
+            {allRawTx.length === 0
+              ? '📭 No Money In or Money Out transactions logged yet. Use the "➕ Money In" or "➖ Money Out" buttons above to record your first account transaction.'
+              : '🔍 No transaction logs match your current filters.'}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ color: C.muted, borderBottom: `1px solid ${C.border}`, background: `${C.card2}66` }}>
+                  <th style={{ textAlign: 'left', padding: '10px 8px' }}>Date</th>
+                  <th style={{ textAlign: 'left', padding: '10px 8px' }}>Account</th>
+                  <th style={{ textAlign: 'center', padding: '10px 8px' }}>Flow (In / Out)</th>
+                  <th style={{ textAlign: 'left', padding: '10px 8px' }}>Description & Source</th>
+                  <th style={{ textAlign: 'right', padding: '10px 8px' }}>Amount</th>
+                  {!sm && <th style={{ textAlign: 'right', padding: '10px 8px' }}>Balance After</th>}
+                  {canUpdate && <th style={{ textAlign: 'center', padding: '10px 8px' }}>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {tableTransactions.map((tx, idx) => {
+                  const isIn = !!tx.isCredit;
+                  const accObj = accounts.find(a => a.id === tx.accountId || a.name === tx.accountName);
+                  const accColor = typeColors[accObj?.type] || C.blue;
+
+                  return (
+                    <tr
+                      key={tx.id || idx}
+                      style={{ borderBottom: `1px solid ${C.border}22`, transition: 'background 0.12s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = `${C.panel}88`}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
+                        <div style={{ color: C.text, fontWeight: 600 }}>{tx.date || '—'}</div>
+                        {tx.period && <div style={{ fontSize: 10, color: C.muted }}>{tx.period} Payroll</div>}
+                      </td>
+                      <td style={{ padding: '10px 8px' }}>
+                        <div
+                          onClick={() => {
+                            if (accObj) {
+                              setModalFlowFilter('all');
+                              setModalSearch('');
+                              setActiveModalAccId(accObj.id);
+                            }
+                          }}
+                          title="Click to open Passbook Modal for this account"
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: accObj ? 'pointer' : 'default' }}
+                        >
+                          <PhBankLogoBadge brand={getPhBankBrand(accObj || tx.accountName, accObj?.type, accObj)} acc={accObj} size={28} />
+                          <div>
+                            <div style={{ fontWeight: 700, color: C.text, textDecoration: accObj ? 'underline' : 'none', textDecorationColor: `${accColor}88` }}>
+                              {tx.accountName}
+                            </div>
+                            {accObj?.type && <div style={{ fontSize: 10, color: C.muted }}>{accObj.type}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          fontSize: 10, fontWeight: 800, padding: '3px 9px', borderRadius: 12,
+                          background: isIn ? `${C.green}22` : `${C.red}22`,
+                          color: isIn ? C.green : C.red,
+                          border: `1px solid ${isIn ? C.green : C.red}44`
+                        }}>
+                          {isIn ? '🟢 MONEY IN' : '🔴 MONEY OUT'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 600, color: C.text }}>{tx.description}</span>
+                          <span style={{
+                            fontSize: 9, padding: '1px 6px', borderRadius: 6, fontWeight: 700,
+                            background: `${isIn ? C.green : (SRC_CLR[tx.source] || C.muted)}22`,
+                            color: isIn ? C.green : (SRC_CLR[tx.source] || C.muted)
+                          }}>
+                            {isIn ? '💰' : SRC_PILL[tx.source]} {tx.sourceLabel}
+                          </span>
+                          {tx.excludeFromBudget && !isIn && (
+                            <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: `${C.muted}22`, color: C.muted, fontWeight: 700 }}>
+                              Unbudgeted
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 800, fontSize: 13, color: isIn ? C.green : C.red, whiteSpace: 'nowrap' }}>
+                        {confidentialValue((isIn ? '+' : '−') + peso(tx.amount))}
+                      </td>
+                      {!sm && (
+                        <td style={{ padding: '10px 8px', textAlign: 'right', color: C.muted, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          {tx.balanceAfter !== null && tx.balanceAfter !== undefined
+                            ? confidentialValue(peso(tx.balanceAfter))
+                            : '—'}
+                        </td>
+                      )}
+                      {canUpdate && (
+                        <td style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditTx(tx)}
+                              title="Edit Transaction"
+                              style={{ background: 'none', border: `1px solid ${C.blue}44`, borderRadius: 5, color: C.blue, padding: '3px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTx(tx)}
+                              title={isIn ? 'Remove Money In' : 'Refund & Delete Money Out'}
+                              style={{ background: 'none', border: `1px solid ${C.red}44`, borderRadius: 5, color: C.red, padding: '3px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+                            >
+                              ↩
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* ── Senior-Friendly Philippine Bank Passbook & Transaction Logs Modal ── */}
+      {activeModalAccId && (() => {
+        const modalAcc = accountStats.find(a => a.id === activeModalAccId) || accounts.find(a => a.id === activeModalAccId);
+        if (!modalAcc) return null;
+        const brand = getPhBankBrand(modalAcc);
+        const accAllLogs = allRawTx.filter(t => t.accountId === modalAcc.id || t.accountName === modalAcc.name);
+        const accInTotal = accAllLogs.filter(t => t.isCredit).reduce((s, t) => s + t.amount, 0);
+        const accInCount = accAllLogs.filter(t => t.isCredit).length;
+        const accOutTotal = accAllLogs.filter(t => !t.isCredit).reduce((s, t) => s + t.amount, 0);
+        const accOutCount = accAllLogs.filter(t => !t.isCredit).length;
+
+        const visibleModalLogs = accAllLogs.filter(t => {
+          if (modalFlowFilter === 'in' && !t.isCredit) return false;
+          if (modalFlowFilter === 'out' && t.isCredit) return false;
+          if (modalSearch.trim()) {
+            const q = modalSearch.toLowerCase();
+            if (!`${t.description || ''} ${t.sourceLabel || ''} ${t.date || ''}`.toLowerCase().includes(q)) return false;
+          }
+          return true;
+        });
+
+        const fmtReadableDate = (dStr) => {
+          if (!dStr) return '—';
+          const d = new Date(dStr + 'T00:00:00');
+          if (isNaN(d.getTime())) return dStr;
+          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        };
+
+        return (
+          <div
+            onClick={() => setActiveModalAccId(null)}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(2, 6, 16, 0.84)',
+              backdropFilter: 'blur(10px)',
+              zIndex: 9999,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: sm ? 10 : 22
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: '100%', maxWidth: 920, maxHeight: '92vh',
+                background: C.card,
+                border: `2px solid ${brand.secondary}`,
+                borderRadius: 18,
+                boxShadow: '0 28px 70px rgba(0,0,0,0.75)',
+                display: 'flex', flexDirection: 'column',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Modal Bank Brand Header Banner (Solid Color — No Gradient) */}
+              <div style={{
+                background: brand.solidBg,
+                padding: sm ? '16px 16px' : '22px 26px',
+                borderBottom: `2px solid ${brand.secondary}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <PhBankLogoBadge brand={brand} acc={modalAcc} size={sm ? 54 : 64} />
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: brand.secondary, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      📖 Official Account Passbook (Libreta)
+                    </div>
+                    <div style={{ fontSize: sm ? 22 : 28, fontWeight: 900, color: brand.textColor, lineHeight: 1.15, marginTop: 2 }}>
+                      {modalAcc.name}
+                    </div>
+                    <div style={{ fontSize: 13, color: brand.textColor, opacity: 0.88, fontWeight: 600, marginTop: 2 }}>
+                      {brand.fullName} · {modalAcc.type || 'Account'}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomizingAccId(modalAcc.id)}
+                      style={{
+                        padding: '10px 14px', borderRadius: 10,
+                        border: `1.5px solid ${brand.secondary}`,
+                        background: 'rgba(0,0,0,0.45)',
+                        color: '#ffffff', fontSize: 13, fontWeight: 800,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                      }}
+                    >
+                      🎨 Customize Color & Logo
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setActiveModalAccId(null)}
+                    style={{
+                      padding: '10px 18px', borderRadius: 10,
+                      border: '2px solid rgba(255,255,255,0.4)',
+                      background: 'rgba(0,0,0,0.45)',
+                      color: '#ffffff', fontSize: 14, fontWeight: 900,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                    }}
+                  >
+                    ✕ Close Passbook
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable Modal Body */}
+              <div style={{ padding: sm ? 14 : 22, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* 3 Big Senior-Friendly Summary Boxes */}
+                <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3, 1fr)', gap: 12 }}>
+                  <div style={{
+                    background: C.card2,
+                    border: `2px solid ${brand.secondary}`, borderRadius: 14, padding: '14px 18px'
+                  }}>
+                    <div style={{ fontSize: 12, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>
+                      🏦 Current Balance (Balanse)
+                    </div>
+                    <div style={{ fontSize: sm ? 26 : 30, fontWeight: 900, color: '#ffffff', marginTop: 4 }}>
+                      {confidentialValue(peso(modalAcc.balance))}
+                    </div>
+                    <div style={{ fontSize: 12, color: brand.secondary, fontWeight: 700, marginTop: 4 }}>
+                      Live Available Funds
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: 'rgba(16, 185, 129, 0.12)',
+                    border: `2px solid ${C.green}88`, borderRadius: 14, padding: '14px 18px'
+                  }}>
+                    <div style={{ fontSize: 12, color: '#6ee7b7', fontWeight: 800, textTransform: 'uppercase' }}>
+                      🟢 Total Money In (Pumasok)
+                    </div>
+                    <div style={{ fontSize: sm ? 24 : 28, fontWeight: 900, color: C.green, marginTop: 4 }}>
+                      {confidentialValue('+' + peso(accInTotal))}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.muted, fontWeight: 700, marginTop: 4 }}>
+                      {accInCount} Deposit{accInCount !== 1 ? 's' : ''} Recorded
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: `2px solid ${C.red}88`, borderRadius: 14, padding: '14px 18px'
+                  }}>
+                    <div style={{ fontSize: 12, color: '#fca5a5', fontWeight: 800, textTransform: 'uppercase' }}>
+                      🔴 Total Money Out (Lumabas)
+                    </div>
+                    <div style={{ fontSize: sm ? 24 : 28, fontWeight: 900, color: C.red, marginTop: 4 }}>
+                      {confidentialValue('−' + peso(accOutTotal))}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.muted, fontWeight: 700, marginTop: 4 }}>
+                      {accOutCount} Withdrawal{accOutCount !== 1 ? 's' : ''} Recorded
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Action Bar Inside Modal (Record Money In / Out directly) */}
+                {canWrite && (
+                  <div style={{
+                    background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14,
+                    display: 'flex', flexDirection: 'column', gap: 12
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>
+                        ⚡ Record New Transaction for <span style={{ color: brand.secondary }}>{modalAcc.name}</span>:
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => openQuickFormFor('credit', modalAcc.id)}
+                          style={{
+                            padding: '10px 18px', borderRadius: 10, border: 'none',
+                            background: `linear-gradient(135deg, ${C.green}, ${C.teal})`,
+                            color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
+                            boxShadow: '0 4px 14px rgba(36,209,126,0.35)'
+                          }}
+                        >
+                          ➕ Add Money In (Deposit)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openQuickFormFor('debit', modalAcc.id)}
+                          style={{
+                            padding: '10px 18px', borderRadius: 10, border: 'none',
+                            background: `linear-gradient(135deg, ${C.red}, ${C.orange})`,
+                            color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer',
+                            boxShadow: '0 4px 14px rgba(255,81,79,0.35)'
+                          }}
+                        >
+                          ➖ Add Money Out (Withdraw)
+                        </button>
+                      </div>
+                    </div>
+
+                    {showQuickForm && quickAccId === modalAcc.id && (
+                      <div style={{
+                        padding: 14, borderRadius: 10, background: C.card2,
+                        border: `2px solid ${quickType === 'credit' ? C.green : C.red}`,
+                        display: 'flex', flexDirection: 'column', gap: 10
+                      }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: quickType === 'credit' ? C.green : C.red }}>
+                          {editingTx ? '✏️ Edit Transaction' : (quickType === 'credit' ? '🟢 Adding Money In (Pumasok na Pera)' : '🔴 Adding Money Out (Lumabas na Pera)')}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '2fr 1fr 1fr auto', gap: 10, alignItems: 'end' }}>
+                          <div>
+                            <label style={{ fontSize: 12, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Description (Detalye)</label>
+                            <Inp
+                              type="text"
+                              value={quickDesc}
+                              onChange={e => setQuickDesc(e.target.value)}
+                              placeholder={quickType === 'credit' ? 'e.g. Pension, Deposit, Allowance' : 'e.g. Medicine, Grocery, Bill Payment'}
+                              style={{ fontSize: 14, padding: '10px 12px' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 12, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Amount (Halaga ₱)</label>
+                            <Inp
+                              type="number"
+                              value={quickAmount}
+                              onChange={e => setQuickAmount(e.target.value)}
+                              placeholder="0"
+                              style={{ fontSize: 15, fontWeight: 800, padding: '10px 12px', textAlign: 'right' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 12, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Date (Petsa)</label>
+                            <Inp type="date" value={quickDate} onChange={e => handleQuickDateChange(e.target.value)} style={{ fontSize: 13, padding: '10px 10px' }} />
+                          </div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              type="button"
+                              onClick={handleSaveQuickTx}
+                              style={{
+                                padding: '10px 18px', borderRadius: 8, border: 'none',
+                                background: quickType === 'credit' ? C.green : C.red,
+                                color: '#fff', fontSize: 14, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                              }}
+                            >
+                              💾 Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { handleCancelEditTx(); setShowQuickForm(false); }}
+                              style={{ padding: '10px 12px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'none', color: C.muted, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {quickSuccessMsg && <div style={{ fontSize: 13, color: C.green, fontWeight: 800 }}>✅ {quickSuccessMsg}</div>}
+                  </div>
+                )}
+
+                {/* Senior-Friendly Large Filter Buttons & Search */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[
+                      ['all', `📋 All Transactions (${accAllLogs.length})`, C.blue],
+                      ['in', `🟢 Money In Only (${accInCount})`, C.green],
+                      ['out', `🔴 Money Out Only (${accOutCount})`, C.red]
+                    ].map(([val, lbl, col]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setModalFlowFilter(val)}
+                        style={{
+                          padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 800,
+                          border: `2px solid ${modalFlowFilter === val ? col : C.border}`,
+                          background: modalFlowFilter === val ? `${col}28` : C.panel,
+                          color: modalFlowFilter === val ? '#ffffff' : C.muted,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ flex: '1 1 220px', maxWidth: sm ? '100%' : 280 }}>
+                    <Inp
+                      type="text"
+                      value={modalSearch}
+                      onChange={e => setModalSearch(e.target.value)}
+                      placeholder="🔍 Search passbook logs…"
+                      style={{ fontSize: 13, padding: '9px 12px' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Passbook (Libreta) Transaction Logs Table */}
+                <div style={{ border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', background: C.bg }}>
+                  {visibleModalLogs.length === 0 ? (
+                    <div style={{ padding: '44px 20px', textAlign: 'center', color: C.muted, fontSize: 15 }}>
+                      <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
+                      <div style={{ fontWeight: 800, color: C.text, marginBottom: 4 }}>No transactions found for {modalAcc.name}</div>
+                      <div>Tap <strong>"➕ Add Money In"</strong> or <strong>"➖ Add Money Out"</strong> above to record your first passbook entry.</div>
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                        <thead>
+                          <tr style={{ background: C.card2, borderBottom: `2px solid ${C.border}`, color: C.muted, fontSize: 12, textTransform: 'uppercase' }}>
+                            <th style={{ textAlign: 'left', padding: '12px 14px' }}>Date (Petsa)</th>
+                            <th style={{ textAlign: 'center', padding: '12px 10px' }}>Type (In / Out)</th>
+                            <th style={{ textAlign: 'left', padding: '12px 14px' }}>Description (Detalye)</th>
+                            <th style={{ textAlign: 'right', padding: '12px 14px' }}>Amount (Halaga)</th>
+                            <th style={{ textAlign: 'right', padding: '12px 14px' }}>Balance After (Balanse)</th>
+                            {canUpdate && <th style={{ textAlign: 'center', padding: '12px 10px' }}>Actions</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visibleModalLogs.map((tx, i) => {
+                            const isIn = !!tx.isCredit;
+                            return (
+                              <tr
+                                key={tx.id || i}
+                                style={{
+                                  borderBottom: `1px solid ${C.border}44`,
+                                  background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'
+                                }}
+                              >
+                                <td style={{ padding: '13px 14px', whiteSpace: 'nowrap', fontWeight: 700, color: C.text }}>
+                                  {fmtReadableDate(tx.date)}
+                                </td>
+                                <td style={{ padding: '13px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                  <span style={{
+                                    display: 'inline-block', padding: '4px 12px', borderRadius: 14,
+                                    fontSize: 12, fontWeight: 900,
+                                    background: isIn ? `${C.green}25` : `${C.red}25`,
+                                    color: isIn ? '#4ade80' : '#f87171',
+                                    border: `1.5px solid ${isIn ? C.green : C.red}66`
+                                  }}>
+                                    {isIn ? '🟢 MONEY IN (+)' : '🔴 MONEY OUT (−)'}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '13px 14px' }}>
+                                  <div style={{ fontWeight: 800, color: '#ffffff', fontSize: 15 }}>{tx.description}</div>
+                                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{tx.sourceLabel}</div>
+                                </td>
+                                <td style={{
+                                  padding: '13px 14px', textAlign: 'right', whiteSpace: 'nowrap',
+                                  fontSize: 16, fontWeight: 900,
+                                  color: isIn ? '#4ade80' : '#f87171'
+                                }}>
+                                  {confidentialValue((isIn ? '+' : '−') + peso(tx.amount))}
+                                </td>
+                                <td style={{
+                                  padding: '13px 14px', textAlign: 'right', whiteSpace: 'nowrap',
+                                  fontSize: 15, fontWeight: 800, color: C.text
+                                }}>
+                                  {tx.balanceAfter !== null && tx.balanceAfter !== undefined
+                                    ? confidentialValue(peso(tx.balanceAfter))
+                                    : '—'}
+                                </td>
+                                {canUpdate && (
+                                  <td style={{ padding: '13px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                    <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleStartEditTx(tx)}
+                                        style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.blue}66`, background: `${C.blue}18`, color: C.blue, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
+                                      >
+                                        ✏️ Edit
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteTx(tx)}
+                                        style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.red}66`, background: `${C.red}18`, color: C.red, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
+                                      >
+                                        ↩ Undo
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{
+                padding: '12px 22px', background: C.panel, borderTop: `1px solid ${C.border}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10
+              }}>
+                <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>
+                  Showing {visibleModalLogs.length} of {accAllLogs.length} passbook entries for <strong>{modalAcc.name}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveModalAccId(null)}
+                  style={{
+                    padding: '9px 22px', borderRadius: 8, border: `1px solid ${C.green}`,
+                    background: `${C.green}22`, color: C.green, fontSize: 13, fontWeight: 800, cursor: 'pointer'
+                  }}
+                >
+                  ✓ Done / Close Passbook
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Customize Account Solid Color & Upload Logo Modal ── */}
+      {customizingAccId && (() => {
+        const targetAcc = accounts.find(a => a.id === customizingAccId);
+        if (!targetAcc) return null;
+        return (
+          <AccountCustomizeModal
+            account={targetAcc}
+            sm={sm}
+            onClose={() => setCustomizingAccId(null)}
+            onSave={(updates) => handleSaveAccountAppearance(targetAcc.id, updates)}
+          />
+        );
+      })()}
+    </div>
+  );
+}
+
 // ─── ACCOUNTS (Clean Read-Only Overview) ──────────────────────────────────────
 function AccountsOverviewTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate, setTab }) {
   const total = accounts.reduce((s, a) => s + a.balance, 0);
@@ -2139,7 +4772,13 @@ function AccountsOverviewTab({ accounts, setAccounts, sm, readOnly, canWrite, ca
           <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>🏦 My Accounts</div>
           <div style={{ fontSize: 12, color: C.muted }}>Overview of all account balances grouped by category.</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {setTab && (
+            <button onClick={() => setTab('account-dashboard')}
+              style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.blue}55`, background: `${C.blue}18`, color: C.blue, cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+              🇵🇭 Passbook & In/Out Logs →
+            </button>
+          )}
           {canUpdate && (
             <button onClick={() => setTab('account-manager')}
               style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.amber}55`, background: `${C.amber}18`, color: C.amber, cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2192,14 +4831,21 @@ function AccountsOverviewTab({ accounts, setAccounts, sm, readOnly, canWrite, ca
                 <div style={{ height: '100%', width: `${total > 0 ? (catTotal / total * 100) : 0}%`, background: color, borderRadius: 2, transition: 'width 0.6s ease' }} />
               </div>
 
-              {accs.map(acc => (
-                <div key={acc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: `1px solid ${C.border}22` }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{acc.name}</div>
+              {accs.map(acc => {
+                const brand = getPhBankBrand(acc);
+                return (
+                  <div key={acc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: `1px solid ${C.border}22`, gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <PhBankLogoBadge brand={brand} acc={acc} size={30} />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{acc.name}</div>
+                        <div style={{ fontSize: 10, color: C.muted }}>{brand.fullName}</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: acc.balance >= 0 ? C.text : C.red }}>{peso(acc.balance)}</div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: acc.balance >= 0 ? C.text : C.red }}>{peso(acc.balance)}</div>
-                </div>
-              ))}
+                );
+              })}
             </Card>
           );
         })}
@@ -2467,6 +5113,7 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
   const [search, setSearch]         = useState('');
   const [filterType, setFilterType] = useState('all');
   const [statementAcc, setStatementAcc] = useState(null);
+  const [customizingAcc, setCustomizingAcc] = useState(null);
 
   const typeColors = {
     Investment: C.purple,
@@ -2534,9 +5181,20 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>🗂️ Account Manager</div>
-        <div style={{ fontSize: 12, color: C.muted }}>Add, edit, and manage all your financial accounts and credit limits in one place.</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>🗂️ Account Manager</div>
+          <div style={{ fontSize: 12, color: C.muted }}>Add, edit, and manage all your financial accounts and credit limits in one place.</div>
+        </div>
+        {setTab && (
+          <button
+            type="button"
+            onClick={() => setTab('account-dashboard')}
+            style={{ padding: '8px 14px', borderRadius: 8, border: `1px solid ${C.blue}55`, background: `${C.blue}18`, color: C.blue, cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            🏧 View Account Dashboard & Logs →
+          </button>
+        )}
       </div>
 
       {/* ── 4 Metric Cards ── */}
@@ -2643,13 +5301,18 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
                       {editing === acc.id ? (
                         <Inp value={editData.name} onChange={e => setEditData(p => ({ ...p, name: e.target.value }))} style={{ width: '100%', padding: '5px 8px' }} />
                       ) : (
-                        <div>
-                          <div style={{ fontWeight: 600, color: C.text }}>{acc.name}</div>
-                          {isCC && creditLimit > 0 && (
-                            <div style={{ fontSize: 10, color: trueAvailCredit > 0 ? C.green : C.red, marginTop: 2 }}>
-                              True Avail: {peso(trueAvailCredit)} {instRem > 0 ? `(₱${(instRem/1000).toFixed(1)}k in inst)` : ''}
-                            </div>
-                          )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <PhBankLogoBadge brand={getPhBankBrand(acc)} acc={acc} size={34} />
+                          <div>
+                            <div style={{ fontWeight: 700, color: C.text }}>{acc.name}</div>
+                            {isCC && creditLimit > 0 ? (
+                              <div style={{ fontSize: 10, color: trueAvailCredit > 0 ? C.green : C.red, marginTop: 2 }}>
+                                True Avail: {peso(trueAvailCredit)} {instRem > 0 ? `(₱${(instRem/1000).toFixed(1)}k in inst)` : ''}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 10, color: C.muted }}>{getPhBankBrand(acc).fullName}</div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </td>
@@ -2697,7 +5360,9 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
                             <Btn onClick={() => setEditing(null)} style={{ padding: '4px 10px', fontSize: 11 }}>Cancel</Btn>
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <button onClick={() => setCustomizingAcc(acc)}
+                              style={{ background: `${C.amber}18`, border: `1px solid ${C.amber}55`, borderRadius: 5, color: C.amber, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>🎨 Color & Logo</button>
                             <button onClick={() => startEdit(acc)}
                               style={{ background: `${C.blue}18`, border: `1px solid ${C.blue}44`, borderRadius: 5, color: C.blue, padding: '4px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>✏️ Edit</button>
                             <button onClick={() => deleteAcc(acc.id)}
@@ -2713,6 +5378,26 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
           </table>
         </div>
       </Card>
+
+      {statementAcc && (
+        <CreditCardStatementModal
+          account={statementAcc}
+          budgetData={budgetData}
+          onClose={() => setStatementAcc(null)}
+        />
+      )}
+
+      {customizingAcc && (
+        <AccountCustomizeModal
+          account={customizingAcc}
+          sm={sm}
+          onClose={() => setCustomizingAcc(null)}
+          onSave={(updates) => {
+            setAccounts(prev => prev.map(a => a.id === customizingAcc.id ? { ...a, ...updates } : a));
+            setCustomizingAcc(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -7612,13 +10297,14 @@ export default function App() {
     if (role === "admin" || isAdmin || isSuperAdminEmail(session?.user?.email)) return "update";
     if (permissions && permissions[tabId]) return permissions[tabId];
     if (role === "viewer") return "read";
-    if (role === "guest") return tabId === "dashboard" ? "read" : "none";
-    const baselineModules = new Set(["dashboard", "history", "budget", "accounts", "reconcile", "transactions", "investments", "debts", "credits", "expenses", "calendar", "graph", "reports"]);
+    if (role === "guest") return (tabId === "dashboard" || tabId === "account-dashboard") ? "read" : "none";
+    const baselineModules = new Set(["dashboard", "account-dashboard", "history", "budget", "accounts", "reconcile", "transactions", "investments", "debts", "credits", "expenses", "calendar", "graph", "reports"]);
     return baselineModules.has(tabId) ? "update" : "none";
   };
 
   const TABS=[
     {id:'dashboard',label:sm?'📊':'📊 Dashboard'},
+    {id:'account-dashboard',label:sm?'🏧':'🏧 Account Dashboard'},
     {id:'history',  label:sm?'📋':'📋 History'},
     {id:'budget',   label:sm?'📅':'📅 Monthly'},
     {id:'accounts', label:sm?'🏦':'🏦 Accounts'},
@@ -7633,6 +10319,7 @@ export default function App() {
 
   const TLBL={
     dashboard:'Dashboard',
+    'account-dashboard':'Account Dashboard & In/Out Logs',
     history:'History',
     budget:'Monthly Budget',
     accounts:'Accounts',
@@ -7649,8 +10336,9 @@ export default function App() {
   };
 
   const NAV_TABS=[
-    {id:'dashboard',   label:'Dashboard',          icon:'📊',group:'main'},
-    {id:'accounts',       label:'Accounts',              icon:'🏦',group:'manage'},
+    {id:'dashboard',         label:'Dashboard',          icon:'📊',group:'main'},
+    {id:'account-dashboard', label:'Account Dashboard',  icon:'🏧',group:'main'},
+    {id:'accounts',          label:'Accounts',           icon:'🏦',group:'manage'},
 
     {id:'reconcile',       label:'Reconcile & Audit',     icon:'🔍',group:'manage'},
     {id:'transactions',label:'Transactions',       icon:'💸',group:'manage'},
@@ -7941,6 +10629,7 @@ export default function App() {
           return (
             <>
               {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} setTab={setTab}/>}
+              {tab==='account-dashboard'&&<AccountDashboardTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} balanceHistory={balanceHistory} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} session={session} ownerName={viewingUserEmail || displayName}/>}
               {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
               {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='accounts'       &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} budgetData={budgetData}/>}
@@ -8610,7 +11299,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
     if (entry) return entry.access_level;
     if (roleName === "admin") return "update";
     if (roleName === "viewer") return "read";
-    if (roleName === "guest") return moduleName === "dashboard" ? "read" : "none";
+    if (roleName === "guest") return (moduleName === "dashboard" || moduleName === "account-dashboard") ? "read" : "none";
     return moduleName === "admin" ? "none" : "update";
   };
 
@@ -9244,6 +11933,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
         <div style={{ display: "grid", gridTemplateColumns: sm ? "1fr" : "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
           {[
             { id: "dashboard", label: "Dashboard Module", icon: "📊" },
+            { id: "account-dashboard", label: "Account Dashboard", icon: "🏧" },
             { id: "history", label: "History Module", icon: "📋" },
             { id: "monthly", label: "Monthly Module", icon: "📅" },
             { id: "accounts", label: "Accounts Module", icon: "🏦" },
@@ -9329,6 +12019,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
             <tbody>
               {[
                 { id: "dashboard", label: "Dashboard", icon: "📊" },
+                { id: "account-dashboard", label: "Account Dashboard", icon: "🏧" },
                 { id: "history", label: "History Logs", icon: "📋" },
                 { id: "budget", label: "Monthly Budget", icon: "📅" },
                 { id: "accounts", label: "Accounts", icon: "🏦" },
