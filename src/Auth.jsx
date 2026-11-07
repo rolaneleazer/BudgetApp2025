@@ -20,7 +20,41 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [honeyBotField, setHoneyBotField] = useState('');
   const [message, setMessage] = useState({ text: '', type: '' });
+
+  const recordPreAuthHoneypotEvent = async (trapType, severity, attemptedAction) => {
+    let ip = 'Local / Browser Client';
+    let location = 'Philippines (Local)';
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown Client';
+    try {
+      const res = await fetch('/api/honeypot?action=telemetry');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.telemetry) {
+          ip = data.telemetry.ip || ip;
+          location = data.telemetry.location || location;
+        }
+      }
+    } catch (_) {}
+
+    try {
+      const existing = JSON.parse(localStorage.getItem('bujdet-honeypot-preauth-events') || '[]');
+      const evt = {
+        id: `hp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        severity,
+        trapType,
+        ip,
+        location,
+        userAgent: ua,
+        targetEmail: email || 'Unknown',
+        actionAttempted: attemptedAction,
+        responseTaken: trapType === 'Auth Bot Honeypot Trap' ? 'Blocked Automated Bot Submission' : 'Rejected Invalid Credentials & Logged Forensics'
+      };
+      localStorage.setItem('bujdet-honeypot-preauth-events', JSON.stringify([evt, ...existing].slice(0, 50)));
+    } catch (_) {}
+  };
 
   const isConfigured = 
     import.meta.env.VITE_SUPABASE_URL && 
@@ -30,6 +64,16 @@ export default function Auth() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Honeypot Bot Trap Check: hidden input that only automated bots/credential stuffers fill
+    if (honeyBotField && honeyBotField.trim() !== '') {
+      await recordPreAuthHoneypotEvent(
+        'Auth Bot Honeypot Trap',
+        'CRITICAL',
+        `Automated bot filled hidden honeypot trap field ("${honeyBotField.slice(0, 32)}") for email ${email || 'unknown'}`
+      );
+      setMessage({ text: 'Security verification failed. Request logged.', type: 'error' });
+      return;
+    }
     if (!isConfigured) {
       setMessage({ text: 'Please configure your .env file with valid Supabase credentials first.', type: 'error' });
       return;
@@ -73,6 +117,11 @@ export default function Auth() {
         if (error) throw error;
       }
     } catch (err) {
+      await recordPreAuthHoneypotEvent(
+        'Failed Login / Credential Probe',
+        'HIGH',
+        `Failed authentication attempt for "${email}": ${err.message || 'Invalid credentials'}`
+      );
       setMessage({ text: err.message || 'An error occurred during authentication.', type: 'error' });
     } finally {
       setLoading(false);
@@ -255,6 +304,20 @@ export default function Auth() {
                 boxSizing: 'border-box',
                 width: '100%'
               }}
+            />
+          </div>
+
+          {/* Invisible Honeypot Trap Field for Automated Credential-Stuffing Bots */}
+          <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+            <label htmlFor="admin_api_token_verify">Admin Master Token Verification</label>
+            <input
+              id="admin_api_token_verify"
+              name="admin_api_token_verify"
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={honeyBotField}
+              onChange={(e) => setHoneyBotField(e.target.value)}
             />
           </div>
 

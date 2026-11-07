@@ -107,7 +107,7 @@ function runSystemTest(moduleName) {
     }
   };
 
-  const modules = ["dashboard", "account-dashboard", "history", "monthly", "accounts", "investments", "debts", "credits", "major", "calendar", "raw"];
+  const modules = ["dashboard", "account-dashboard", "history", "monthly", "accounts", "investments", "debts", "credits", "major", "calendar", "security", "raw"];
 
   if (moduleName === "all") {
     modules.forEach(runSingleModule);

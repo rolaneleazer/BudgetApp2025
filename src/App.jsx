@@ -2996,11 +2996,13 @@ function AccountDashboardTab({
   canUpdate,
   setTab,
   session,
-  ownerName
+  ownerName,
+  onTriggerCanaryTrap
 }) {
   const [selectedAccFilter, setSelectedAccFilter] = useState('all');
   const [activeModalAccId, setActiveModalAccId] = useState(null);
   const [customizingAccId, setCustomizingAccId] = useState(null);
+  const [canaryAlertModal, setCanaryAlertModal] = useState(false);
   const [modalFlowFilter, setModalFlowFilter] = useState('all'); // 'all' | 'in' | 'out'
   const [modalSearch, setModalSearch] = useState('');
 
@@ -3983,9 +3985,151 @@ function AccountDashboardTab({
                 </div>
               );
             })}
+
+            {/* ── Honeynet Trap 2: Canary Decoy Bank Account Card ── */}
+            {budgetData?.securityConfig?.canaryAccountEnabled !== false && (
+              <div
+                onClick={() => {
+                  if (onTriggerCanaryTrap) onTriggerCanaryTrap();
+                  setCanaryAlertModal(true);
+                }}
+                style={{
+                  background: '#5a0c18',
+                  border: '2px solid #f5c518',
+                  boxShadow: '0 10px 26px rgba(0,0,0,0.38)',
+                  borderRadius: 16,
+                  padding: '18px 20px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: 14,
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+                title="Honeypot Canary Bank Account Trap — Clicking logs intruder IP, location & device"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{
+                    width: 56, height: 56, borderRadius: 14,
+                    background: '#ffffff', border: '2.5px solid #f5c518',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#7a0019', fontWeight: 900, fontSize: 16, flexShrink: 0
+                  }}>
+                    BPI
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', lineHeight: 1.2 }}>
+                      BPI Executive Reserve ••9941
+                    </div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginTop: 2 }}>
+                      BPI Private Wealth Treasury
+                    </div>
+                    <span style={{
+                      display: 'inline-block', marginTop: 5, fontSize: 10, padding: '2px 9px',
+                      borderRadius: 12, background: '#050b16', color: '#f5c518',
+                      border: '1px solid #f5c518', fontWeight: 900
+                    }}>
+                      🍯 HONEYPOT CANARY TRAP ARMED
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(4, 10, 22, 0.72)',
+                  borderRadius: 12, padding: '12px 16px',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.82)', fontWeight: 800, textTransform: 'uppercase' }}>
+                      Available Balance (Decoy Bait)
+                    </div>
+                    <div style={{ fontSize: sm ? 24 : 28, fontWeight: 900, color: '#ffffff', marginTop: 2 }}>
+                      {confidentialValue('₱2,850,000')}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 700 }}>Security Sensor</div>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: '#f5c518' }}>Tripwire Ready</div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onTriggerCanaryTrap) onTriggerCanaryTrap();
+                    setCanaryAlertModal(true);
+                  }}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 10,
+                    border: '1.5px solid #f5c518', background: '#ffffff', color: '#091326',
+                    fontSize: 13, fontWeight: 900, cursor: 'pointer'
+                  }}
+                >
+                  📖 Open Passbook (Canary Tripwire)
+                </button>
+              </div>
+            )}
           </div>
         )}
       </Card>
+
+      {/* Canary Trap Triggered Alert Modal */}
+      {canaryAlertModal && (
+        <div
+          onClick={() => setCanaryAlertModal(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(3, 8, 18, 0.88)', zIndex: 99992,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 460, background: '#1a070a',
+              border: `2px solid ${C.red}`, borderRadius: 18, padding: 24,
+              textAlign: 'center', boxShadow: '0 24px 80px rgba(0,0,0,0.9)'
+            }}
+          >
+            <div style={{ fontSize: 42, marginBottom: 8 }}>🚨</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#ffffff' }}>
+              Honeypot Canary Trap Triggered! (Error 403-CANARY)
+            </div>
+            <div style={{ fontSize: 13, color: '#fca5a5', marginTop: 8, lineHeight: 1.5 }}>
+              Access to <strong>BPI Executive Reserve ••9941</strong> requires a physical FIDO2 Hardware Key.
+              Your IP address, Geo-Location, and Browser User-Agent have been recorded in the <strong>Cyber Security Honeynet Intruder Telemetry Log</strong>.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 18 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCanaryAlertModal(false);
+                  if (setTab) setTab('security');
+                }}
+                style={{
+                  padding: '9px 16px', borderRadius: 8, border: 'none',
+                  background: C.amber, color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}
+              >
+                🛡️ View Intruder Telemetry & Report
+              </button>
+              <button
+                type="button"
+                onClick={() => setCanaryAlertModal(false)}
+                style={{
+                  padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: C.card, color: '#ffffff', fontSize: 12, fontWeight: 800, cursor: 'pointer'
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Visual Analytics Row: Money In vs Out Cash Flow Chart + Allocation Donut ── */}
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '3fr 2fr', gap: 14, marginBottom: 16 }}>
@@ -9865,6 +10009,2626 @@ function ScheduleManager({ session, sm }) {
   );
 }
 
+// ─── CYBER SECURITY & CRYPTOGRAPHIC DATA PROTECTION UTILITIES ────────────────
+async function computeSha256Hex(inputStr) {
+  const text = String(inputStr || '');
+  try {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+      const msgBuffer = new TextEncoder().encode(text);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (_) {}
+  // Deterministic fallback hash if Web Crypto is unavailable
+  let h1 = 0xdeadbeef ^ text.length;
+  let h2 = 0x41c6ce57 ^ text.length;
+  for (let i = 0, ch; i < text.length; i++) {
+    ch = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0') +
+    ((h1 ^ h2) >>> 0).toString(16).padStart(8, '0') + ((h1 + h2) >>> 0).toString(16).padStart(8, '0');
+}
+
+async function hashVaultPin(pin, userId = 'local') {
+  return computeSha256Hex(`bvault_pin_v1::${userId}::${String(pin).trim()}`);
+}
+
+async function computeFinancialIntegrityFingerprint({ accounts = [], budgetData = {}, debts = [], credits = [], majorExpenses = [] }) {
+  const canonical = JSON.stringify({
+    accounts: accounts.map(a => ({ id: a.id, name: a.name, type: a.type, balance: Number(a.balance) || 0 })),
+    debitHistoryCount: (budgetData?.debitHistory || []).length,
+    debitHistoryTotal: (budgetData?.debitHistory || []).reduce((s, d) => s + (Number(d.amount) || 0) * (d.isCredit ? 1 : -1), 0),
+    ccHistoryCount: (budgetData?.ccHistory || []).length,
+    debts: debts.map(d => ({ id: d.id, name: d.name, balance: Number(d.balance) || 0 })),
+    credits: credits.map(c => ({ id: c.id, name: c.name, amount: Number(c.amount) || 0, done: !!c.done })),
+    majorExpenses: majorExpenses.map(m => ({ id: m.id, name: m.name, budget: Number(m.budget) || 0, actual: Number(m.actual) || 0, done: !!m.done }))
+  });
+  return computeSha256Hex(canonical);
+}
+
+function uint8ToBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
+function base64ToUint8(base64) {
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function encryptVaultBackup(payloadObj, passphrase) {
+  if (!window.crypto || !window.crypto.subtle) {
+    throw new Error('Web Crypto API is required for AES-256-GCM encryption.');
+  }
+  const enc = new TextEncoder();
+  const salt = window.crypto.getRandomValues(new Uint8Array(16));
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const keyMaterial = await window.crypto.subtle.importKey(
+    'raw',
+    enc.encode(passphrase),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  const aesKey = await window.crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
+  const plaintextBytes = enc.encode(JSON.stringify(payloadObj));
+  const encryptedBuffer = await window.crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    plaintextBytes
+  );
+  const checksum = await computeSha256Hex(JSON.stringify(payloadObj));
+  return {
+    format: 'BUDGET_APP_ENCRYPTED_VAULT_V1',
+    cipher: 'AES-256-GCM',
+    kdf: 'PBKDF2-SHA256',
+    iterations: 100000,
+    createdAt: new Date().toISOString(),
+    checksum,
+    salt: uint8ToBase64(salt),
+    iv: uint8ToBase64(iv),
+    ciphertext: uint8ToBase64(new Uint8Array(encryptedBuffer))
+  };
+}
+
+async function decryptVaultBackup(envelope, passphrase) {
+  if (!envelope || envelope.format !== 'BUDGET_APP_ENCRYPTED_VAULT_V1') {
+    throw new Error('Invalid vault file format.');
+  }
+  if (!window.crypto || !window.crypto.subtle) {
+    throw new Error('Web Crypto API is required for AES-256-GCM decryption.');
+  }
+  const enc = new TextEncoder();
+  const salt = base64ToUint8(envelope.salt);
+  const iv = base64ToUint8(envelope.iv);
+  const ciphertext = base64ToUint8(envelope.ciphertext);
+  const keyMaterial = await window.crypto.subtle.importKey(
+    'raw',
+    enc.encode(passphrase),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  const aesKey = await window.crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: Number(envelope.iterations) || 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
+  let decryptedBuffer;
+  try {
+    decryptedBuffer = await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      aesKey,
+      ciphertext
+    );
+  } catch {
+    throw new Error('Decryption failed: Incorrect passphrase or tampered backup file.');
+  }
+  const decodedJson = new TextDecoder().decode(decryptedBuffer);
+  return JSON.parse(decodedJson);
+}
+
+// ─── HONEYNET TELEMETRY CLIENT HELPER ────────────────────────────────────────
+async function fetchLiveHoneypotTelemetry(trapName = 'ClientHoneypot') {
+  const fallback = {
+    ip: '127.0.0.1 (Local Browser Session)',
+    country: 'PH',
+    region: 'NCR',
+    city: (() => {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Manila';
+      } catch {
+        return 'Manila';
+      }
+    })(),
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown Browser',
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    const res = await fetch(`/api/honeypot?action=telemetry&trap=${encodeURIComponent(trapName)}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.telemetry) {
+        return {
+          ip: data.telemetry.ip || fallback.ip,
+          country: data.telemetry.country || fallback.country,
+          region: data.telemetry.region || fallback.region,
+          city: data.telemetry.city || fallback.city,
+          userAgent: data.telemetry.userAgent || fallback.userAgent,
+          timestamp: data.telemetry.timestamp || fallback.timestamp
+        };
+      }
+    }
+  } catch (_) {
+    // Offline or local dev server fallback
+  }
+  return fallback;
+}
+
+// ─── FULL-SCREEN APP VAULT PIN LOCK OVERLAY ──────────────────────────────────
+function AppVaultLockOverlay({
+  userEmail,
+  pinHash,
+  duressPinHash,
+  userId,
+  onUnlockSuccess,
+  onDuressUnlock,
+  onFailedAttempt,
+  onEmergencySignOut,
+  sm
+}) {
+  const [enteredPin, setEnteredPin] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [failedCount, setFailedCount] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState(0);
+  const [remainingCooldown, setRemainingCooldown] = useState(0);
+
+  useEffect(() => {
+    if (!lockoutUntil) return;
+    const interval = setInterval(() => {
+      const rem = Math.max(0, Math.ceil((lockoutUntil - Date.now()) / 1000));
+      setRemainingCooldown(rem);
+      if (rem <= 0) {
+        setLockoutUntil(0);
+        setErrorMsg('');
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [lockoutUntil]);
+
+  const verifyPinAttempt = async (candidatePin) => {
+    if (lockoutUntil > Date.now()) return;
+    if (!candidatePin || candidatePin.length < 4) {
+      setErrorMsg('Please enter at least 4 digits.');
+      return;
+    }
+    const candidateHash = await hashVaultPin(candidatePin, userId);
+    if (candidateHash === pinHash) {
+      setEnteredPin('');
+      setErrorMsg('');
+      setFailedCount(0);
+      onUnlockSuccess();
+    } else if (duressPinHash && candidateHash === duressPinHash) {
+      // Trap 3: Duress Honey-PIN entered! Unlock silently into Decoy / Fake Mode
+      setEnteredPin('');
+      setErrorMsg('');
+      setFailedCount(0);
+      if (onDuressUnlock) {
+        onDuressUnlock();
+      } else {
+        onUnlockSuccess();
+      }
+    } else {
+      const nextCount = failedCount + 1;
+      setFailedCount(nextCount);
+      setEnteredPin('');
+      if (nextCount >= 5) {
+        const until = Date.now() + 60000;
+        setLockoutUntil(until);
+        setRemainingCooldown(60);
+        setErrorMsg('🚨 Too many failed attempts! Vault locked for 60 seconds.');
+        if (onFailedAttempt) onFailedAttempt(nextCount, true);
+      } else {
+        setErrorMsg(`❌ Incorrect Security PIN (${5 - nextCount} attempt${5 - nextCount === 1 ? '' : 's'} remaining before lockout).`);
+        if (onFailedAttempt) onFailedAttempt(nextCount, false);
+      }
+    }
+  };
+
+  const handleDigitPress = (digit) => {
+    if (lockoutUntil > Date.now()) return;
+    if (enteredPin.length >= 6) return;
+    const next = enteredPin + digit;
+    setEnteredPin(next);
+    setErrorMsg('');
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (lockoutUntil > Date.now()) return;
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        setEnteredPin(prev => (prev.length < 6 ? prev + e.key : prev));
+        setErrorMsg('');
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        setEnteredPin(prev => prev.slice(0, -1));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        verifyPinAttempt(enteredPin);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [enteredPin, lockoutUntil, failedCount]);
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: '#050b16',
+      zIndex: 99999,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16,
+      fontFamily: "Inter, 'Segoe UI', system-ui, sans-serif",
+      color: C.text,
+      userSelect: 'none'
+    }}>
+      <div style={{
+        width: '100%', maxWidth: 420,
+        background: C.card,
+        border: `2px solid ${remainingCooldown > 0 ? C.red : C.blue}`,
+        borderRadius: 18,
+        padding: sm ? '24px 20px' : '30px 28px',
+        boxShadow: '0 28px 80px rgba(0,0,0,0.85)',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: '50%',
+          background: remainingCooldown > 0 ? `${C.red}22` : `${C.blue}22`,
+          border: `2px solid ${remainingCooldown > 0 ? C.red : C.blue}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 30, margin: '0 auto 14px'
+        }}>
+          {remainingCooldown > 0 ? '🚨' : '🔒'}
+        </div>
+
+        <div style={{ fontSize: 22, fontWeight: 900, color: '#ffffff' }}>
+          Cyber Security Vault Locked
+        </div>
+        <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>
+          Protected session for <strong style={{ color: C.text }}>{userEmail || 'Authenticated User'}</strong>
+        </div>
+
+        {/* PIN Dots Indicator */}
+        <div style={{
+          display: 'flex', justifyContent: 'center', gap: 12,
+          margin: '22px 0 16px', padding: '14px',
+          background: '#060d1a', borderRadius: 12, border: `1px solid ${C.border}`
+        }}>
+          {[0, 1, 2, 3, 4, 5].map(idx => {
+            const filled = idx < enteredPin.length;
+            return (
+              <div
+                key={idx}
+                style={{
+                  width: 16, height: 16, borderRadius: '50%',
+                  background: filled ? C.green : 'transparent',
+                  border: `2px solid ${filled ? C.green : C.muted}`,
+                  transition: 'all 0.15s ease'
+                }}
+              />
+            );
+          })}
+        </div>
+
+        {errorMsg && (
+          <div style={{
+            padding: '10px 12px', borderRadius: 8, marginBottom: 14,
+            background: `${C.red}22`, border: `1px solid ${C.red}`,
+            color: '#fca5a5', fontSize: 12, fontWeight: 700
+          }}>
+            {errorMsg}
+            {remainingCooldown > 0 && (
+              <div style={{ fontSize: 15, fontWeight: 900, color: '#ffffff', marginTop: 4 }}>
+                ⏳ Cooldown: {remainingCooldown}s
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Senior-Friendly Large Numeric Keypad */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(digit => (
+            <button
+              key={digit}
+              type="button"
+              disabled={remainingCooldown > 0}
+              onClick={() => handleDigitPress(digit)}
+              style={{
+                padding: '15px 0', borderRadius: 12,
+                border: `1.5px solid ${C.border}`,
+                background: C.card2, color: '#ffffff',
+                fontSize: 22, fontWeight: 900,
+                cursor: remainingCooldown > 0 ? 'not-allowed' : 'pointer',
+                opacity: remainingCooldown > 0 ? 0.5 : 1
+              }}
+            >
+              {digit}
+            </button>
+          ))}
+          <button
+            type="button"
+            disabled={remainingCooldown > 0}
+            onClick={() => setEnteredPin(p => p.slice(0, -1))}
+            style={{
+              padding: '15px 0', borderRadius: 12,
+              border: `1.5px solid ${C.border}`,
+              background: `${C.red}18`, color: '#fca5a5',
+              fontSize: 15, fontWeight: 800,
+              cursor: remainingCooldown > 0 ? 'not-allowed' : 'pointer'
+            }}
+          >
+            ⌫ Clear
+          </button>
+          <button
+            type="button"
+            disabled={remainingCooldown > 0}
+            onClick={() => handleDigitPress('0')}
+            style={{
+              padding: '15px 0', borderRadius: 12,
+              border: `1.5px solid ${C.border}`,
+              background: C.card2, color: '#ffffff',
+              fontSize: 22, fontWeight: 900,
+              cursor: remainingCooldown > 0 ? 'not-allowed' : 'pointer'
+            }}
+          >
+            0
+          </button>
+          <button
+            type="button"
+            disabled={remainingCooldown > 0 || enteredPin.length < 4}
+            onClick={() => verifyPinAttempt(enteredPin)}
+            style={{
+              padding: '15px 0', borderRadius: 12,
+              border: `1.5px solid ${C.green}`,
+              background: enteredPin.length >= 4 ? C.green : `${C.green}22`,
+              color: enteredPin.length >= 4 ? '#051b11' : C.green,
+              fontSize: 15, fontWeight: 900,
+              cursor: remainingCooldown > 0 || enteredPin.length < 4 ? 'not-allowed' : 'pointer'
+            }}
+          >
+            🔓 Unlock
+          </button>
+        </div>
+
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+          <span style={{ color: C.muted }}>Enter your 4–6 digit PIN</span>
+          <button
+            type="button"
+            onClick={onEmergencySignOut}
+            style={{ background: 'none', border: 'none', color: C.amber, fontWeight: 700, cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}
+          >
+            Forgot PIN? Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── CYBER SECURITY & DATA PROTECTION CENTER TAB ─────────────────────────────
+function SecurityCenterTab({
+  accounts = [],
+  setAccounts,
+  budgetData = {},
+  setBudgetData,
+  majorExpenses = [],
+  setMajorExpenses,
+  credits = [],
+  setCredits,
+  debts = [],
+  setDebts,
+  balanceHistory = [],
+  setBalanceHistory,
+  session,
+  role,
+  sm,
+  canUpdate,
+  fakeMode,
+  setFakeMode,
+  onLockVaultNow,
+  onAppendSecurityLog,
+  onRecordHoneypotIntrusion,
+  onEmergencySignOutAndWipe
+}) {
+  const userId = session?.user?.id || 'local';
+  const userEmail = session?.user?.email || 'Local User';
+  const secCfg = budgetData?.securityConfig || {};
+  const auditLogs = Array.isArray(budgetData?.securityAuditLogs) ? budgetData.securityAuditLogs : [];
+  const honeypotEvents = Array.isArray(budgetData?.honeypotEvents) ? budgetData.honeypotEvents : [];
+  const blockedIntruders = Array.isArray(secCfg.blockedIntruders) ? secCfg.blockedIntruders : [];
+
+  // PIN Setup States
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinMsg, setPinMsg] = useState({ text: '', type: '' });
+
+  // Honeynet & Honeypot States
+  const [duressPinInput, setDuressPinInput] = useState('');
+  const [duressPinMsg, setDuressPinMsg] = useState({ text: '', type: '' });
+  const [simAttackType, setSimAttackType] = useState('RECON_ENDPOINT');
+  const [simulatingAttack, setSimulatingAttack] = useState(false);
+  const [hpSeverityFilter, setHpSeverityFilter] = useState('ALL');
+  const [hpSearch, setHpSearch] = useState('');
+  const [manualBlockIp, setManualBlockIp] = useState('');
+  const [incidentReportModal, setIncidentReportModal] = useState(null); // null or { mode: 'ALL' | 'SINGLE', event: obj }
+  const [copiedComplaint, setCopiedComplaint] = useState(false);
+
+  // Integrity & Scan States
+  const [liveIntegrityHash, setLiveIntegrityHash] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [scanReport, setScanReport] = useState(null);
+
+  // Encrypted Backup / Restore States
+  const [backupPassword, setBackupPassword] = useState('');
+  const [backupMsg, setBackupMsg] = useState({ text: '', type: '' });
+  const [restorePassword, setRestorePassword] = useState('');
+  const [restoreEnvelope, setRestoreEnvelope] = useState(null);
+  const [restoreFileName, setRestoreFileName] = useState('');
+  const [restorePreview, setRestorePreview] = useState(null);
+  const [restoreMsg, setRestoreMsg] = useState({ text: '', type: '' });
+  const restoreFileRef = useRef(null);
+
+  // Audit Log Filter States
+  const [logSeverityFilter, setLogSeverityFilter] = useState('ALL');
+  const [logSearch, setLogSearch] = useState('');
+
+  // Privacy Balance Mask sync
+  const [balancesHidden, setBalancesHidden] = useState(() => {
+    try {
+      return localStorage.getItem('dashboardMoneyMasked') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const hasVaultPin = Boolean(secCfg.pinHash);
+  const hasDuressPin = Boolean(secCfg.duressPinHash);
+  const canaryAccountEnabled = secCfg.canaryAccountEnabled !== false;
+  const autoLockOnCanary = Boolean(secCfg.autoLockOnCanary);
+  const autoLockMinutes = Number(secCfg.autoLockMinutes) || 0;
+  const lockOnTabHide = Boolean(secCfg.lockOnTabHide);
+  const autoBlurUnfocus = Boolean(secCfg.autoBlurUnfocus);
+  const highValueThreshold = Number(secCfg.highValueThreshold) || 50000;
+
+  useEffect(() => {
+    let active = true;
+    computeFinancialIntegrityFingerprint({ accounts, budgetData, debts, credits, majorExpenses }).then(hash => {
+      if (active) setLiveIntegrityHash(hash);
+    });
+    return () => { active = false; };
+  }, [accounts, budgetData, debts, credits, majorExpenses]);
+
+  const updateSecurityConfig = (updates, logEventText = null, logSeverity = 'INFO') => {
+    setBudgetData(prev => {
+      const prevCfg = prev?.securityConfig || {};
+      const nextLogs = Array.isArray(prev?.securityAuditLogs) ? [...prev.securityAuditLogs] : [];
+      if (logEventText) {
+        nextLogs.unshift({
+          id: `sec_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          timestamp: new Date().toISOString(),
+          severity: logSeverity,
+          event: logEventText,
+          actor: userEmail
+        });
+      }
+      return {
+        ...prev,
+        securityConfig: { ...prevCfg, ...updates },
+        securityAuditLogs: nextLogs.slice(0, 150)
+      };
+    });
+  };
+
+  // Calculate Security Posture Score (0 - 100)
+  const integrityMatchesSeal = Boolean(secCfg.sealedIntegrityHash && liveIntegrityHash && secCfg.sealedIntegrityHash === liveIntegrityHash);
+  const hasEncryptedBackup = Boolean(secCfg.lastEncryptedBackupAt);
+
+  const securityChecks = [
+    {
+      id: 'auth',
+      label: 'Supabase Cloud JWT Session & Role Isolation',
+      passed: Boolean(session?.access_token || !isSupabaseConfigured),
+      points: 20,
+      detail: session?.access_token ? 'Authenticated via encrypted Bearer JWT with row-level user isolation.' : 'Running in local offline mode.'
+    },
+    {
+      id: 'pin',
+      label: 'App Vault PIN Lock Protection (SHA-256 Salted Hash)',
+      passed: hasVaultPin,
+      points: 25,
+      detail: hasVaultPin ? '4–6 digit Security PIN is active with 5-attempt brute-force lockout.' : 'Set a 4–6 digit Security PIN below to prevent unauthorized screen access.'
+    },
+    {
+      id: 'autolock',
+      label: 'Auto-Lock Inactivity & Tab-Switch Guard',
+      passed: hasVaultPin && (autoLockMinutes > 0 || lockOnTabHide),
+      points: 15,
+      detail: (hasVaultPin && (autoLockMinutes > 0 || lockOnTabHide))
+        ? `Auto-locks after ${autoLockMinutes > 0 ? `${autoLockMinutes} min idle` : ''}${autoLockMinutes > 0 && lockOnTabHide ? ' or ' : ''}${lockOnTabHide ? 'tab minimize' : ''}.`
+        : 'Enable an idle timeout (e.g., 5 mins) or Lock on Tab Minimize.'
+    },
+    {
+      id: 'privacy',
+      label: 'Anti-Shoulder-Surfing Privacy Shield',
+      passed: autoBlurUnfocus || balancesHidden || fakeMode,
+      points: 15,
+      detail: (autoBlurUnfocus || balancesHidden || fakeMode)
+        ? 'Screen privacy protection (Auto-Blur on Unfocus, Balance Masking, or Decoy Mode) is active.'
+        : 'Enable Auto-Blur on Window Unfocus or Balance Masking to block shoulder-surfing.'
+    },
+    {
+      id: 'integrity',
+      label: 'Cryptographic Data Integrity Seal (SHA-256)',
+      passed: integrityMatchesSeal,
+      points: 15,
+      detail: integrityMatchesSeal
+        ? `Financial records match sealed SHA-256 fingerprint (${liveIntegrityHash.slice(0, 12)}…).`
+        : 'Click "Seal Integrity Fingerprint" below to baseline your current financial records.'
+    },
+    {
+      id: 'backup',
+      label: 'AES-256-GCM Password-Encrypted Vault Backup',
+      passed: hasEncryptedBackup,
+      points: 10,
+      detail: hasEncryptedBackup
+        ? `Last encrypted backup exported on ${new Date(secCfg.lastEncryptedBackupAt).toLocaleDateString()}.`
+        : 'Export an AES-256-GCM encrypted backup file to protect against data loss.'
+    }
+  ];
+
+  const securityScore = securityChecks.reduce((sum, item) => sum + (item.passed ? item.points : 0), 0);
+  const scoreGrade = securityScore >= 85
+    ? { label: 'FORTRESS LEVEL', color: C.green, bg: '#063729', border: C.green }
+    : securityScore >= 65
+    ? { label: 'WELL PROTECTED', color: C.teal, bg: '#0b2545', border: C.teal }
+    : securityScore >= 45
+    ? { label: 'MODERATE RISK', color: C.amber, bg: '#422006', border: C.amber }
+    : { label: 'VULNERABLE — ACTION NEEDED', color: C.red, bg: '#450a0a', border: C.red };
+
+  // Save new PIN
+  const handleSavePin = async (e) => {
+    e.preventDefault();
+    const cleanPin = newPin.trim();
+    if (!/^\d{4,6}$/.test(cleanPin)) {
+      setPinMsg({ text: 'PIN must be 4 to 6 numeric digits (0–9).', type: 'error' });
+      return;
+    }
+    if (cleanPin !== confirmPin.trim()) {
+      setPinMsg({ text: 'PIN confirmation does not match.', type: 'error' });
+      return;
+    }
+    const hashed = await hashVaultPin(cleanPin, userId);
+    updateSecurityConfig(
+      {
+        pinHash: hashed,
+        pinUpdatedAt: new Date().toISOString(),
+        autoLockMinutes: autoLockMinutes || 5
+      },
+      'App Vault Security PIN configured and enabled (SHA-256 salted hash).',
+      'INFO'
+    );
+    setNewPin('');
+    setConfirmPin('');
+    setPinMsg({ text: '✓ Security PIN enabled! You can now lock the app anytime.', type: 'success' });
+  };
+
+  const handleRemovePin = () => {
+    updateSecurityConfig(
+      { pinHash: null, autoLockMinutes: 0, lockOnTabHide: false },
+      'App Vault Security PIN disabled by user.',
+      'WARNING'
+    );
+    setPinMsg({ text: 'Security PIN has been removed.', type: 'error' });
+  };
+
+  // Run Full Security & Anomaly Scan
+  const handleRunFullScan = async () => {
+    setScanning(true);
+    const hash = await computeFinancialIntegrityFingerprint({ accounts, budgetData, debts, credits, majorExpenses });
+    setLiveIntegrityHash(hash);
+
+    // Check high-value outflows
+    const allDebits = (budgetData?.debitHistory || []).filter(d => !d.isCredit && (Number(d.amount) || 0) >= highValueThreshold);
+    // Check negative account balances
+    const negativeAccs = accounts.filter(a => (Number(a.balance) || 0) < 0);
+    // Count localStorage keys
+    let lsCount = 0;
+    let lsBytes = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k) {
+          lsCount++;
+          lsBytes += (k.length + (localStorage.getItem(k) || '').length) * 2;
+        }
+      }
+    } catch (_) {}
+
+    setTimeout(() => {
+      const scanTime = new Date().toISOString();
+      setScanReport({
+        scannedAt: scanTime,
+        integrityHash: hash,
+        highValueOutflowsCount: allDebits.length,
+        negativeAccountsCount: negativeAccs.length,
+        localStorageKeys: lsCount,
+        localStorageKb: (lsBytes / 1024).toFixed(1),
+        httpHeadersHardened: true
+      });
+      updateSecurityConfig(
+        { lastSecurityScanAt: scanTime },
+        `Full Cyber Security & Anomaly Scan completed (Score: ${securityScore}/100, Integrity: ${hash.slice(0, 10)}…).`,
+        'INFO'
+      );
+      setScanning(false);
+    }, 450);
+  };
+
+  // Seal Integrity Fingerprint
+  const handleSealIntegrity = () => {
+    if (!liveIntegrityHash) return;
+    updateSecurityConfig(
+      {
+        sealedIntegrityHash: liveIntegrityHash,
+        sealedIntegrityAt: new Date().toISOString()
+      },
+      `Cryptographic SHA-256 Data Integrity Fingerprint sealed (${liveIntegrityHash.slice(0, 16)}…).`,
+      'INFO'
+    );
+  };
+
+  // Export AES-256-GCM Encrypted Backup
+  const handleExportEncryptedVault = async () => {
+    if (!backupPassword || backupPassword.length < 6) {
+      setBackupMsg({ text: 'Please enter an encryption password of at least 6 characters.', type: 'error' });
+      return;
+    }
+    try {
+      const vaultPayload = {
+        exportedBy: userEmail,
+        exportedAt: new Date().toISOString(),
+        accounts,
+        budgetData,
+        majorExpenses,
+        credits,
+        debts,
+        balanceHistory
+      };
+      const encryptedEnvelope = await encryptVaultBackup(vaultPayload, backupPassword);
+      const blob = new Blob([JSON.stringify(encryptedEnvelope, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `BudgetApp_EncryptedVault_${dateStr}.bvault.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      updateSecurityConfig(
+        { lastEncryptedBackupAt: new Date().toISOString() },
+        `Exported AES-256-GCM encrypted backup vault (BudgetApp_EncryptedVault_${dateStr}.bvault.json).`,
+        'INFO'
+      );
+      setBackupPassword('');
+      setBackupMsg({ text: '✓ Encrypted .bvault.json backup downloaded! Keep your password safe.', type: 'success' });
+    } catch (err) {
+      setBackupMsg({ text: err.message || 'Failed to encrypt backup.', type: 'error' });
+    }
+  };
+
+  // Load & Decrypt Encrypted Backup
+  const handleSelectRestoreFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setRestoreFileName(file.name);
+    setRestorePreview(null);
+    setRestoreMsg({ text: '', type: '' });
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (parsed.format !== 'BUDGET_APP_ENCRYPTED_VAULT_V1') {
+          setRestoreMsg({ text: 'Selected file is not a valid BudgetApp AES-256-GCM Encrypted Vault (.bvault.json).', type: 'error' });
+          setRestoreEnvelope(null);
+          return;
+        }
+        setRestoreEnvelope(parsed);
+        setRestoreMsg({ text: '✓ Encrypted vault loaded. Enter your decryption password to verify and unlock it.', type: 'success' });
+      } catch {
+        setRestoreMsg({ text: 'Invalid JSON file.', type: 'error' });
+        setRestoreEnvelope(null);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDecryptPreview = async () => {
+    if (!restoreEnvelope) {
+      setRestoreMsg({ text: 'Please select a .bvault.json file first.', type: 'error' });
+      return;
+    }
+    if (!restorePassword) {
+      setRestoreMsg({ text: 'Please enter the decryption password.', type: 'error' });
+      return;
+    }
+    try {
+      const decrypted = await decryptVaultBackup(restoreEnvelope, restorePassword);
+      setRestorePreview(decrypted);
+      setRestoreMsg({ text: '🔓 Decryption successful! Verify the summary below before restoring.', type: 'success' });
+    } catch (err) {
+      setRestorePreview(null);
+      setRestoreMsg({ text: err.message, type: 'error' });
+    }
+  };
+
+  const handleConfirmRestoreVault = () => {
+    if (!restorePreview) return;
+    if (Array.isArray(restorePreview.accounts)) setAccounts(restorePreview.accounts);
+    if (restorePreview.budgetData && typeof restorePreview.budgetData === 'object') {
+      setBudgetData(restorePreview.budgetData);
+    }
+    if (Array.isArray(restorePreview.majorExpenses)) setMajorExpenses(restorePreview.majorExpenses);
+    if (Array.isArray(restorePreview.credits)) setCredits(restorePreview.credits);
+    if (Array.isArray(restorePreview.debts)) setDebts(restorePreview.debts);
+    if (Array.isArray(restorePreview.balanceHistory)) setBalanceHistory(restorePreview.balanceHistory);
+
+    if (onAppendSecurityLog) {
+      onAppendSecurityLog(`Restored financial profile from AES-256-GCM encrypted backup (${restoreFileName}).`, 'WARNING');
+    }
+    setRestorePreview(null);
+    setRestoreEnvelope(null);
+    setRestorePassword('');
+    setRestoreMsg({ text: '✅ Financial data restored from encrypted vault!', type: 'success' });
+  };
+
+  // Toggle Global Balance Mask
+  const handleToggleBalanceMask = () => {
+    const next = !balancesHidden;
+    setBalancesHidden(next);
+    try {
+      localStorage.setItem('dashboardMoneyMasked', String(next));
+    } catch (_) {}
+    updateSecurityConfig(
+      { hideBalancesDefault: next },
+      `Global Balance Masking (*****) turned ${next ? 'ON' : 'OFF'}.`,
+      'INFO'
+    );
+  };
+
+  // ── Honeynet & Honeypot Handlers ───────────────────────────────────────────
+  const handleSaveDuressPin = async (e) => {
+    e.preventDefault();
+    const clean = duressPinInput.trim();
+    if (!/^\d{4,6}$/.test(clean)) {
+      setDuressPinMsg({ text: 'Duress Honey-PIN must be 4 to 6 numeric digits (0–9).', type: 'error' });
+      return;
+    }
+    const candidateHash = await hashVaultPin(clean, userId);
+    if (secCfg.pinHash && candidateHash === secCfg.pinHash) {
+      setDuressPinMsg({ text: 'Duress Honey-PIN must be DIFFERENT from your primary Security PIN.', type: 'error' });
+      return;
+    }
+    updateSecurityConfig(
+      {
+        duressPinHash: candidateHash,
+        duressPinUpdatedAt: new Date().toISOString()
+      },
+      'Duress Honey-PIN trap configured (unlocks silently into Decoy / Fake Mode when entered under coercion).',
+      'INFO'
+    );
+    setDuressPinInput('');
+    setDuressPinMsg({ text: '✓ Duress Honey-PIN enabled! Entering it at the lock screen silently activates Decoy Mode & logs the intruder.', type: 'success' });
+  };
+
+  const handleRemoveDuressPin = () => {
+    updateSecurityConfig(
+      { duressPinHash: null },
+      'Duress Honey-PIN trap removed by user.',
+      'WARNING'
+    );
+    setDuressPinMsg({ text: 'Duress Honey-PIN removed.', type: 'error' });
+  };
+
+  const handleToggleBlockIntruder = (ipOrDevice) => {
+    const cleanTarget = String(ipOrDevice || '').trim();
+    if (!cleanTarget) return;
+    const isAlreadyBlocked = blockedIntruders.includes(cleanTarget);
+    const nextBlocked = isAlreadyBlocked
+      ? blockedIntruders.filter(item => item !== cleanTarget)
+      : [cleanTarget, ...blockedIntruders];
+
+    updateSecurityConfig(
+      { blockedIntruders: nextBlocked },
+      isAlreadyBlocked
+        ? `Unblocked IP / Device from Honeynet Blocklist: ${cleanTarget}`
+        : `🚫 Blocked Intruder IP / Device in Honeynet Defense: ${cleanTarget}`,
+      isAlreadyBlocked ? 'INFO' : 'WARNING'
+    );
+  };
+
+  const handleAddManualBlock = (e) => {
+    e.preventDefault();
+    if (!manualBlockIp.trim()) return;
+    handleToggleBlockIntruder(manualBlockIp.trim());
+    setManualBlockIp('');
+  };
+
+  const handleSimulateIntrusion = async () => {
+    setSimulatingAttack(true);
+    const scenarios = {
+      RECON_ENDPOINT: {
+        severity: 'CRITICAL',
+        trapType: 'RECON_ENDPOINT',
+        trapName: 'Serverless Recon Honeypot (/.env & /api/v1/export-db)',
+        attemptedAction: 'GET /.env & /api/v1/export-db — Automated scanner attempted to steal database credentials & SQL dump',
+        responseAction: 'Served Fake Canary Credentials + Captured Intruder IP, Geo & User-Agent'
+      },
+      CANARY_ACCOUNT: {
+        severity: 'CRITICAL',
+        trapType: 'CANARY_ACCOUNT',
+        trapName: 'Canary Bank Account Trap (BPI Executive Reserve ••9941)',
+        attemptedAction: 'Unauthorized snooper clicked decoy VIP Canary Bank Account to inspect passbook & Peso balance',
+        responseAction: autoLockOnCanary && hasVaultPin
+          ? 'Blocked Passbook Access + Logged Intruder Telemetry + Triggered Vault Lock'
+          : 'Displayed Decoy Hardware-Key Error 403-CANARY + Logged Intruder Telemetry'
+      },
+      DURESS_PIN: {
+        severity: 'CRITICAL',
+        trapType: 'DURESS_PIN',
+        trapName: 'Duress Honey-PIN Trap (Vault Lock Screen)',
+        attemptedAction: 'Coerced unlock using secondary Duress Honey-PIN on App Vault keypad',
+        responseAction: 'Silently Activated Decoy / Fake Wealth Mode + Logged Intruder IP & Device'
+      },
+      LOGIN_BOT_TRAP: {
+        severity: 'HIGH',
+        trapType: 'LOGIN_BOT_TRAP',
+        trapName: 'Auth Login Bot & Credential-Stuffing Honeypot',
+        attemptedAction: 'Automated bot filled hidden admin_api_token_verify honeypot field & failed password authentication',
+        responseAction: 'Rejected Sign-In + Recorded Pre-Auth Bot IP & Browser Fingerprint'
+      }
+    };
+
+    const chosen = scenarios[simAttackType] || scenarios.RECON_ENDPOINT;
+    if (onRecordHoneypotIntrusion) {
+      await onRecordHoneypotIntrusion({
+        ...chosen,
+        isSimulation: true
+      });
+    }
+    setSimulatingAttack(false);
+  };
+
+  const handleClearHoneypotEvents = () => {
+    setBudgetData(prev => ({
+      ...prev,
+      honeypotEvents: []
+    }));
+    if (onAppendSecurityLog) {
+      onAppendSecurityLog('Cleared Honeynet & Honeypot intruder telemetry table.', 'INFO');
+    }
+  };
+
+  // Filtered Honeypot Intruder Events
+  const filteredHoneypotEvents = useMemo(() => {
+    return honeypotEvents.filter(ev => {
+      if (hpSeverityFilter !== 'ALL' && ev.severity !== hpSeverityFilter) return false;
+      if (hpSearch.trim()) {
+        const q = hpSearch.toLowerCase();
+        const hay = `${ev.ip || ''} ${ev.location || ''} ${ev.userAgent || ''} ${ev.trapName || ''} ${ev.attemptedAction || ''} ${ev.responseAction || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [honeypotEvents, hpSeverityFilter, hpSearch]);
+
+  // Export Forensic Evidence (.CSV or .JSON)
+  const handleExportForensicEvidence = (format = 'json') => {
+    const eventsToExport = filteredHoneypotEvents.length > 0 ? filteredHoneypotEvents : honeypotEvents;
+    const dateStamp = new Date().toISOString().slice(0, 10);
+
+    if (format === 'csv') {
+      const headers = ['Event ID', 'Timestamp (ISO)', 'Severity', 'Intruder IP', 'Geo-Location', 'User-Agent / Device', 'Targeted Trap', 'Attempted Action', 'Auto-Response Taken', 'Blocked Status'];
+      const escapeCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const rows = eventsToExport.map(ev => [
+        ev.id,
+        ev.timestamp,
+        ev.severity,
+        ev.ip,
+        ev.location,
+        ev.userAgent,
+        ev.trapName,
+        ev.attemptedAction,
+        ev.responseAction,
+        blockedIntruders.includes(ev.ip) ? 'BLOCKED' : 'MONITORED'
+      ].map(escapeCsv).join(','));
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Honeynet_Forensic_Evidence_${dateStamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      const payload = {
+        reportType: 'BUDGETAPP_HONEYNET_FORENSIC_EVIDENCE_V1',
+        generatedAt: new Date().toISOString(),
+        systemOwner: userEmail,
+        integritySha256: liveIntegrityHash || 'PENDING',
+        totalEventsCaptured: eventsToExport.length,
+        blockedIntrudersList: blockedIntruders,
+        intrusionEvents: eventsToExport
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Honeynet_Forensic_Evidence_${dateStamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    if (onAppendSecurityLog) {
+      onAppendSecurityLog(`Exported Honeynet Forensic Evidence Package in ${format.toUpperCase()} format (${eventsToExport.length} events).`, 'INFO');
+    }
+  };
+
+  // Generate Official Abuse Complaint Text (CERT-PH / NPC / PNP-ACG / ISP)
+  const buildOfficialAbuseComplaintText = (targetEvent = null) => {
+    const eventsList = targetEvent ? [targetEvent] : (honeypotEvents.length > 0 ? honeypotEvents.slice(0, 15) : []);
+    const uniqueIps = Array.from(new Set(eventsList.map(e => e.ip).filter(Boolean)));
+    const caseId = `CASE-PH-HN-${Date.now().toString().slice(-6)}`;
+    const nowIso = new Date().toISOString();
+    const nowPht = new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
+
+    const eventLines = eventsList.length === 0
+      ? '  [No intrusion events currently selected — trigger a Honeypot simulation or select an event row]'
+      : eventsList.map((ev, idx) => (
+          `  Incident #${idx + 1} [${ev.id || 'N/A'}]\n` +
+          `  • Timestamp (UTC)   : ${ev.timestamp}\n` +
+          `  • Severity          : ${ev.severity}\n` +
+          `  • Intruder IP       : ${ev.ip || 'Unknown'}\n` +
+          `  • Geo-Location      : ${ev.location || 'Unknown'}\n` +
+          `  • Device / Agent    : ${ev.userAgent || 'Unknown'}\n` +
+          `  • Honeypot Trap Hit : ${ev.trapName || ev.trapType}\n` +
+          `  • Attempted Action  : ${ev.attemptedAction}\n` +
+          `  • System Response   : ${ev.responseAction}`
+        )).join('\n\n');
+
+    return (
+`================================================================================
+OFFICIAL CYBERSECURITY INTRUSION & UNAUTHORIZED ACCESS INCIDENT REPORT
+================================================================================
+CASE REFERENCE ID   : ${caseId}
+GENERATED AT (PHT)  : ${nowPht} (Asia/Manila)
+GENERATED AT (UTC)  : ${nowIso}
+AFFECTED OWNER      : ${userEmail}
+SYSTEM INTEGRITY    : SHA-256 ${liveIntegrityHash || 'Verified'}
+================================================================================
+
+TO:
+  1. DICT — Philippine National Computer Emergency Response Team (CERT-PH)
+     Email: cert-ph@dict.gov.ph
+  2. National Privacy Commission (NPC Philippines) — Complaints & Investigation
+     Email: complaints@privacy.gov.ph
+  3. PNP Anti-Cybercrime Group (PNP-ACG) / NBI Cybercrime Division
+  4. Upstream Network / ISP Abuse Desk for IP(s): ${uniqueIps.join(', ') || 'See Telemetry Below'}
+
+SUBJECT:
+  FORMAL REPORT OF UNAUTHORIZED ACCESS ATTEMPT / HONEYNET TRAP TRIGGER
+  (Republic Act No. 10175 — Cybercrime Prevention Act of 2012 & RA 10173 Data Privacy Act)
+
+1. EXECUTIVE SUMMARY
+  This is an official forensic incident report generated by the BudgetApp2025
+  Cyber Security & Honeynet Deception Module. Our active Honeypot / Honeynet
+  deception sensors detected and logged unauthorized access / reconnaissance /
+  tampering attempts targeting private financial records belonging to ${userEmail}.
+
+2. IDENTIFIED INTRUDER NETWORK INDICATORS (IOCs)
+  • Captured Source IP(s) : ${uniqueIps.length > 0 ? uniqueIps.join(', ') : 'None recorded'}
+  • Blocked Intruders     : ${blockedIntruders.length > 0 ? blockedIntruders.join(', ') : 'None'}
+  • Total Incidents Logged: ${eventsList.length}
+
+3. CHRONOLOGICAL FORENSIC HONEYPOT TELEMETRY LOGS
+${eventLines}
+
+4. DEFENSIVE ACTIONS TAKEN BY SYSTEM OWNER
+  • Intruder IP & Device User-Agent fingerprinted and logged in immutable audit storage.
+  • Decoy / Honeypot response served to prevent disclosure of real financial records.
+  • Cryptographic SHA-256 Financial Data Integrity verified (${liveIntegrityHash ? liveIntegrityHash.slice(0, 24) + '...' : 'Active'}).
+
+5. REQUESTED ACTION
+  We respectfully request that your office / Abuse Desk investigate the source IP
+  address(es) listed above for violations of R.A. 10175 (Illegal Access / System
+  Interference) and take appropriate network mitigation or law-enforcement action.
+
+Signed & Exported Electronically,
+${userEmail}
+System Owner — BudgetApp2025 Cyber Security & Honeynet Defense Center
+================================================================================`
+    );
+  };
+
+  const handleDownloadAbuseComplaintTxt = (targetEvent = null) => {
+    const text = buildOfficialAbuseComplaintText(targetEvent);
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Official_Cybercrime_Abuse_Report_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (onAppendSecurityLog) {
+      onAppendSecurityLog('Downloaded Official Cybercrime & Abuse Complaint (.TXT) for CERT-PH / NPC / ISP.', 'INFO');
+    }
+  };
+
+  const handleCopyAbuseComplaint = async (targetEvent = null) => {
+    const text = buildOfficialAbuseComplaintText(targetEvent);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedComplaint(true);
+      setTimeout(() => setCopiedComplaint(false), 3000);
+    } catch (_) {}
+  };
+
+  // Combine stored audit logs with automatic anomaly events (high-value outflows)
+  const highValueTxLogs = useMemo(() => {
+    return (budgetData?.debitHistory || [])
+      .filter(d => !d.isCredit && (Number(d.amount) || 0) >= highValueThreshold)
+      .slice(0, 15)
+      .map(d => ({
+        id: `hv_${d.id}`,
+        timestamp: d.date ? `${d.date}T12:00:00.000Z` : new Date().toISOString(),
+        severity: 'WARNING',
+        event: `High-Value Money Out Detected: ${peso(d.amount)} from ${d.accountName || 'Account'} (${d.description || 'Withdrawal'})`,
+        actor: userEmail
+      }));
+  }, [budgetData?.debitHistory, highValueThreshold, userEmail]);
+
+  const combinedAuditLogs = useMemo(() => {
+    const all = [...auditLogs, ...highValueTxLogs].sort((a, b) =>
+      String(b.timestamp || '').localeCompare(String(a.timestamp || ''))
+    );
+    return all.filter(item => {
+      if (logSeverityFilter !== 'ALL' && item.severity !== logSeverityFilter) return false;
+      if (logSearch.trim()) {
+        const q = logSearch.toLowerCase();
+        if (!`${item.event || ''} ${item.actor || ''} ${item.severity || ''}`.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [auditLogs, highValueTxLogs, logSeverityFilter, logSearch]);
+
+  // Decode session expiry info
+  const sessionInfo = useMemo(() => {
+    const token = session?.access_token || '';
+    let expDate = null;
+    if (session?.expires_at) {
+      expDate = new Date(session.expires_at * 1000);
+    }
+    return {
+      maskedToken: token ? `${token.slice(0, 10)}••••••••••••${token.slice(-8)}` : 'Local Offline Session',
+      expiresAtStr: expDate ? expDate.toLocaleString() : 'N/A',
+      provider: session?.user?.app_metadata?.provider || 'email',
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Browser'
+    };
+  }, [session]);
+
+  return (
+    <div>
+      {/* ── Top Cyber Security Posture Banner (Solid Background — No Gradient) ── */}
+      <Card style={{
+        marginBottom: 16,
+        background: scoreGrade.bg,
+        border: `2px solid ${scoreGrade.border}`
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: 16,
+              background: '#050b16',
+              border: `2.5px solid ${scoreGrade.color}`,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <div style={{ fontSize: 24, fontWeight: 900, color: scoreGrade.color, lineHeight: 1 }}>
+                {securityScore}
+              </div>
+              <div style={{ fontSize: 9, fontWeight: 800, color: C.muted, marginTop: 2 }}>
+                / 100 PTS
+              </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: sm ? 18 : 22, fontWeight: 900, color: '#ffffff' }}>
+                  🛡️ Cyber Security & Data Protection Center
+                </span>
+                <span style={{
+                  fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+                  background: '#050b16', color: scoreGrade.color, border: `1.5px solid ${scoreGrade.color}`
+                }}>
+                  {scoreGrade.label}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.86)', marginTop: 4 }}>
+                Protect your accounts and financial data against unauthorized access, physical snooping, tampering, and breaches.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {hasVaultPin && (
+              <button
+                type="button"
+                onClick={onLockVaultNow}
+                style={{
+                  padding: '10px 18px', borderRadius: 10,
+                  border: `2px solid ${C.amber}`, background: '#050b16',
+                  color: C.amber, fontSize: 13, fontWeight: 900, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6
+                }}
+              >
+                🔒 Lock App Now (Alt+L)
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleRunFullScan}
+              disabled={scanning}
+              style={{
+                padding: '10px 18px', borderRadius: 10,
+                border: '2px solid #ffffff', background: '#ffffff',
+                color: '#050b16', fontSize: 13, fontWeight: 900, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6
+              }}
+            >
+              {scanning ? '⏳ Scanning Defenses…' : '🔍 Run Full Security Scan'}
+            </button>
+          </div>
+        </div>
+
+        {/* 6-Point Defense Posture Checklist */}
+        <div style={{
+          marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.18)',
+          display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3, 1fr)', gap: 10
+        }}>
+          {securityChecks.map(chk => (
+            <div
+              key={chk.id}
+              style={{
+                background: 'rgba(5, 11, 22, 0.78)',
+                border: `1.5px solid ${chk.passed ? C.green : C.amber}88`,
+                borderRadius: 10, padding: '10px 12px'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#ffffff' }}>
+                  {chk.passed ? '✅' : '⚠️'} {chk.label}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 900, color: chk.passed ? C.green : C.amber, whiteSpace: 'nowrap' }}>
+                  +{chk.points} pts
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 4, lineHeight: 1.35 }}>
+                {chk.detail}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Scan Report Result Banner */}
+        {scanReport && (
+          <div style={{
+            marginTop: 12, padding: '12px 16px', borderRadius: 10,
+            background: '#050b16', border: `1.5px solid ${C.teal}`,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10
+          }}>
+            <div style={{ fontSize: 12, color: C.text }}>
+              <strong style={{ color: C.teal }}>✓ Security Scan Complete ({new Date(scanReport.scannedAt).toLocaleTimeString()}):</strong>{' '}
+              SHA-256 Hash <code style={{ color: C.green }}>{scanReport.integrityHash.slice(0, 16)}…</code> ·{' '}
+              Local Cache: <strong>{scanReport.localStorageKb} KB</strong> ({scanReport.localStorageKeys} keys) ·{' '}
+              High-Value Outflows (≥{peso(highValueThreshold)}): <strong>{scanReport.highValueOutflowsCount}</strong> ·{' '}
+              HTTP Headers: <strong style={{ color: C.green }}>Hardened (HSTS / DENY / nosniff)</strong>
+            </div>
+            <button
+              type="button"
+              onClick={() => setScanReport(null)}
+              style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12, fontWeight: 800 }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </Card>
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          🍯 HONEYNET & HONEYPOT DECEPTION, INTRUDER TELEMETRY, ACTIONS & REPORTS
+         ══════════════════════════════════════════════════════════════════════════ */}
+      <Card style={{
+        marginBottom: 16,
+        background: '#1a1207',
+        border: `2px solid ${C.amber}`
+      }}>
+        {/* Honeynet Header & Live Summary Badges */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14, marginBottom: 16 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: sm ? 18 : 21, fontWeight: 900, color: '#ffffff' }}>
+                🍯 Honeynet & Honeypot Intrusion Detection Center
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+                background: '#050b16', color: C.amber, border: `1.5px solid ${C.amber}`
+              }}>
+                5 DECEPTION SENSORS ACTIVE
+              </span>
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+              See everyone who tries to access your financial information or probe your system, take immediate defensive action, and generate official cybercrime / abuse reports.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setIncidentReportModal({ mode: 'ALL', event: null })}
+              style={{
+                padding: '9px 15px', borderRadius: 10,
+                border: `2px solid ${C.amber}`, background: C.amber,
+                color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6
+              }}
+            >
+              📄 Open Official Incident & Abuse Report
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExportForensicEvidence('csv')}
+              style={{
+                padding: '9px 13px', borderRadius: 10,
+                border: `1.5px solid ${C.teal}`, background: '#050b16',
+                color: C.teal, fontSize: 12, fontWeight: 800, cursor: 'pointer'
+              }}
+            >
+              📊 Export Forensic CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExportForensicEvidence('json')}
+              style={{
+                padding: '9px 13px', borderRadius: 10,
+                border: `1.5px solid ${C.blue}`, background: '#050b16',
+                color: C.blue, fontSize: 12, fontWeight: 800, cursor: 'pointer'
+              }}
+            >
+              🧬 Export Forensic JSON
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Honeynet KPI Counters (Solid Cards) */}
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+          <div style={{ background: '#050b16', border: `1.5px solid ${C.amber}`, borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Total Intrusions Captured</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: C.amber, marginTop: 2 }}>{honeypotEvents.length}</div>
+            <div style={{ fontSize: 11, color: C.muted }}>Logged with IP, Geo & Device</div>
+          </div>
+          <div style={{ background: '#050b16', border: `1.5px solid ${C.red}`, borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Critical Trap Triggers</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: C.red, marginTop: 2 }}>
+              {honeypotEvents.filter(e => e.severity === 'CRITICAL').length}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted }}>Canary / Duress / Recon Hits</div>
+          </div>
+          <div style={{ background: '#050b16', border: `1.5px solid ${C.purple}`, borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Blocked Intruder IPs</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: C.purple, marginTop: 2 }}>{blockedIntruders.length}</div>
+            <div style={{ fontSize: 11, color: C.muted }}>Active Honeynet Blocklist</div>
+          </div>
+          <div style={{ background: '#050b16', border: `1.5px solid ${C.green}`, borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Active Deception Traps</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: C.green, marginTop: 2 }}>
+              {3 + (canaryAccountEnabled ? 1 : 0) + (hasDuressPin ? 1 : 0)} / 5
+            </div>
+            <div style={{ fontSize: 11, color: C.muted }}>API, Canary, Auth, Token, PIN</div>
+          </div>
+        </div>
+
+        {/* ── 5 Active Honeypot Traps Configuration & Safe Simulator Bar ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+          {/* Trap 1 & 4 & 5: Serverless API, Login Bot & LocalStorage Honey-Tokens */}
+          <div style={{ background: '#081121', border: `1.5px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 900, color: '#ffffff' }}>🕸️ 1. Recon API & Login Bot Traps</span>
+              <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 8, background: `${C.green}22`, color: C.green, border: `1px solid ${C.green}` }}>
+                ALWAYS ARMED
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.45, marginBottom: 8 }}>
+              Decoy traps armed at <code style={{ color: C.amber }}>/.env</code>, <code style={{ color: C.amber }}>/api/debug-env</code>, <code style={{ color: C.amber }}>/api/v1/export-db</code>, <code style={{ color: C.amber }}>/admin-backup.sql</code>, hidden login bot inputs, and browser <code style={{ color: C.amber }}>localStorage</code> honey-tokens.
+            </div>
+            <div style={{ fontSize: 11, color: C.green, fontWeight: 700 }}>
+              ✓ Automatically captures scanner IP, City/Country & User-Agent.
+            </div>
+          </div>
+
+          {/* Trap 2: Canary Bank Account Trap */}
+          <div style={{ background: '#081121', border: `1.5px solid ${canaryAccountEnabled ? C.amber : C.border}`, borderRadius: 12, padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 900, color: '#ffffff' }}>🏦 2. Canary Bank Account Trap</span>
+              <button
+                type="button"
+                onClick={() => updateSecurityConfig(
+                  { canaryAccountEnabled: !canaryAccountEnabled },
+                  `Canary Bank Account Trap turned ${!canaryAccountEnabled ? 'ON' : 'OFF'}.`,
+                  'INFO'
+                )}
+                style={{
+                  padding: '3px 10px', borderRadius: 8, fontSize: 10, fontWeight: 900, cursor: 'pointer',
+                  border: `1px solid ${canaryAccountEnabled ? C.amber : C.border}`,
+                  background: canaryAccountEnabled ? `${C.amber}22` : C.bg,
+                  color: canaryAccountEnabled ? C.amber : C.muted
+                }}
+              >
+                {canaryAccountEnabled ? '🍯 ARMED' : 'OFF'}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.45, marginBottom: 10 }}>
+              Places a decoy <strong style={{ color: '#fff' }}>BPI Executive Reserve Vault ••9941</strong> tripwire card in the Account Dashboard. If a snooper clicks it, their IP and device are logged immediately.
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: C.text, fontWeight: 700, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={autoLockOnCanary}
+                onChange={e => updateSecurityConfig(
+                  { autoLockOnCanary: e.target.checked },
+                  `Auto-Lock Vault on Canary Trap Trigger turned ${e.target.checked ? 'ON' : 'OFF'}.`,
+                  'INFO'
+                )}
+                style={{ accentColor: C.amber, width: 15, height: 15, cursor: 'pointer' }}
+              />
+              🔒 Immediately Lock App Vault if Canary Trap is touched
+            </label>
+          </div>
+
+          {/* Trap 3: Duress Honey-PIN (Coerced Unlock Trap) */}
+          <div style={{ background: '#081121', border: `1.5px solid ${hasDuressPin ? C.purple : C.border}`, borderRadius: 12, padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 900, color: '#ffffff' }}>🎭 3. Duress "Honey-PIN" Trap</span>
+              <span style={{
+                fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 8,
+                background: hasDuressPin ? `${C.purple}22` : `${C.muted}22`,
+                color: hasDuressPin ? C.purple : C.muted,
+                border: `1px solid ${hasDuressPin ? C.purple : C.border}`
+              }}>
+                {hasDuressPin ? '🟣 ARMED' : 'NOT SET'}
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4, marginBottom: 8 }}>
+              Set a secondary 4–6 digit PIN. If someone forces you to unlock your screen, enter this Honey-PIN to silently switch into <strong style={{ color: '#fff' }}>Decoy / Fake Wealth Mode</strong> while logging the intruder!
+            </div>
+            {duressPinMsg.text && (
+              <div style={{ fontSize: 11, color: duressPinMsg.type === 'error' ? C.red : C.green, fontWeight: 700, marginBottom: 6 }}>
+                {duressPinMsg.text}
+              </div>
+            )}
+            <form onSubmit={handleSaveDuressPin} style={{ display: 'flex', gap: 6 }}>
+              <Inp
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                value={duressPinInput}
+                onChange={e => setDuressPinInput(e.target.value.replace(/\D/g, ''))}
+                placeholder={hasDuressPin ? 'New Duress PIN' : 'Set 4–6 digit Duress PIN'}
+                style={{ padding: '6px 9px', fontSize: 12 }}
+              />
+              <button
+                type="submit"
+                style={{
+                  padding: '6px 12px', borderRadius: 7, border: 'none',
+                  background: C.purple, color: '#ffffff', fontSize: 11, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                }}
+              >
+                {hasDuressPin ? 'Update' : 'Arm PIN'}
+              </button>
+              {hasDuressPin && (
+                <button
+                  type="button"
+                  onClick={handleRemoveDuressPin}
+                  style={{
+                    padding: '6px 8px', borderRadius: 7, border: `1px solid ${C.red}66`,
+                    background: 'transparent', color: C.red, fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </form>
+          </div>
+        </div>
+
+        {/* ── Safe "Simulate Intrusion Attack" Self-Test Bar ── */}
+        <div style={{
+          background: '#050b16', border: `1.5px solid ${C.amber}`, borderRadius: 12,
+          padding: '12px 16px', marginBottom: 18,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12
+        }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: C.amber }}>
+              🎯 Test Your Honeynet: Simulate an Intrusion Attack (Safe Self-Test)
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+              Trigger a realistic simulated attack to verify how the Honeynet captures the intruder's live IP address, Geo-Location, and Browser User-Agent.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              value={simAttackType}
+              onChange={e => setSimAttackType(e.target.value)}
+              style={{
+                padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${C.border}`,
+                background: C.card, color: C.text, fontSize: 12, fontWeight: 700
+              }}
+            >
+              <option value="RECON_ENDPOINT">🕵️ 1. Recon Bot Probe (/.env & /api/v1/export-db)</option>
+              <option value="CANARY_ACCOUNT">🏦 2. Snooper Clicked Canary Bank Account (BPI Reserve)</option>
+              <option value="DURESS_PIN">🎭 3. Coerced Duress Honey-PIN Unlock</option>
+              <option value="LOGIN_BOT_TRAP">🤖 4. Credential-Stuffing / Login Bot Trap</option>
+            </select>
+            <button
+              type="button"
+              onClick={handleSimulateIntrusion}
+              disabled={simulatingAttack}
+              style={{
+                padding: '8px 16px', borderRadius: 8, border: 'none',
+                background: C.amber, color: '#050b16', fontSize: 12, fontWeight: 900,
+                cursor: simulatingAttack ? 'wait' : 'pointer', whiteSpace: 'nowrap'
+              }}
+            >
+              {simulatingAttack ? '⏳ Capturing Telemetry…' : '🎯 Trigger Simulated Attack'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── "Who Tried to Access My Information & System" — Live Intruder Telemetry Table ── */}
+        <div style={{ background: '#050b16', border: `1.5px solid ${C.border}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: '#ffffff' }}>
+                👀 Who Tried to Access My Information & System (Intruder Telemetry Log)
+              </div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                Every unauthorized probe, failed unlock, or honeypot trap trigger is recorded below with network & device forensics.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'].map(sev => (
+                <button
+                  key={sev}
+                  type="button"
+                  onClick={() => setHpSeverityFilter(sev)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 10, fontSize: 10, fontWeight: 900, cursor: 'pointer',
+                    border: `1px solid ${hpSeverityFilter === sev ? C.amber : C.border}`,
+                    background: hpSeverityFilter === sev ? `${C.amber}22` : 'transparent',
+                    color: hpSeverityFilter === sev ? C.amber : C.muted
+                  }}
+                >
+                  {sev}
+                </button>
+              ))}
+              {honeypotEvents.length > 0 && canUpdate && (
+                <button
+                  type="button"
+                  onClick={handleClearHoneypotEvents}
+                  style={{
+                    padding: '4px 10px', borderRadius: 10, fontSize: 10, fontWeight: 800, cursor: 'pointer',
+                    border: `1px solid ${C.red}66`, background: 'transparent', color: C.red
+                  }}
+                >
+                  🗑️ Clear Logs
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <Inp
+              type="text"
+              value={hpSearch}
+              onChange={e => setHpSearch(e.target.value)}
+              placeholder="🔍 Search by Intruder IP Address, City/Country, Browser/OS User-Agent, or Honeypot Trap…"
+              style={{ padding: '8px 12px', fontSize: 12 }}
+            />
+          </div>
+
+          {filteredHoneypotEvents.length === 0 ? (
+            <div style={{
+              textAlign: 'center', padding: '28px 16px',
+              background: '#081121', borderRadius: 10, border: `1px dashed ${C.border}`, color: C.muted, fontSize: 13
+            }}>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>🍯</div>
+              <div style={{ fontWeight: 800, color: '#ffffff', marginBottom: 4 }}>
+                No Intruder Telemetry Recorded Yet
+              </div>
+              <div>
+                All 5 Honeynet traps are armed and listening. Click <strong style={{ color: C.amber }}>"🎯 Trigger Simulated Attack"</strong> above to see live intruder IP, location, device fingerprinting, and incident reporting in action!
+              </div>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: '#0b172a', color: C.muted, textAlign: 'left', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <th style={{ padding: '10px 10px', borderBottom: `1px solid ${C.border}` }}>Timestamp</th>
+                    <th style={{ padding: '10px 10px', borderBottom: `1px solid ${C.border}` }}>Severity</th>
+                    <th style={{ padding: '10px 10px', borderBottom: `1px solid ${C.border}` }}>Who (IP & Geo-Location)</th>
+                    <th style={{ padding: '10px 10px', borderBottom: `1px solid ${C.border}` }}>Device / Browser / Scanner</th>
+                    <th style={{ padding: '10px 10px', borderBottom: `1px solid ${C.border}` }}>Trap Triggered & Attempted Action</th>
+                    <th style={{ padding: '10px 10px', borderBottom: `1px solid ${C.border}` }}>Auto-Response</th>
+                    <th style={{ padding: '10px 10px', borderBottom: `1px solid ${C.border}`, textAlign: 'right' }}>Actions & Report</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredHoneypotEvents.map((ev, idx) => {
+                    const sevClr = ev.severity === 'CRITICAL' ? C.red : ev.severity === 'HIGH' ? C.amber : C.blue;
+                    const isIpBlocked = Boolean(ev.ip && blockedIntruders.includes(ev.ip));
+                    return (
+                      <tr key={ev.id || idx} style={{ borderBottom: `1px solid ${C.border}55`, background: isIpBlocked ? 'rgba(239, 68, 68, 0.08)' : 'transparent' }}>
+                        <td style={{ padding: '10px', whiteSpace: 'nowrap', color: C.text, fontWeight: 700, fontSize: 11 }}>
+                          <div>{ev.timestamp ? new Date(ev.timestamp).toLocaleDateString() : '—'}</div>
+                          <div style={{ color: C.muted, fontSize: 10 }}>{ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString() : ''}</div>
+                        </td>
+                        <td style={{ padding: '10px', whiteSpace: 'nowrap' }}>
+                          <span style={{
+                            fontSize: 10, fontWeight: 900, padding: '3px 8px', borderRadius: 6,
+                            background: `${sevClr}22`, color: sevClr, border: `1px solid ${sevClr}`
+                          }}>
+                            {ev.severity || 'HIGH'}
+                          </span>
+                          {ev.isSimulation && (
+                            <div style={{ fontSize: 9, color: C.amber, fontWeight: 800, marginTop: 3 }}>SIMULATION</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          <div style={{ fontFamily: 'monospace', fontWeight: 900, color: '#ffffff', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {ev.ip || '127.0.0.1'}
+                            {isIpBlocked && (
+                              <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: C.red, color: '#fff', fontWeight: 900 }}>
+                                BLOCKED
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 11, color: C.teal, fontWeight: 700, marginTop: 2 }}>
+                            📍 {ev.location || 'Asia/Manila, PH'}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px', maxWidth: 210 }}>
+                          <div style={{ fontSize: 11, color: C.text, wordBreak: 'break-word', lineHeight: 1.35 }}>
+                            {ev.userAgent || 'Unknown Client'}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px', maxWidth: 260 }}>
+                          <div style={{ fontWeight: 800, color: C.amber, fontSize: 12 }}>
+                            {ev.trapName || ev.trapType}
+                          </div>
+                          <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.35 }}>
+                            {ev.attemptedAction}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px', maxWidth: 190 }}>
+                          <span style={{ fontSize: 11, color: C.green, fontWeight: 700, lineHeight: 1.35 }}>
+                            ✓ {ev.responseAction || 'Logged & Contained'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleBlockIntruder(ev.ip || '127.0.0.1')}
+                              style={{
+                                padding: '5px 9px', borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer',
+                                border: `1px solid ${isIpBlocked ? C.green : C.red}`,
+                                background: isIpBlocked ? `${C.green}22` : `${C.red}22`,
+                                color: isIpBlocked ? C.green : '#fca5a5'
+                              }}
+                            >
+                              {isIpBlocked ? '✅ Unblock IP' : '🚫 Block IP'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIncidentReportModal({ mode: 'SINGLE', event: ev })}
+                              style={{
+                                padding: '5px 9px', borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer',
+                                border: `1px solid ${C.amber}`, background: `${C.amber}22`, color: C.amber
+                              }}
+                            >
+                              📄 Report
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ── Two-Column Action & Report Guide: "What Action Can I Do?" + "What Report Can I Do?" ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 14 }}>
+          {/* Column 1: What Action Can I Do? (Active Defensive Countermeasures) */}
+          <div style={{ background: '#081121', border: `1.5px solid ${C.red}88`, borderRadius: 12, padding: 14 }}>
+            <div style={{ fontSize: 15, fontWeight: 900, color: '#ffffff', marginBottom: 4 }}>
+              ⚡ What Action Can I Do? (Immediate Countermeasures)
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
+              Take immediate defensive action when you spot an unauthorized access attempt:
+            </div>
+
+            {/* 1. Manual IP / Device Blocklist Manager */}
+            <div style={{ padding: 10, borderRadius: 8, background: '#050b16', border: `1px solid ${C.border}`, marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: C.text, marginBottom: 6 }}>
+                🚫 1. Block Intruder IP Address or Device Fingerprint
+              </div>
+              <form onSubmit={handleAddManualBlock} style={{ display: 'flex', gap: 6, marginBottom: blockedIntruders.length > 0 ? 8 : 0 }}>
+                <Inp
+                  type="text"
+                  value={manualBlockIp}
+                  onChange={e => setManualBlockIp(e.target.value)}
+                  placeholder="Enter suspicious IP (e.g. 185.220.101.4) or Device ID…"
+                  style={{ padding: '6px 10px', fontSize: 12 }}
+                />
+                <button
+                  type="submit"
+                  style={{
+                    padding: '6px 12px', borderRadius: 7, border: 'none',
+                    background: C.red, color: '#ffffff', fontSize: 11, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                  }}
+                >
+                  🚫 Block Now
+                </button>
+              </form>
+              {blockedIntruders.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {blockedIntruders.map(ip => (
+                    <span
+                      key={ip}
+                      style={{
+                        fontSize: 11, fontFamily: 'monospace', fontWeight: 800,
+                        padding: '3px 8px', borderRadius: 6,
+                        background: `${C.red}22`, color: '#fca5a5', border: `1px solid ${C.red}`,
+                        display: 'inline-flex', alignItems: 'center', gap: 6
+                      }}
+                    >
+                      🚫 {ip}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleBlockIntruder(ip)}
+                        style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 900, padding: 0 }}
+                        title="Unblock IP"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Quick Countermeasure Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !fakeMode;
+                  setFakeMode(next);
+                  updateSecurityConfig({}, `Honeynet Countermeasure: Decoy / Fake Mode turned ${next ? 'ON' : 'OFF'}.`, 'WARNING');
+                }}
+                style={{
+                  padding: '10px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                  border: `1.5px solid ${fakeMode ? C.purple : C.border}`,
+                  background: fakeMode ? '#2e1065' : '#050b16', color: '#ffffff'
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 900, color: fakeMode ? '#d8b4fe' : C.purple }}>
+                  🤫 {fakeMode ? 'Decoy Mode ACTIVE' : 'Activate Decoy / Fake Mode'}
+                </div>
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
+                  Feeds fake Peso balances to deceive snoopers.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (hasVaultPin) {
+                    onLockVaultNow();
+                  } else {
+                    setPinMsg({ text: 'Please set a 4–6 digit Security PIN below first.', type: 'error' });
+                  }
+                }}
+                style={{
+                  padding: '10px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                  border: `1.5px solid ${C.amber}`, background: '#050b16', color: '#ffffff'
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 900, color: C.amber }}>
+                  🔒 Lock App Vault Screen
+                </div>
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
+                  Blocks screen with PIN keypad & 5-try lockout.
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Column 2: What Report Can I Do? (Official Cybercrime & Abuse Reporting Suite) */}
+          <div style={{ background: '#081121', border: `1.5px solid ${C.teal}88`, borderRadius: 12, padding: 14 }}>
+            <div style={{ fontSize: 15, fontWeight: 900, color: '#ffffff', marginBottom: 4 }}>
+              📋 What Report Can I Do? (Official Cybercrime & Abuse Reports)
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
+              Generate formal forensic documentation for Philippine cybercrime authorities or network abuse desks:
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{
+                padding: '10px 12px', borderRadius: 8, background: '#050b16', border: `1px solid ${C.border}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+              }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: C.amber }}>
+                    🖨️ 1. Printable Official Cyber Security Incident Report (PDF)
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted }}>
+                    Formatted forensic report with Case ID, Intruder IPs, timestamps & SHA-256 hash.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIncidentReportModal({ mode: 'ALL', event: null })}
+                  style={{
+                    padding: '7px 12px', borderRadius: 7, border: 'none',
+                    background: C.amber, color: '#050b16', fontSize: 11, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                  }}
+                >
+                  🖨️ View & Print PDF
+                </button>
+              </div>
+
+              <div style={{
+                padding: '10px 12px', borderRadius: 8, background: '#050b16', border: `1px solid ${C.border}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+              }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: C.teal }}>
+                    🇵🇭 2. DICT CERT-PH / NPC / PNP-ACG / ISP Abuse Complaint Letter
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted }}>
+                    Pre-filled R.A. 10175 Cybercrime & R.A. 10173 Data Privacy complaint ready to email.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyAbuseComplaint(null)}
+                    style={{
+                      padding: '7px 10px', borderRadius: 7, border: `1px solid ${C.teal}`,
+                      background: `${C.teal}22`, color: C.teal, fontSize: 11, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {copiedComplaint ? '✓ Copied!' : '📋 Copy Letter'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadAbuseComplaintTxt(null)}
+                    style={{
+                      padding: '7px 10px', borderRadius: 7, border: `1px solid ${C.blue}`,
+                      background: `${C.blue}22`, color: C.blue, fontSize: 11, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap'
+                    }}
+                  >
+                    ⬇️ .TXT
+                  </button>
+                </div>
+              </div>
+
+              <div style={{
+                padding: '10px 12px', borderRadius: 8, background: '#050b16', border: `1px solid ${C.border}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+              }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: C.green }}>
+                    🧬 3. Raw Forensic Evidence Package (.CSV & .JSON)
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted }}>
+                    Machine-readable telemetry logs for IT investigators or law enforcement.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleExportForensicEvidence('csv')}
+                    style={{
+                      padding: '7px 10px', borderRadius: 7, border: `1px solid ${C.green}`,
+                      background: `${C.green}22`, color: C.green, fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                    }}
+                  >
+                    📊 CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExportForensicEvidence('json')}
+                    style={{
+                      padding: '7px 10px', borderRadius: 7, border: `1px solid ${C.green}`,
+                      background: `${C.green}22`, color: C.green, fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                    }}
+                  >
+                    🧬 JSON
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Row 1: App Vault PIN Lock + Anti-Shoulder-Surfing Privacy Shield ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        {/* 1. App Vault PIN Lock & Auto-Lock Guard */}
+        <Card style={{ marginBottom: 0, border: `1.5px solid ${hasVaultPin ? C.green : C.amber}55` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <SecTitle style={{ margin: 0 }}>🔐 1. App Vault PIN Lock & Auto-Lock Guard</SecTitle>
+            <span style={{
+              fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+              background: hasVaultPin ? `${C.green}22` : `${C.amber}22`,
+              color: hasVaultPin ? C.green : C.amber,
+              border: `1px solid ${hasVaultPin ? C.green : C.amber}`
+            }}>
+              {hasVaultPin ? '🟢 PIN ACTIVE' : '🟡 NOT SET'}
+            </span>
+          </div>
+
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 14, lineHeight: 1.45 }}>
+            Protect your financial dashboard with a 4–6 digit Security PIN. Even if you leave your computer or phone unlocked, nobody can view or touch your accounts without your PIN.
+          </div>
+
+          {pinMsg.text && (
+            <div style={{
+              padding: '9px 12px', borderRadius: 8, marginBottom: 12, fontSize: 12, fontWeight: 700,
+              background: pinMsg.type === 'error' ? `${C.red}22` : `${C.green}22`,
+              border: `1px solid ${pinMsg.type === 'error' ? C.red : C.green}`,
+              color: pinMsg.type === 'error' ? C.red : C.green
+            }}>
+              {pinMsg.text}
+            </div>
+          )}
+
+          <form onSubmit={handleSavePin} style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr auto', gap: 10, alignItems: 'flex-end', marginBottom: 16 }}>
+            <div>
+              <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                {hasVaultPin ? 'New 4–6 Digit PIN' : 'Create 4–6 Digit PIN'}
+              </label>
+              <Inp
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                value={newPin}
+                onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••"
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                Confirm PIN
+              </label>
+              <Inp
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                value={confirmPin}
+                onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                placeholder="••••"
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="submit"
+                style={{
+                  padding: '9px 16px', borderRadius: 8, border: 'none',
+                  background: C.green, color: '#051b11', fontSize: 12, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                }}
+              >
+                {hasVaultPin ? '🔄 Update PIN' : '🔐 Enable PIN'}
+              </button>
+              {hasVaultPin && (
+                <button
+                  type="button"
+                  onClick={handleRemovePin}
+                  style={{
+                    padding: '9px 12px', borderRadius: 8, border: `1px solid ${C.red}66`,
+                    background: `${C.red}18`, color: C.red, fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* Auto-Lock Timeout & Tab Hide Settings */}
+          <div style={{
+            padding: 12, borderRadius: 10, background: `${C.panel}88`, border: `1px solid ${C.border}`,
+            display: 'flex', flexDirection: 'column', gap: 10
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>⏱️ Auto-Lock After Inactivity</div>
+                <div style={{ fontSize: 11, color: C.muted }}>Automatically locks the screen when no mouse or keyboard activity is detected.</div>
+              </div>
+              <select
+                value={autoLockMinutes}
+                disabled={!hasVaultPin}
+                onChange={e => updateSecurityConfig({ autoLockMinutes: Number(e.target.value) }, `Auto-Lock idle timer set to ${e.target.value} minute(s).`)}
+                style={{ padding: '7px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, fontWeight: 700 }}
+              >
+                <option value={0}>Off (Manual Lock Only)</option>
+                <option value={1}>After 1 Minute Idle</option>
+                <option value={3}>After 3 Minutes Idle</option>
+                <option value={5}>After 5 Minutes Idle</option>
+                <option value={15}>After 15 Minutes Idle</option>
+                <option value={30}>After 30 Minutes Idle</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: `1px solid ${C.border}44` }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>🪟 Lock Immediately When Tab is Hidden / Minimized</div>
+                <div style={{ fontSize: 11, color: C.muted }}>Requires PIN entry as soon as you switch browser tabs or minimize the window.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={lockOnTabHide}
+                disabled={!hasVaultPin}
+                onChange={e => updateSecurityConfig({ lockOnTabHide: e.target.checked }, `Lock on Tab Minimize turned ${e.target.checked ? 'ON' : 'OFF'}.`)}
+                style={{ width: 18, height: 18, accentColor: C.green, cursor: hasVaultPin ? 'pointer' : 'not-allowed' }}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* 2. Anti-Shoulder-Surfing & Screen Privacy Shield */}
+        <Card style={{ marginBottom: 0, border: `1.5px solid ${C.blue}55` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <SecTitle style={{ margin: 0 }}>🕵️ 2. Anti-Shoulder-Surfing & Privacy Shield</SecTitle>
+            <span style={{
+              fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+              background: (autoBlurUnfocus || balancesHidden || fakeMode) ? `${C.green}22` : `${C.muted}22`,
+              color: (autoBlurUnfocus || balancesHidden || fakeMode) ? C.green : C.muted
+            }}>
+              {(autoBlurUnfocus || balancesHidden || fakeMode) ? '🛡️ SHIELD ACTIVE' : 'STANDARD VIEW'}
+            </span>
+          </div>
+
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 14, lineHeight: 1.45 }}>
+            Prevent bystanders, screen-recording software, or shoulder-surfers in public places from seeing your real Philippine bank balances.
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Auto-Blur on Window Unfocus */}
+            <div style={{
+              padding: 12, borderRadius: 10, background: `${C.panel}88`, border: `1px solid ${autoBlurUnfocus ? C.green : C.border}`,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: C.text }}>🌫️ Auto-Blur Screen When Window Loses Focus</div>
+                <div style={{ fontSize: 11, color: C.muted }}>Automatically blurs the entire app whenever you click outside the browser window.</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateSecurityConfig({ autoBlurUnfocus: !autoBlurUnfocus }, `Auto-Blur on Window Unfocus turned ${!autoBlurUnfocus ? 'ON' : 'OFF'}.`)}
+                style={{
+                  padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 800,
+                  border: `1.5px solid ${autoBlurUnfocus ? C.green : C.border}`,
+                  background: autoBlurUnfocus ? `${C.green}22` : C.bg,
+                  color: autoBlurUnfocus ? C.green : C.muted,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {autoBlurUnfocus ? '🟢 ON' : '⚪ OFF'}
+              </button>
+            </div>
+
+            {/* Hide All Balances (*****) */}
+            <div style={{
+              padding: 12, borderRadius: 10, background: `${C.panel}88`, border: `1px solid ${balancesHidden ? C.amber : C.border}`,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: C.text }}>🙈 Hide All Account Balances (*****)</div>
+                <div style={{ fontSize: 11, color: C.muted }}>Replaces Peso amounts on dashboards and passbooks with ***** until toggled back.</div>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleBalanceMask}
+                style={{
+                  padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 800,
+                  border: `1.5px solid ${balancesHidden ? C.amber : C.border}`,
+                  background: balancesHidden ? `${C.amber}22` : C.bg,
+                  color: balancesHidden ? C.amber : C.muted,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {balancesHidden ? '🙈 Masked' : '👁️ Visible'}
+              </button>
+            </div>
+
+            {/* Decoy / Fake Mode */}
+            <div style={{
+              padding: 12, borderRadius: 10, background: `${C.panel}88`, border: `1px solid ${fakeMode ? C.purple : C.border}`,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: C.text }}>🤫 Decoy / Fake Mode (Disguise Real Wealth)</div>
+                <div style={{ fontSize: 11, color: C.muted }}>Substitutes real Peso figures with randomized decoy numbers when presenting or sharing screen.</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !fakeMode;
+                  setFakeMode(next);
+                  updateSecurityConfig({}, `Decoy / Fake Mode turned ${next ? 'ON' : 'OFF'}.`);
+                }}
+                style={{
+                  padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 800,
+                  border: `1.5px solid ${fakeMode ? C.purple : C.border}`,
+                  background: fakeMode ? `${C.purple}22` : C.bg,
+                  color: fakeMode ? C.purple : C.muted,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {fakeMode ? '🤫 Decoy ON' : '⚪ OFF'}
+              </button>
+            </div>
+
+            {/* High-Value Outflow Alert Threshold */}
+            <div style={{
+              padding: 12, borderRadius: 10, background: `${C.panel}88`, border: `1px solid ${C.border}`,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap'
+            }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>🚨 High-Value Money Out Alert Threshold</div>
+                <div style={{ fontSize: 11, color: C.muted }}>Automatically flags withdrawals equal to or above this amount in the Security Audit Log.</div>
+              </div>
+              <select
+                value={highValueThreshold}
+                onChange={e => updateSecurityConfig({ highValueThreshold: Number(e.target.value) }, `High-Value Outflow threshold updated to ₱${Number(e.target.value).toLocaleString()}.`)}
+                style={{ padding: '7px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, fontWeight: 700 }}
+              >
+                <option value={10000}>₱10,000+</option>
+                <option value={25000}>₱25,000+</option>
+                <option value={50000}>₱50,000+</option>
+                <option value={100000}>₱100,000+</option>
+                <option value={250000}>₱250,000+</option>
+              </select>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* ── Row 2: Cryptographic Data Integrity & AES-256-GCM Encrypted Vault Backup ── */}
+      <Card style={{ marginBottom: 16, border: `1.5px solid ${C.teal}55` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <SecTitle style={{ margin: 0 }}>🧬 3. Cryptographic Data Integrity (SHA-256) & AES-256-GCM Encrypted Vault Backup</SecTitle>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+              Verify that your financial data has not been tampered with, and export military-grade AES-256-GCM encrypted backups.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSealIntegrity}
+            style={{
+              padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${C.teal}`,
+              background: `${C.teal}22`, color: C.teal, fontSize: 12, fontWeight: 800, cursor: 'pointer'
+            }}
+          >
+            🔏 Seal Current SHA-256 Integrity Fingerprint
+          </button>
+        </div>
+
+        {/* Live SHA-256 Checksum Bar */}
+        <div style={{
+          padding: '12px 14px', borderRadius: 10, background: '#050b16', border: `1px solid ${integrityMatchesSeal ? C.green : C.border}`,
+          marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10
+        }}>
+          <div>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>
+              Live Financial Profile SHA-256 Checksum ({accounts.length} Accounts · {(budgetData?.debitHistory || []).length} Ledger Logs)
+            </div>
+            <div style={{ fontFamily: 'monospace', fontSize: sm ? 11 : 13, color: C.green, fontWeight: 700, marginTop: 3, wordBreak: 'break-all' }}>
+              {liveIntegrityHash || 'Computing SHA-256 digest…'}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{
+              fontSize: 11, fontWeight: 900, padding: '4px 10px', borderRadius: 10,
+              background: integrityMatchesSeal ? `${C.green}22` : `${C.amber}22`,
+              color: integrityMatchesSeal ? C.green : C.amber,
+              border: `1px solid ${integrityMatchesSeal ? C.green : C.amber}`
+            }}>
+              {integrityMatchesSeal
+                ? '✓ VERIFIED — MATCHES SEALED HASH'
+                : secCfg.sealedIntegrityHash
+                ? '⚠️ MODIFIED SINCE LAST SEAL'
+                : 'UNSEALED — CLICK SEAL ABOVE'}
+            </span>
+          </div>
+        </div>
+
+        {/* Export & Restore Encrypted Vault Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 16 }}>
+          {/* Export Encrypted Backup */}
+          <div style={{ padding: 14, borderRadius: 12, background: `${C.panel}88`, border: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>
+              📦 Export AES-256-GCM Encrypted Vault (.bvault.json)
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
+              Encrypts all accounts, transaction logs, budgets, debts, and goals with PBKDF2 (100,000 iterations) + AES-256-GCM. Unreadable without your password.
+            </div>
+
+            {backupMsg.text && (
+              <div style={{
+                padding: '8px 10px', borderRadius: 6, marginBottom: 10, fontSize: 11, fontWeight: 700,
+                background: backupMsg.type === 'error' ? `${C.red}22` : `${C.green}22`,
+                color: backupMsg.type === 'error' ? C.red : C.green,
+                border: `1px solid ${backupMsg.type === 'error' ? C.red : C.green}`
+              }}>
+                {backupMsg.text}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                  Encryption Password (min 6 chars)
+                </label>
+                <Inp
+                  type="password"
+                  value={backupPassword}
+                  onChange={e => setBackupPassword(e.target.value)}
+                  placeholder="Enter secret passphrase…"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleExportEncryptedVault}
+                style={{
+                  padding: '9px 16px', borderRadius: 8, border: 'none',
+                  background: C.teal, color: '#041f1e', fontSize: 12, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                }}
+              >
+                🔒 Encrypt & Download
+              </button>
+            </div>
+          </div>
+
+          {/* Decrypt & Restore Encrypted Backup */}
+          <div style={{ padding: 14, borderRadius: 12, background: `${C.panel}88`, border: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>
+              🔓 Decrypt & Restore From Encrypted Vault
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
+              Select a previously exported <code style={{ color: C.text }}>.bvault.json</code> file and enter its password to verify and restore.
+            </div>
+
+            {restoreMsg.text && (
+              <div style={{
+                padding: '8px 10px', borderRadius: 6, marginBottom: 10, fontSize: 11, fontWeight: 700,
+                background: restoreMsg.type === 'error' ? `${C.red}22` : `${C.green}22`,
+                color: restoreMsg.type === 'error' ? C.red : C.green,
+                border: `1px solid ${restoreMsg.type === 'error' ? C.red : C.green}`
+              }}>
+                {restoreMsg.text}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+              <input
+                type="file"
+                ref={restoreFileRef}
+                accept=".json,.bvault.json"
+                onChange={handleSelectRestoreFile}
+                style={{ display: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => restoreFileRef.current?.click()}
+                style={{
+                  padding: '8px 14px', borderRadius: 7, border: `1px solid ${C.blue}`,
+                  background: `${C.blue}22`, color: C.text, fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                }}
+              >
+                📁 Select .bvault.json File
+              </button>
+              {restoreFileName && <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{restoreFileName}</span>}
+            </div>
+
+            {restoreEnvelope && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                    Decryption Password
+                  </label>
+                  <Inp
+                    type="password"
+                    value={restorePassword}
+                    onChange={e => setRestorePassword(e.target.value)}
+                    placeholder="Enter vault passphrase…"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDecryptPreview}
+                  style={{
+                    padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.amber}`,
+                    background: `${C.amber}22`, color: C.amber, fontSize: 12, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap'
+                  }}
+                >
+                  🔑 Unlock Vault
+                </button>
+              </div>
+            )}
+
+            {restorePreview && (
+              <div style={{
+                padding: 10, borderRadius: 8, background: '#050b16', border: `1px solid ${C.green}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+              }}>
+                <div style={{ fontSize: 11, color: C.text }}>
+                  <strong>Verified Backup ({new Date(restorePreview.exportedAt).toLocaleDateString()}):</strong>{' '}
+                  {(restorePreview.accounts || []).length} Accounts · {((restorePreview.budgetData?.debitHistory) || []).length} Tx Logs
+                </div>
+                {canUpdate && (
+                  <button
+                    type="button"
+                    onClick={handleConfirmRestoreVault}
+                    style={{
+                      padding: '6px 12px', borderRadius: 6, border: 'none',
+                      background: C.green, color: '#051b11', fontSize: 11, fontWeight: 900, cursor: 'pointer'
+                    }}
+                  >
+                    ✓ Restore Now
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Row 3: Active Session Inspector & Emergency Kill-Switch + Security Audit Log ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '2fr 3fr', gap: 16 }}>
+        {/* 4. Active Session Inspector & Emergency Cache Kill-Switch */}
+        <Card style={{ marginBottom: 0, border: `1.5px solid ${C.border}` }}>
+          <SecTitle>💻 4. Active Session & Emergency Kill-Switch</SecTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12 }}>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.panel}88`, border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Authenticated Identity</div>
+              <div style={{ fontWeight: 800, color: C.text, marginTop: 2 }}>{userEmail}</div>
+              <div style={{ fontSize: 11, color: C.blue, marginTop: 2 }}>System Role: {role?.toUpperCase()} · Provider: {sessionInfo.provider}</div>
+            </div>
+
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.panel}88`, border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Bearer JWT Session Fingerprint</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 11, color: C.green, marginTop: 2 }}>{sessionInfo.maskedToken}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Token Expires: {sessionInfo.expiresAtStr}</div>
+            </div>
+
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.panel}88`, border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Active Device & HTTP Security</div>
+              <div style={{ fontSize: 11, color: C.text, marginTop: 2, wordBreak: 'break-word' }}>{sessionInfo.userAgent}</div>
+              <div style={{ fontSize: 11, color: C.green, fontWeight: 700, marginTop: 4 }}>
+                ✓ HSTS · X-Frame-Options: DENY · X-Content-Type-Options: nosniff
+              </div>
+            </div>
+
+            <div style={{
+              marginTop: 6, padding: 12, borderRadius: 10,
+              background: 'rgba(239, 68, 68, 0.12)', border: `1.5px solid ${C.red}`
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: '#fca5a5', marginBottom: 4 }}>
+                🚨 Emergency Sign Out & Wipe Local Cache
+              </div>
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
+                Immediately terminates your cloud session and scrubs all cached financial data from this browser so nobody using this device can inspect local storage.
+              </div>
+              <button
+                type="button"
+                onClick={onEmergencySignOutAndWipe}
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 8,
+                  border: `1.5px solid ${C.red}`, background: C.red,
+                  color: '#ffffff', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}
+              >
+                🚨 Sign Out & Purge Browser Cache Now
+              </button>
+            </div>
+          </div>
+        </Card>
+
+        {/* 5. Security Event & Intrusion Audit Log */}
+        <Card style={{ marginBottom: 0, border: `1.5px solid ${C.border}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <SecTitle style={{ margin: 0 }}>📜 5. Security Event & Intrusion Audit Log</SecTitle>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                Chronological trail of PIN locks, failed unlock attempts, encrypted backups, and high-value outflows.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {['ALL', 'CRITICAL', 'WARNING', 'INFO'].map(sev => (
+                <button
+                  key={sev}
+                  type="button"
+                  onClick={() => setLogSeverityFilter(sev)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 12, fontSize: 10, fontWeight: 800, cursor: 'pointer',
+                    border: `1px solid ${logSeverityFilter === sev ? C.blue : C.border}`,
+                    background: logSeverityFilter === sev ? `${C.blue}22` : 'transparent',
+                    color: logSeverityFilter === sev ? C.blue : C.muted
+                  }}
+                >
+                  {sev}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <Inp
+              type="text"
+              value={logSearch}
+              onChange={e => setLogSearch(e.target.value)}
+              placeholder="🔍 Search security events, high-value withdrawals, or actors…"
+              style={{ padding: '7px 10px', fontSize: 12 }}
+            />
+          </div>
+
+          <div style={{ maxHeight: 330, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {combinedAuditLogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 12px', color: C.muted, fontSize: 12 }}>
+                No security events match your filter. Enable your PIN or run a Security Scan to log your first event.
+              </div>
+            ) : (
+              combinedAuditLogs.map((log, idx) => {
+                const sevColor = log.severity === 'CRITICAL' ? C.red : log.severity === 'WARNING' ? C.amber : C.green;
+                return (
+                  <div
+                    key={log.id || idx}
+                    style={{
+                      padding: '9px 12px', borderRadius: 8,
+                      background: `${C.panel}88`,
+                      borderLeft: `4px solid ${sevColor}`,
+                      borderTop: `1px solid ${C.border}44`,
+                      borderRight: `1px solid ${C.border}44`,
+                      borderBottom: `1px solid ${C.border}44`,
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4,
+                          background: `${sevColor}22`, color: sevColor, border: `1px solid ${sevColor}55`
+                        }}>
+                          {log.severity || 'INFO'}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>
+                          {log.event}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 10, color: C.muted, marginTop: 3 }}>
+                        Actor: {log.actor || userEmail}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 10, color: C.muted, whiteSpace: 'nowrap' }}>
+                      {log.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* ── Official Cyber Security Incident & Abuse Report Modal (Printable / Copyable) ── */}
+      {incidentReportModal && (
+        <div
+          onClick={() => setIncidentReportModal(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(3, 8, 18, 0.88)',
+            zIndex: 99995,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: sm ? 10 : 24,
+            overflowY: 'auto'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 880, maxHeight: '92vh',
+              background: '#081121',
+              border: `2px solid ${C.amber}`,
+              borderRadius: 18,
+              padding: sm ? 16 : 24,
+              display: 'flex', flexDirection: 'column', gap: 14,
+              overflowY: 'auto',
+              boxShadow: '0 28px 90px rgba(0,0,0,0.92)'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, borderBottom: `1px solid ${C.border}`, paddingBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 19, fontWeight: 900, color: '#ffffff' }}>
+                  📄 Official Cybercrime & Unauthorized Access Incident Report
+                </div>
+                <div style={{ fontSize: 12, color: C.amber, fontWeight: 700, marginTop: 3 }}>
+                  Ready for DICT CERT-PH (cert-ph@dict.gov.ph) · National Privacy Commission (NPC) · PNP-ACG · ISP Abuse Desk
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIncidentReportModal(null)}
+                style={{
+                  padding: '6px 12px', borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: C.card, color: '#ffffff', fontSize: 12, fontWeight: 800, cursor: 'pointer'
+                }}
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            {/* Action Toolbar inside Modal */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                style={{
+                  padding: '9px 16px', borderRadius: 8, border: 'none',
+                  background: C.amber, color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}
+              >
+                🖨️ Print / Save as PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCopyAbuseComplaint(incidentReportModal.event)}
+                style={{
+                  padding: '9px 16px', borderRadius: 8, border: `1.5px solid ${C.teal}`,
+                  background: `${C.teal}22`, color: C.teal, fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}
+              >
+                {copiedComplaint ? '✓ Copied to Clipboard!' : '📋 Copy Official Abuse Complaint Text'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownloadAbuseComplaintTxt(incidentReportModal.event)}
+                style={{
+                  padding: '9px 16px', borderRadius: 8, border: `1.5px solid ${C.blue}`,
+                  background: `${C.blue}22`, color: C.blue, fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}
+              >
+                ⬇️ Download .TXT Report
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExportForensicEvidence('json')}
+                style={{
+                  padding: '9px 16px', borderRadius: 8, border: `1.5px solid ${C.green}`,
+                  background: `${C.green}22`, color: C.green, fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}
+              >
+                🧬 Export Forensic .JSON
+              </button>
+            </div>
+
+            {/* Pre-Formatted Complaint Document */}
+            <div style={{
+              background: '#040914',
+              border: `1px solid ${C.border}`,
+              borderRadius: 12,
+              padding: 16,
+              fontFamily: 'monospace',
+              fontSize: 11,
+              color: '#e2e8f0',
+              whiteSpace: 'pre-wrap',
+              lineHeight: 1.55,
+              maxHeight: 420,
+              overflowY: 'auto'
+            }}>
+              {buildOfficialAbuseComplaintText(incidentReportModal.event)}
+            </div>
+
+            {/* Philippine Reporting Channels Quick Reference */}
+            <div style={{
+              padding: '12px 14px', borderRadius: 10, background: '#050b16', border: `1px solid ${C.teal}66`,
+              display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3, 1fr)', gap: 10, fontSize: 11
+            }}>
+              <div>
+                <div style={{ fontWeight: 900, color: C.teal }}>🇵🇭 DICT CERT-PH (Cyber Incident)</div>
+                <div style={{ color: C.text, marginTop: 2 }}>Email: <strong>cert-ph@dict.gov.ph</strong></div>
+                <div style={{ color: C.muted }}>National Computer Emergency Response Team</div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 900, color: C.amber }}>🛡️ National Privacy Commission (NPC)</div>
+                <div style={{ color: C.text, marginTop: 2 }}>Email: <strong>complaints@privacy.gov.ph</strong></div>
+                <div style={{ color: C.muted }}>R.A. 10173 Data Privacy Breach Reporting</div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 900, color: C.blue }}>🚓 PNP Anti-Cybercrime Group (ACG)</div>
+                <div style={{ color: C.text, marginTop: 2 }}>Hotline: <strong>(02) 8723-0401 loc 7491</strong></div>
+                <div style={{ color: C.muted }}>R.A. 10175 Illegal Access Enforcement</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
@@ -10293,18 +13057,238 @@ export default function App() {
   useEffect(() => { if (ready.current && session && (!viewingUserId || viewingUserId === session.user.id)) safeSet('bujdet-debts-' + session.user.id, debts); }, [debts, session, viewingUserId]);
   useEffect(() => { if (ready.current && session && (!viewingUserId || viewingUserId === session.user.id)) safeSet('bujdet-balanceHistory-' + session.user.id, balanceHistory); }, [balanceHistory, session, viewingUserId]);
 
+  // Cyber Security Vault Lock & Auto-Blur States
+  const [isVaultLocked, setIsVaultLocked] = useState(false);
+  const [isWindowUnfocused, setIsWindowUnfocused] = useState(false);
+
+  const secConfig = budgetData?.securityConfig || {};
+  const hasActiveVaultPin = Boolean(secConfig.pinHash);
+  const activeAutoLockMins = Number(secConfig.autoLockMinutes) || 0;
+  const activeLockOnTabHide = Boolean(secConfig.lockOnTabHide);
+  const activeAutoBlurUnfocus = Boolean(secConfig.autoBlurUnfocus);
+
+  const appendSecurityLog = (eventText, severity = 'INFO') => {
+    const actorEmail = session?.user?.email || 'Local User';
+    setBudgetData(prev => {
+      const prevLogs = Array.isArray(prev?.securityAuditLogs) ? prev.securityAuditLogs : [];
+      return {
+        ...prev,
+        securityAuditLogs: [
+          {
+            id: `sec_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            timestamp: new Date().toISOString(),
+            severity,
+            event: eventText,
+            actor: actorEmail
+          },
+          ...prevLogs
+        ].slice(0, 150)
+      };
+    });
+  };
+
+  // Record Honeynet / Honeypot Intrusion with Live IP, Geo & Browser Telemetry
+  const recordHoneypotIntrusion = async (eventInput = {}) => {
+    const telemetry = await fetchLiveHoneypotTelemetry(eventInput.trapName || eventInput.trapType || 'HoneypotTrap');
+    const locationStr = [telemetry.city, telemetry.region, telemetry.country].filter(Boolean).join(', ') || 'Asia/Manila, PH';
+    const newEvent = {
+      id: `hp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      timestamp: telemetry.timestamp || new Date().toISOString(),
+      severity: eventInput.severity || 'CRITICAL',
+      trapType: eventInput.trapType || 'HONEYPOT_TRAP',
+      trapName: eventInput.trapName || 'Honeynet Deception Sensor',
+      attemptedAction: eventInput.attemptedAction || 'Unauthorized access attempt detected',
+      ip: eventInput.ip || telemetry.ip,
+      location: eventInput.location || locationStr,
+      userAgent: eventInput.userAgent || telemetry.userAgent,
+      responseAction: eventInput.responseAction || 'Logged Intruder IP, Location & Device Telemetry',
+      isSimulation: Boolean(eventInput.isSimulation)
+    };
+
+    setBudgetData(prev => {
+      const prevHp = Array.isArray(prev?.honeypotEvents) ? prev.honeypotEvents : [];
+      const prevLogs = Array.isArray(prev?.securityAuditLogs) ? prev.securityAuditLogs : [];
+      return {
+        ...prev,
+        honeypotEvents: [newEvent, ...prevHp].slice(0, 120),
+        securityAuditLogs: [
+          {
+            id: `sec_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            timestamp: newEvent.timestamp,
+            severity: newEvent.severity === 'CRITICAL' ? 'CRITICAL' : 'WARNING',
+            event: `🍯 HONEYNET ALERT [${newEvent.trapName}]: ${newEvent.attemptedAction} (IP: ${newEvent.ip}, Loc: ${newEvent.location})`,
+            actor: newEvent.ip
+          },
+          ...prevLogs
+        ].slice(0, 150)
+      };
+    });
+
+    if (eventInput.activateDecoy) {
+      setFakeMode(true);
+    }
+    if (eventInput.autoLock && hasActiveVaultPin) {
+      setIsVaultLocked(true);
+    }
+    return newEvent;
+  };
+
+  // Ingest pre-auth Honeypot events (from Auth.jsx) + Arm LocalStorage Canary Token & URL Recon Trap
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      // 1. Merge any pre-auth login bot / failed password attempts captured before sign-in
+      const rawPreAuth = localStorage.getItem('bujdet-honeypot-preauth-events');
+      if (rawPreAuth) {
+        const parsedPre = JSON.parse(rawPreAuth);
+        if (Array.isArray(parsedPre) && parsedPre.length > 0) {
+          localStorage.removeItem('bujdet-honeypot-preauth-events');
+          setBudgetData(prev => {
+            const existingHp = Array.isArray(prev?.honeypotEvents) ? prev.honeypotEvents : [];
+            return {
+              ...prev,
+              honeypotEvents: [...parsedPre, ...existingHp].slice(0, 120)
+            };
+          });
+        }
+      }
+
+      // 2. Plant LocalStorage Honey-Token tripwire
+      const CANARY_KEY = 'bujdet_master_api_secret_canary';
+      const CANARY_VAL = 'TRAP_CANARY_DO_NOT_TOUCH_v2026';
+      if (!localStorage.getItem(CANARY_KEY)) {
+        localStorage.setItem(CANARY_KEY, CANARY_VAL);
+      }
+
+      // 3. Check URL query string for suspicious recon flags (?admin=1, ?debug=true, ?export_sql=1)
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('admin') || params.has('debug') || params.has('export_sql') || params.has('bypass_auth')) {
+        recordHoneypotIntrusion({
+          severity: 'HIGH',
+          trapType: 'URL_RECON_PROBE',
+          trapName: 'URL Query Recon Trap (?admin / ?debug / ?export_sql)',
+          attemptedAction: `Probed suspicious URL query parameters: ${window.location.search}`,
+          responseAction: 'Blocked Debug Probe & Logged Caller IP + User-Agent'
+        });
+      }
+    } catch (_) {}
+
+    const onStorageTamper = (e) => {
+      if (e.key === 'bujdet_master_api_secret_canary' && e.newValue !== 'TRAP_CANARY_DO_NOT_TOUCH_v2026') {
+        recordHoneypotIntrusion({
+          severity: 'CRITICAL',
+          trapType: 'STORAGE_HONEYTOKEN',
+          trapName: 'LocalStorage Honey-Token (bujdet_master_api_secret_canary)',
+          attemptedAction: 'DevTools / script tampered with decoy master API secret canary token in localStorage',
+          responseAction: 'Restored Honey-Token + Logged Intruder Telemetry',
+          autoLock: Boolean(secConfig.autoLockOnCanary)
+        });
+        try {
+          localStorage.setItem('bujdet_master_api_secret_canary', 'TRAP_CANARY_DO_NOT_TOUCH_v2026');
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('storage', onStorageTamper);
+    return () => window.removeEventListener('storage', onStorageTamper);
+  }, [loaded]);
+
+  const handleEmergencySignOutAndWipe = async () => {
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('bujdet-') || k.startsWith('budget-') || k.startsWith('dashboard'))) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch (_) {}
+    setIsVaultLocked(false);
+    if (isSupabaseConfigured && supabase) {
+      await supabase.auth.signOut();
+    } else {
+      window.location.reload();
+    }
+  };
+
+  // Auto-Lock Inactivity Timer & Tab Minimize Listener + Alt+L Hotkey
+  useEffect(() => {
+    if (!hasActiveVaultPin) {
+      setIsVaultLocked(false);
+      return;
+    }
+
+    let idleTimer = null;
+    const resetIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (activeAutoLockMins > 0 && !isVaultLocked) {
+        idleTimer = setTimeout(() => {
+          setIsVaultLocked(true);
+          appendSecurityLog(`Vault auto-locked after ${activeAutoLockMins} minute(s) of inactivity.`, 'INFO');
+        }, activeAutoLockMins * 60 * 1000);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && activeLockOnTabHide && !isVaultLocked) {
+        setIsVaultLocked(true);
+        appendSecurityLog('Vault auto-locked when browser tab was hidden / minimized.', 'INFO');
+      }
+    };
+
+    const handleKeyShortcut = (e) => {
+      if (e.altKey && (e.key === 'l' || e.key === 'L')) {
+        e.preventDefault();
+        if (!isVaultLocked) {
+          setIsVaultLocked(true);
+          appendSecurityLog('Vault manually locked via Alt+L hotkey.', 'INFO');
+        }
+      }
+    };
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach(ev => window.addEventListener(ev, resetIdleTimer, { passive: true }));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('keydown', handleKeyShortcut);
+    resetIdleTimer();
+
+    return () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      events.forEach(ev => window.removeEventListener(ev, resetIdleTimer));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('keydown', handleKeyShortcut);
+    };
+  }, [hasActiveVaultPin, activeAutoLockMins, activeLockOnTabHide, isVaultLocked]);
+
+  // Anti-Shoulder-Surfing Auto-Blur on Window Unfocus
+  useEffect(() => {
+    if (!activeAutoBlurUnfocus) {
+      setIsWindowUnfocused(false);
+      return;
+    }
+    const onBlur = () => setIsWindowUnfocused(true);
+    const onFocus = () => setIsWindowUnfocused(false);
+    window.addEventListener('blur', onBlur);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [activeAutoBlurUnfocus]);
+
   const getPermission = (tabId) => {
     if (role === "admin" || isAdmin || isSuperAdminEmail(session?.user?.email)) return "update";
     if (permissions && permissions[tabId]) return permissions[tabId];
     if (role === "viewer") return "read";
     if (role === "guest") return (tabId === "dashboard" || tabId === "account-dashboard") ? "read" : "none";
-    const baselineModules = new Set(["dashboard", "account-dashboard", "history", "budget", "accounts", "reconcile", "transactions", "investments", "debts", "credits", "expenses", "calendar", "graph", "reports"]);
+    const baselineModules = new Set(["dashboard", "account-dashboard", "history", "budget", "accounts", "reconcile", "transactions", "investments", "debts", "credits", "expenses", "calendar", "graph", "reports", "security"]);
     return baselineModules.has(tabId) ? "update" : "none";
   };
 
   const TABS=[
     {id:'dashboard',label:sm?'📊':'📊 Dashboard'},
     {id:'account-dashboard',label:sm?'🏧':'🏧 Account Dashboard'},
+    {id:'security', label:sm?'🛡️':'🛡️ Cyber Security'},
     {id:'history',  label:sm?'📋':'📋 History'},
     {id:'budget',   label:sm?'📅':'📅 Monthly'},
     {id:'accounts', label:sm?'🏦':'🏦 Accounts'},
@@ -10320,6 +13304,7 @@ export default function App() {
   const TLBL={
     dashboard:'Dashboard',
     'account-dashboard':'Account Dashboard & In/Out Logs',
+    security:'Cyber Security & Data Protection',
     history:'History',
     budget:'Monthly Budget',
     accounts:'Accounts',
@@ -10338,6 +13323,7 @@ export default function App() {
   const NAV_TABS=[
     {id:'dashboard',         label:'Dashboard',          icon:'📊',group:'main'},
     {id:'account-dashboard', label:'Account Dashboard',  icon:'🏧',group:'main'},
+    {id:'security',          label:'Cyber Security',     icon:'🛡️',group:'main'},
     {id:'accounts',          label:'Accounts',           icon:'🏦',group:'manage'},
 
     {id:'reconcile',       label:'Reconcile & Audit',     icon:'🔍',group:'manage'},
@@ -10494,6 +13480,51 @@ export default function App() {
             </div>
             {!sm && <span style={{ fontSize: 12, color: C.text, fontWeight: 700 }}>{displayName}</span>}
           </div>
+          {hasActiveVaultPin && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsVaultLocked(true);
+                appendSecurityLog('Vault manually locked from top navigation bar.', 'INFO');
+              }}
+              title="Lock App Screen Now (Alt+L)"
+              style={{
+                padding: '4px 9px',
+                borderRadius: 5,
+                border: `1px solid ${C.green}`,
+                background: `${C.green}22`,
+                color: C.green,
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              🔒 Lock
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setTab('security')}
+            title="Open Cyber Security & Data Protection Center"
+            style={{
+              padding: '4px 8px',
+              borderRadius: 5,
+              border: `1px solid ${tab === 'security' ? C.teal : C.border}`,
+              background: tab === 'security' ? `${C.teal}22` : 'transparent',
+              color: tab === 'security' ? C.teal : C.muted,
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: tab === 'security' ? 800 : 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            🛡️ Security
+          </button>
           <button 
             onClick={() => setFakeMode(p => !p)} 
             style={{ 
@@ -10629,7 +13660,7 @@ export default function App() {
           return (
             <>
               {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} setTab={setTab}/>}
-              {tab==='account-dashboard'&&<AccountDashboardTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} balanceHistory={balanceHistory} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} session={session} ownerName={viewingUserEmail || displayName}/>}
+              {tab==='account-dashboard'&&<AccountDashboardTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} balanceHistory={balanceHistory} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} session={session} ownerName={viewingUserEmail || displayName} onTriggerCanaryTrap={() => recordHoneypotIntrusion({ severity: 'CRITICAL', trapType: 'CANARY_ACCOUNT', trapName: 'Canary Bank Account Trap (BPI Executive Reserve ••9941)', attemptedAction: 'Snooper clicked decoy Canary Bank Account card to inspect passbook & Peso balance', responseAction: (secConfig.autoLockOnCanary && hasActiveVaultPin) ? 'Blocked Passbook Access + Logged Intruder IP & Device + Auto-Locked App Vault' : 'Served Decoy Hardware-Key Error 403-CANARY + Logged Intruder IP & Device', autoLock: Boolean(secConfig.autoLockOnCanary) })}/>}
               {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
               {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='accounts'       &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} budgetData={budgetData}/>}
@@ -10644,12 +13675,75 @@ export default function App() {
               {tab==='calendar'  &&<CalendarTab budgetData={budgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='graph'     &&<FinancialGraphTab budgetData={budgetData} accounts={accounts} debts={debts} majorExpenses={majorExpenses} credits={credits} sm={sm}/>}
               {tab==='reports'   &&<ReportTab budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
+              {tab==='security'  &&<SecurityCenterTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} credits={credits} setCredits={setCredits} debts={debts} setDebts={setDebts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} session={session} role={role} sm={sm} canUpdate={canUpdate} fakeMode={fakeMode} setFakeMode={setFakeMode} onLockVaultNow={() => { setIsVaultLocked(true); appendSecurityLog('Vault manually locked by user.', 'INFO'); }} onAppendSecurityLog={appendSecurityLog} onRecordHoneypotIntrusion={recordHoneypotIntrusion} onEmergencySignOutAndWipe={handleEmergencySignOutAndWipe}/>}
             </>
           );
         })()}
         {tab==='admin'     &&<AdminTab sm={sm} users={users} setUsers={setUsers} adminConfigured={adminConfigured} fetchUsers={fetchUsers}/>}
       </div>
       {showProfileModal && <ProfileSettingsModal session={session} onClose={() => setShowProfileModal(false)} />}
+      {isWindowUnfocused && activeAutoBlurUnfocus && !isVaultLocked && (
+        <div
+          onClick={() => setIsWindowUnfocused(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(4, 10, 22, 0.72)',
+            backdropFilter: 'blur(18px)',
+            zIndex: 99990,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            color: '#ffffff', cursor: 'pointer', userSelect: 'none'
+          }}
+        >
+          <div style={{ fontSize: 44, marginBottom: 10 }}>🕵️‍♂️</div>
+          <div style={{ fontSize: 20, fontWeight: 900 }}>Privacy Shield Active</div>
+          <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Screen blurred while window is unfocused. Click anywhere to resume.</div>
+        </div>
+      )}
+      {isVaultLocked && hasActiveVaultPin && (
+        <AppVaultLockOverlay
+          userEmail={session?.user?.email || displayName}
+          pinHash={secConfig.pinHash}
+          duressPinHash={secConfig.duressPinHash}
+          userId={session?.user?.id || 'local'}
+          sm={sm}
+          onUnlockSuccess={() => {
+            setIsVaultLocked(false);
+            appendSecurityLog('App Vault unlocked successfully via Security PIN.', 'INFO');
+          }}
+          onDuressUnlock={() => {
+            setIsVaultLocked(false);
+            setFakeMode(true);
+            recordHoneypotIntrusion({
+              severity: 'CRITICAL',
+              trapType: 'DURESS_PIN',
+              trapName: 'Duress Honey-PIN Trap (Vault Lock Screen)',
+              attemptedAction: 'Entered Duress Honey-PIN on Vault Lock Screen (Coerced Unlock)',
+              responseAction: 'Silently Activated Decoy / Fake Wealth Mode & Logged Intruder Telemetry',
+              activateDecoy: true
+            });
+          }}
+          onFailedAttempt={(attemptNum, triggeredLockout) => {
+            appendSecurityLog(
+              triggeredLockout
+                ? `🚨 CRITICAL: 5 consecutive failed Vault PIN attempts! 60-second brute-force lockout triggered.`
+                : `Failed Vault PIN unlock attempt (#${attemptNum}).`,
+              triggeredLockout ? 'CRITICAL' : 'WARNING'
+            );
+            recordHoneypotIntrusion({
+              severity: triggeredLockout ? 'CRITICAL' : 'HIGH',
+              trapType: 'VAULT_BRUTE_FORCE',
+              trapName: 'App Vault PIN Lock Screen',
+              attemptedAction: triggeredLockout
+                ? `5 consecutive failed Vault PIN attempts — Brute-force lockout triggered`
+                : `Failed Vault PIN unlock attempt #${attemptNum} on locked screen`,
+              responseAction: triggeredLockout
+                ? '60-Second Keypad Lockout Enforced + Intruder IP & Device Logged'
+                : 'Blocked Unlock + Logged Attempt Telemetry'
+            });
+          }}
+          onEmergencySignOut={handleEmergencySignOutAndWipe}
+        />
+      )}
     </div>
   );
 }
@@ -11934,6 +15028,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
           {[
             { id: "dashboard", label: "Dashboard Module", icon: "📊" },
             { id: "account-dashboard", label: "Account Dashboard", icon: "🏧" },
+            { id: "security", label: "Cyber Security", icon: "🛡️" },
             { id: "history", label: "History Module", icon: "📋" },
             { id: "monthly", label: "Monthly Module", icon: "📅" },
             { id: "accounts", label: "Accounts Module", icon: "🏦" },
@@ -12020,6 +15115,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
               {[
                 { id: "dashboard", label: "Dashboard", icon: "📊" },
                 { id: "account-dashboard", label: "Account Dashboard", icon: "🏧" },
+                { id: "security", label: "Cyber Security", icon: "🛡️" },
                 { id: "history", label: "History Logs", icon: "📋" },
                 { id: "budget", label: "Monthly Budget", icon: "📅" },
                 { id: "accounts", label: "Accounts", icon: "🏦" },

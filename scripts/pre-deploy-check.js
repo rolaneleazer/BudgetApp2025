@@ -73,6 +73,7 @@ check("Financial Modules Calculations", () => {
     "credits",
     "major",
     "calendar",
+    "security",
     "raw"
   ];
 

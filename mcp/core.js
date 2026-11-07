@@ -95,6 +95,7 @@ const moduleNames = [
   "credits",
   "major",
   "calendar",
+  "security",
   "raw",
 ];
 
@@ -719,6 +720,46 @@ function summarizeAccountDashboard(profile) {
   };
 }
 
+function summarizeSecurityModule(profile) {
+  const budgetData = profile.budgetData || {};
+  const secCfg = budgetData.securityConfig || {};
+  const auditLogs = Array.isArray(budgetData.securityAuditLogs) ? budgetData.securityAuditLogs : [];
+  const honeypotEvents = Array.isArray(budgetData.honeypotEvents) ? budgetData.honeypotEvents : [];
+  const blockedIntruders = Array.isArray(secCfg.blockedIntruders) ? secCfg.blockedIntruders : [];
+  const hasVaultPin = Boolean(secCfg.pinHash);
+  const hasDuressPin = Boolean(secCfg.duressPinHash);
+  const canaryAccountEnabled = secCfg.canaryAccountEnabled !== false;
+  const autoLockMinutes = numberValue(secCfg.autoLockMinutes);
+  const autoBlurUnfocus = Boolean(secCfg.autoBlurUnfocus);
+  const hasEncryptedBackup = Boolean(secCfg.lastEncryptedBackupAt);
+  const hasVerifiedIntegrity = Boolean(secCfg.sealedIntegrityHash);
+
+  let securityScore = 25; // Base authenticated cloud profile score
+  if (hasVaultPin) securityScore += 25;
+  if (autoLockMinutes > 0 || secCfg.lockOnTabHide) securityScore += 15;
+  if (autoBlurUnfocus || secCfg.hideBalancesDefault) securityScore += 10;
+  if (hasVerifiedIntegrity) securityScore += 15;
+  if (hasEncryptedBackup) securityScore += 10;
+
+  return {
+    securityScore: Math.min(100, securityScore),
+    hasVaultPin,
+    hasDuressPin,
+    canaryAccountEnabled,
+    autoLockMinutes,
+    lockOnTabHide: Boolean(secCfg.lockOnTabHide),
+    autoBlurUnfocus,
+    highValueThreshold: numberValue(secCfg.highValueThreshold) || 50000,
+    lastEncryptedBackupAt: secCfg.lastEncryptedBackupAt || null,
+    lastSecurityScanAt: secCfg.lastSecurityScanAt || null,
+    honeypotEventsCount: honeypotEvents.length,
+    blockedIntrudersCount: blockedIntruders.length,
+    recentHoneypotEvents: honeypotEvents.slice(0, 10),
+    auditLogCount: auditLogs.length,
+    recentAuditLogs: auditLogs.slice(0, 10),
+  };
+}
+
 export function buildModulePayload(profile, moduleName, args = {}) {
   switch (moduleName) {
     case "dashboard":
@@ -747,6 +788,8 @@ export function buildModulePayload(profile, moduleName, args = {}) {
         args.month ? args.month - 1 : now.getMonth(),
       );
     }
+    case "security":
+      return summarizeSecurityModule(profile);
     case "raw":
       return profile;
     default:

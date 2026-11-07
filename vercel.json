@@ -1,5 +1,22 @@
 {
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
+      ]
+    }
+  ],
   "rewrites": [
+    { "source": "/.env", "destination": "/api/honeypot.js?trap=env_file_probe&target=/.env" },
+    { "source": "/.env.local", "destination": "/api/honeypot.js?trap=env_file_probe&target=/.env.local" },
+    { "source": "/api/debug-env", "destination": "/api/honeypot.js?trap=debug_env_probe&target=/api/debug-env" },
+    { "source": "/api/v1/export-db", "destination": "/api/honeypot.js?trap=db_export_probe&target=/api/v1/export-db" },
+    { "source": "/admin-backup.sql", "destination": "/api/honeypot.js?trap=sql_dump_probe&target=/admin-backup.sql" },
     { "source": "/.well-known/oauth-authorization-server", "destination": "/api/oauth-metadata.js" },
     { "source": "/.well-known/openid-configuration", "destination": "/api/oauth-metadata.js" },
     { "source": "/api/.well-known/oauth-authorization-server", "destination": "/api/oauth-metadata.js" },
