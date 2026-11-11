@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -96,6 +97,9 @@ const moduleNames = [
   "major",
   "calendar",
   "security",
+  "pullboard",
+  "ux-advisor",
+  "resources",
   "raw",
 ];
 
@@ -760,6 +764,154 @@ function summarizeSecurityModule(profile) {
   };
 }
 
+function summarizePullboardModule(profile) {
+  const pb = profile.budgetData?.pullboardData || {};
+  const tasks = Array.isArray(pb.tasks) ? pb.tasks : [];
+  const shouts = Array.isArray(pb.shouts) ? pb.shouts : [];
+
+  const backlogCount = tasks.filter((t) => t.lane === "BACKLOG").length;
+  const inProgressCount = tasks.filter((t) => t.lane === "IN_PROGRESS").length;
+  const verificationCount = tasks.filter((t) => t.lane === "VERIFICATION").length;
+  const shippedCount = tasks.filter((t) => t.lane === "SHIPPED").length;
+  const openEscalationsCount = shouts.filter(
+    (s) => s.type === "ESCALATION" && s.status !== "RESOLVED",
+  ).length;
+
+  return {
+    totalTasks: tasks.length,
+    lanes: {
+      backlog: backlogCount,
+      inProgress: inProgressCount,
+      adversarialVerification: verificationCount,
+      verifiedAndShipped: shippedCount,
+    },
+    qualityGatePassed: Boolean(pb.lastGateRun?.passed),
+    lastGateRunAt: pb.lastGateRun?.timestamp || null,
+    openEscalationsCount,
+    totalShoutsCount: shouts.length,
+    tasks: tasks.slice(0, 25),
+    recentShouts: shouts.slice(0, 15),
+  };
+}
+
+function parseHexLuminance(hexColor) {
+  if (typeof hexColor !== "string") return 0.05;
+  const clean = hexColor.trim().replace(/^#/, "");
+  if (!/^[0-9a-fA-F]{3,6}$/.test(clean)) return 0.05;
+  const full =
+    clean.length === 3
+      ? clean
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : clean.slice(0, 6);
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  const toLinear = (c) =>
+    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+
+function calcContrastRatio(hexA, hexB) {
+  const l1 = parseHexLuminance(hexA);
+  const l2 = parseHexLuminance(hexB);
+  const hi = Math.max(l1, l2);
+  const lo = Math.min(l1, l2);
+  return Number(((hi + 0.05) / (lo + 0.05)).toFixed(2));
+}
+
+function summarizeUxAdvisorModule(profile) {
+  const accounts = Array.isArray(profile.accounts) ? profile.accounts : [];
+  const uxCfg = profile.budgetData?.uxAdvisorConfig || {};
+  const seniorUxMode = Boolean(uxCfg.seniorUxMode);
+  const auditedAccounts = accounts.map((acc) => {
+    const bg = acc.customBgColor || "#172554";
+    const fg = acc.customTextColor || "#ffffff";
+    const ratio = calcContrastRatio(bg, fg);
+    return {
+      id: acc.id,
+      name: acc.name,
+      bg,
+      fg,
+      contrastRatio: ratio,
+      wcagLevel: ratio >= 7.0 ? "AAA" : ratio >= 4.5 ? "AA" : "FAIL",
+      hasCustomLogo: Boolean(acc.customLogoUrl),
+    };
+  });
+
+  const failingContrastCount = auditedAccounts.filter(
+    (a) => a.wcagLevel === "FAIL",
+  ).length;
+  const aaOnlyCount = auditedAccounts.filter(
+    (a) => a.wcagLevel === "AA",
+  ).length;
+  let uxScore = 100 - failingContrastCount * 15 - aaOnlyCount * 4;
+  if (!seniorUxMode) uxScore = Math.max(70, uxScore - 5);
+
+  return {
+    skillFramework: "plugin87/ux-ui-agent-skills",
+    seniorUxMode,
+    uxScore: Math.max(0, Math.min(100, uxScore)),
+    totalAccountsAudited: auditedAccounts.length,
+    failingContrastCount,
+    auditedAccounts,
+    appliedRecommendations: Array.isArray(uxCfg.appliedRecommendations)
+      ? uxCfg.appliedRecommendations
+      : [],
+  };
+}
+
+function jsonSizeKb(val) {
+  try {
+    return Number((Buffer.byteLength(JSON.stringify(val ?? null), "utf8") / 1024).toFixed(2));
+  } catch {
+    return 0;
+  }
+}
+
+function summarizeResourcesModule(profile) {
+  const mem = process.memoryUsage();
+  const totalMemMb = Number((os.totalmem() / (1024 * 1024)).toFixed(2));
+  const freeMemMb = Number((os.freemem() / (1024 * 1024)).toFixed(2));
+  const budgetDataKb = jsonSizeKb(profile.budgetData);
+  const accountsKb = jsonSizeKb(profile.accounts);
+  const majorExpensesKb = jsonSizeKb(profile.majorExpenses);
+  const creditsKb = jsonSizeKb(profile.credits);
+  const debtsKb = jsonSizeKb(profile.debts);
+  const balanceHistoryKb = jsonSizeKb(profile.balanceHistory);
+  const totalPayloadKb = Number(
+    (budgetDataKb + accountsKb + majorExpensesKb + creditsKb + debtsKb + balanceHistoryKb).toFixed(2),
+  );
+
+  return {
+    runtime: {
+      nodeVersion: process.version,
+      region: process.env.VERCEL_REGION || "local-node",
+      cpuCores: (os.cpus() || []).length || 1,
+      loadAvg1m: Number((os.loadavg()[0] || 0).toFixed(2)),
+      rssMb: Number((mem.rss / (1024 * 1024)).toFixed(2)),
+      heapUsedMb: Number((mem.heapUsed / (1024 * 1024)).toFixed(2)),
+      containerTotalMb: totalMemMb,
+      containerFreeMb: freeMemMb,
+      uptimeSeconds: Math.round(process.uptime()),
+    },
+    supabasePayload: {
+      totalPayloadKb,
+      freeTierLimitMb: 500,
+      freeTierUsedPct: Number(((totalPayloadKb / (500 * 1024)) * 100).toFixed(5)),
+      breakdownKb: {
+        budgetDataKb,
+        accountsKb,
+        majorExpensesKb,
+        creditsKb,
+        debtsKb,
+        balanceHistoryKb,
+      },
+    },
+  };
+}
+
 export function buildModulePayload(profile, moduleName, args = {}) {
   switch (moduleName) {
     case "dashboard":
@@ -790,6 +942,12 @@ export function buildModulePayload(profile, moduleName, args = {}) {
     }
     case "security":
       return summarizeSecurityModule(profile);
+    case "pullboard":
+      return summarizePullboardModule(profile);
+    case "ux-advisor":
+      return summarizeUxAdvisorModule(profile);
+    case "resources":
+      return summarizeResourcesModule(profile);
     case "raw":
       return profile;
     default:

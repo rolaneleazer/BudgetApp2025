@@ -1,0 +1,66 @@
+{
+  "$schema": "https://design-tokens.org/schema/dtcg-v1.json",
+  "meta": {
+    "sourceFramework": "plugin87/ux-ui-agent-skills",
+    "app": "BudgetApp2025",
+    "wcagTarget": "WCAG 2.2 AA-AAA (Senior-Friendly Finance)",
+    "gradientPolicy": "solid-colors-only"
+  },
+  "primitive": {
+    "color": {
+      "canvasDark": { "$value": "#020814", "$type": "color", "$description": "Root application backdrop" },
+      "panelNavy": { "$value": "#07111f", "$type": "color", "$description": "Sidebar & panel solid fill" },
+      "cardSlate": { "$value": "#0f1a2a", "$type": "color", "$description": "Standard solid card fill" },
+      "cardElevated": { "$value": "#101d31", "$type": "color", "$description": "Elevated modal/section solid fill" },
+      "borderSlate": { "$value": "#1c2b42", "$type": "color", "$description": "Default card border" },
+      "pureWhite": { "$value": "#ffffff", "$type": "color", "$description": "AAA contrast white foreground" },
+      "softIce": { "$value": "#eef5ff", "$type": "color", "$description": "Primary UI foreground" },
+      "mutedSteel": { "$value": "#9fb1c9", "$type": "color", "$description": "AAA-tuned muted secondary label on dark navy" },
+      "emeraldGain": { "$value": "#24d17e", "$type": "color", "$description": "Money In / Pass state" },
+      "crimsonLoss": { "$value": "#ff514f", "$type": "color", "$description": "Money Out / Critical state" },
+      "amberWarn": { "$value": "#f2a71b", "$type": "color", "$description": "Warning / Senior spotlight accent" },
+      "cobaltAction": { "$value": "#4b8dff", "$type": "color", "$description": "Primary interactive action blue" },
+      "tealVerify": { "$value": "#30d6b0", "$type": "color", "$description": "Verified / Audit accent" },
+      "indigoSpec": { "$value": "#7257ff", "$type": "color", "$description": "Design Architect / Spec accent" }
+    },
+    "dimension": {
+      "radiusMd": { "$value": "10px", "$type": "dimension" },
+      "radiusLg": { "$value": "14px", "$type": "dimension" },
+      "touchMin": { "$value": "44px", "$type": "dimension", "$description": "WCAG 2.5.8 minimum target height" },
+      "seniorTouchMin": { "$value": "52px", "$type": "dimension", "$description": "Senior Parent enhanced tap target" }
+    }
+  },
+  "semantic": {
+    "surface": {
+      "background": { "$value": "{primitive.color.canvasDark}", "$type": "color" },
+      "card": { "$value": "{primitive.color.cardSlate}", "$type": "color" },
+      "cardHighContrast": { "$value": "#050b16", "$type": "color", "$description": "High-contrast AAA solid container" }
+    },
+    "text": {
+      "primary": { "$value": "{primitive.color.pureWhite}", "$type": "color" },
+      "secondary": { "$value": "{primitive.color.mutedSteel}", "$type": "color" },
+      "moneyIn": { "$value": "#4ade80", "$type": "color" },
+      "moneyOut": { "$value": "#fca5a5", "$type": "color" }
+    },
+    "wcag": {
+      "aaNormalMinRatio": { "$value": 4.5, "$type": "number" },
+      "aaLargeMinRatio": { "$value": 3.0, "$type": "number" },
+      "aaaSeniorMinRatio": { "$value": 7.0, "$type": "number" }
+    }
+  },
+  "component": {
+    "phBankCard": {
+      "BDO": { "solidBg": "#002b7f", "accent": "#fdb913", "text": "#ffffff" },
+      "BPI": { "solidBg": "#7a0d12", "accent": "#f7d060", "text": "#ffffff" },
+      "SB": { "solidBg": "#002657", "accent": "#78be20", "text": "#ffffff" },
+      "RCBC": { "solidBg": "#003d7a", "accent": "#38bdf8", "text": "#ffffff" },
+      "MBTC": { "solidBg": "#002966", "accent": "#38bdf8", "text": "#ffffff" },
+      "LBP": { "solidBg": "#064e3b", "accent": "#ffd100", "text": "#ffffff" },
+      "GCash": { "solidBg": "#0047b3", "accent": "#93c5fd", "text": "#ffffff" },
+      "Maya": { "solidBg": "#063729", "accent": "#34d399", "text": "#ffffff" },
+      "GoTyme": { "solidBg": "#0a2239", "accent": "#00d6c9", "text": "#ffffff" },
+      "SeaBank": { "solidBg": "#9a3412", "accent": "#fdba74", "text": "#ffffff" }
+    }
+  }
+}
+

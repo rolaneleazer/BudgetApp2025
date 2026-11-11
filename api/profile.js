@@ -132,6 +132,9 @@ export default async function handler(req, res) {
       "graph",
       "reports",
       "security",
+      "pullboard",
+      "ux-advisor",
+      "resources",
       "admin"
     ];
     
@@ -150,7 +153,10 @@ export default async function handler(req, res) {
       "calendar",
       "graph",
       "reports",
-      "security"
+      "security",
+      "pullboard",
+      "ux-advisor",
+      "resources"
     ]);
 
     defaultModules.forEach(mod => {

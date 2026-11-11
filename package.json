@@ -11,7 +11,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "pre-deploy-check": "node --max-http-header-size=65536 scripts/pre-deploy-check.js",
-    "test": "node --max-http-header-size=65536 scripts/pre-deploy-check.js"
+    "test": "node --max-http-header-size=65536 scripts/pre-deploy-check.js",
+    "pullboard:init": "npx pullboard init",
+    "pullboard:status": "npx pullboard status",
+    "pullboard:tour": "npx pullboard tour",
+    "pullboard:gate": "node --max-http-header-size=65536 scripts/pre-deploy-check.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

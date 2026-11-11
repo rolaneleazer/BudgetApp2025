@@ -74,6 +74,9 @@ check("Financial Modules Calculations", () => {
     "major",
     "calendar",
     "security",
+    "pullboard",
+    "ux-advisor",
+    "resources",
     "raw"
   ];
 

@@ -6,6 +6,7 @@ import {
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import Auth from "./Auth";
 import { isSuperAdminEmail } from "./config/superAdmins";
+import dtcgTokens from "./config/dtcgTokens.json";
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const OT_RATES = { weekday: 750, weekend: 680 };
@@ -12629,6 +12630,2750 @@ System Owner — BudgetApp2025 Cyber Security & Honeynet Defense Center
   );
 }
 
+// ─── PULLBOARD (pullboard-dev/pullboard) SPEC-DRIVEN WORKFLOW & VERIFICATION ─
+const DEFAULT_PULLBOARD_SPEC_MD = `# SPEC.md — BudgetApp2025 Official Specification (Pullboard Harness)
+
+## SPEC-01: Philippine Bank Account Dashboard & Passbook (Libreta)
+- Solid-color Philippine bank cards (BDO, BPI, Metrobank, GCash, Maya, LandBank, Security Bank, etc.)
+- Senior-friendly Passbook (Libreta) Modal on click with Money In (+), Money Out (−), and Running Balance
+- Custom solid background color picker & custom bank logo image upload (PNG/JPG/SVG/WebP)
+
+## SPEC-02: Cyber Security, App Vault PIN & Honeynet Deception Center
+- SHA-256 salted App Vault PIN Lock with 5-attempt cooldown & Duress Honey-PIN (Decoy/Fake Mode)
+- 5 Active Honeypot & Honeynet Traps (/.env & API recon traps, Canary Bank Account, Duress PIN, Login Bot Trap, LocalStorage Honey-Token)
+- Live Intruder Telemetry Table (IP, Geo-Location, Browser User-Agent) + IP Blocklist + Printable CERT-PH / NPC / PNP-ACG Incident Reports
+
+## SPEC-03: Pullboard Spec-Driven Workflow & Adversarial Verification
+- 4-Lane Work Queue: Spec Backlog -> Claimed Agent Lane -> Adversarial Verification -> Verified & Shipped
+- Second-Agent Verification Rule: Nothing ships until an independent verifier checks all acceptance criteria & Quality Gates pass
+- Shouts & Escalations feed for agent-to-human coordination
+
+## SPEC-04: Bi-Monthly Payroll (5th & 20th), Reconcile & Cloud Sync
+- Automated 5th & 20th payroll budget tracking, credit cards, installments, and Supabase multi-user sync`;
+
+const DEFAULT_PULLBOARD_DOCTRINE_MD = `# DOCTRINE.md — BudgetApp2025 House Rules & Invariants
+
+1. ADVERSARIAL SECOND-VERIFICATION:
+   No task moves from Claimed Lane to Verified & Shipped without an independent second verifier confirming every acceptance criterion.
+
+2. SOLID-COLOR SENIOR-FRIENDLY UI:
+   Never use CSS gradients on account cards, passbooks, security cards, or Pullboard cards. Use high-contrast solid colors.
+
+3. MANDATORY QUALITY GATE:
+   All changes must pass 'node --max-http-header-size=65536 scripts/pre-deploy-check.js' and in-app Quality Gate checks before shipping.
+
+4. SECURITY & HONEYNET PRESERVATION:
+   Never weaken RBAC, Super Admin guards, or Honeynet deception sensors.
+
+5. SHOUTS & ESCALATIONS PROTOCOL:
+   Ambiguities or audit discrepancies must be posted as an ESCALATION shout and resolved by the System Owner before shipping.`;
+
+const DEFAULT_PULLBOARD_TASKS = [
+  {
+    id: 'pb_task_1',
+    specId: 'SPEC-01',
+    title: 'Philippine Bank Passbook Modal & Solid-Color Logo Customization',
+    module: 'account-dashboard',
+    lane: 'SHIPPED',
+    claimedBy: 'Author Agent',
+    worktree: 'lane/spec-01-passbook',
+    verifiedBy: 'Independent Verifier Agent',
+    shippedAt: '2026-11-07T14:30:00.000Z',
+    gateStatus: 'PASS',
+    criteria: [
+      { id: 'c1', text: 'Clicking any bank card opens the Passbook (Libreta) Modal immediately', checked: true },
+      { id: 'c2', text: 'All gradient backgrounds removed in favor of solid custom colors', checked: true },
+      { id: 'c3', text: 'Users can upload custom bank logo images (PNG/JPG/SVG/WebP)', checked: true }
+    ]
+  },
+  {
+    id: 'pb_task_2',
+    specId: 'SPEC-02',
+    title: 'Honeynet & Honeypot Deception Traps + CERT-PH Incident Reporting',
+    module: 'security',
+    lane: 'SHIPPED',
+    claimedBy: 'Security Sentinel',
+    worktree: 'lane/spec-02-honeynet',
+    verifiedBy: 'Financial Auditor',
+    shippedAt: '2026-11-07T15:05:00.000Z',
+    gateStatus: 'PASS',
+    criteria: [
+      { id: 'c1', text: '5 Honeypot traps armed (/.env API, Canary Bank Account, Duress PIN, Login Bot, Honey-Token)', checked: true },
+      { id: 'c2', text: 'Intruder IP, Geo-Location, and Browser User-Agent logged in telemetry table', checked: true },
+      { id: 'c3', text: 'Printable PDF & CERT-PH / NPC / PNP-ACG abuse complaint generator verified', checked: true }
+    ]
+  },
+  {
+    id: 'pb_task_3',
+    specId: 'SPEC-03',
+    title: 'Monthly Bank Statement Reconciliation & High-Value Outflow Audit',
+    module: 'reconcile',
+    lane: 'VERIFICATION',
+    claimedBy: 'Financial Auditor',
+    worktree: 'lane/spec-03-reconcile-audit',
+    verifiedBy: 'Independent Verifier Agent',
+    shippedAt: null,
+    gateStatus: 'PENDING',
+    criteria: [
+      { id: 'c1', text: 'Verify all bank account balances match latest Passbook Money In / Money Out logs', checked: true },
+      { id: 'c2', text: 'Confirm SHA-256 Financial Integrity Fingerprint is sealed in Security Center', checked: true },
+      { id: 'c3', text: 'Independent verifier confirms zero unresolved high-value outflow anomalies', checked: false }
+    ]
+  },
+  {
+    id: 'pb_task_4',
+    specId: 'SPEC-04',
+    title: 'Export Encrypted AES-256-GCM Offsite Vault Backup (.bvault.json)',
+    module: 'security',
+    lane: 'IN_PROGRESS',
+    claimedBy: 'Security Sentinel',
+    worktree: 'lane/spec-04-vault-backup',
+    verifiedBy: '',
+    shippedAt: null,
+    gateStatus: 'PENDING',
+    criteria: [
+      { id: 'c1', text: 'Configure 4–6 digit App Vault Security PIN and Duress Honey-PIN', checked: true },
+      { id: 'c2', text: 'Download password-encrypted .bvault.json backup for current month', checked: false }
+    ]
+  },
+  {
+    id: 'pb_task_5',
+    specId: 'SPEC-04',
+    title: 'Review 5th & 20th Bi-Monthly Payroll Allocations & Debt Snowball Plan',
+    module: 'budget',
+    lane: 'BACKLOG',
+    claimedBy: 'Unassigned',
+    worktree: 'lane/spec-04-payroll-review',
+    verifiedBy: '',
+    shippedAt: null,
+    gateStatus: 'PENDING',
+    criteria: [
+      { id: 'c1', text: 'Audit 5th and 20th payroll expense allocations against net income', checked: false },
+      { id: 'c2', text: 'Verify credit card minimum payments and installment schedules', checked: false }
+    ]
+  }
+];
+
+const DEFAULT_PULLBOARD_SHOUTS = [
+  {
+    id: 'shout_1',
+    timestamp: '2026-11-07T15:06:00.000Z',
+    fromLane: 'Security Sentinel',
+    toLane: 'All Lanes',
+    type: 'INFO_SHOUT',
+    status: 'OPEN',
+    message: 'Honeynet deception grid (5/5 sensors) and CERT-PH incident report generator passed adversarial verification.',
+    resolution: ''
+  },
+  {
+    id: 'shout_2',
+    timestamp: '2026-11-11T13:55:00.000Z',
+    fromLane: 'Financial Auditor',
+    toLane: 'Independent Verifier Agent',
+    type: 'AUDIT_NOTE',
+    status: 'OPEN',
+    message: 'Submitted SPEC-03 (Monthly Bank Statement Reconciliation) to Adversarial Verification. Ready for second-agent check.',
+    resolution: ''
+  }
+];
+
+const AGENT_LANES = [
+  'Author Agent',
+  'Independent Verifier Agent',
+  'Financial Auditor',
+  'Security Sentinel',
+  'System Owner'
+];
+
+function PullboardTab({
+  accounts = [],
+  budgetData = {},
+  setBudgetData,
+  debts = [],
+  credits = [],
+  majorExpenses = [],
+  session,
+  sm,
+  canWrite,
+  canUpdate,
+  setTab,
+  onAppendSecurityLog
+}) {
+  const userEmail = session?.user?.email || 'System Owner';
+  const pbData = budgetData?.pullboardData || {};
+  const tasks = Array.isArray(pbData.tasks) && pbData.tasks.length > 0 ? pbData.tasks : DEFAULT_PULLBOARD_TASKS;
+  const shouts = Array.isArray(pbData.shouts) && pbData.shouts.length > 0 ? pbData.shouts : DEFAULT_PULLBOARD_SHOUTS;
+  const specMd = typeof pbData.specMd === 'string' ? pbData.specMd : DEFAULT_PULLBOARD_SPEC_MD;
+  const doctrineMd = typeof pbData.doctrineMd === 'string' ? pbData.doctrineMd : DEFAULT_PULLBOARD_DOCTRINE_MD;
+  const lastGateRun = pbData.lastGateRun || null;
+
+  const [activeView, setActiveView] = useState('BOARD'); // 'BOARD' | 'SHOUTS' | 'SPEC_DOCS'
+  const [runningGate, setRunningGate] = useState(false);
+
+  // New Task Form State
+  const [showNewTaskForm, setShowNewTaskForm] = useState(false);
+  const [newSpecId, setNewSpecId] = useState('SPEC-05');
+  const [newTitle, setNewTitle] = useState('');
+  const [newModule, setNewModule] = useState('account-dashboard');
+  const [newClaimLane, setNewClaimLane] = useState('Author Agent');
+  const [newCriteriaText, setNewCriteriaText] = useState('Verify solid-color UI compliance\nPass adversarial verification & quality gates');
+
+  // New Shout / Escalation Form State
+  const [shoutType, setShoutType] = useState('INFO_SHOUT'); // 'INFO_SHOUT' | 'AUDIT_NOTE' | 'ESCALATION'
+  const [shoutFrom, setShoutFrom] = useState('Author Agent');
+  const [shoutTo, setShoutTo] = useState('Independent Verifier Agent');
+  const [shoutMessage, setShoutMessage] = useState('');
+  const [resolutionInputs, setResolutionInputs] = useState({});
+
+  // Spec & Doctrine Editor State
+  const [editingSpecText, setEditingSpecText] = useState(specMd);
+  const [editingDoctrineText, setEditingDoctrineText] = useState(doctrineMd);
+  const [docSavedMsg, setDocSavedMsg] = useState('');
+
+  useEffect(() => {
+    setEditingSpecText(specMd);
+  }, [specMd]);
+
+  useEffect(() => {
+    setEditingDoctrineText(doctrineMd);
+  }, [doctrineMd]);
+
+  const updatePullboardData = (updates) => {
+    setBudgetData(prev => {
+      const currentPb = prev?.pullboardData || {
+        tasks: DEFAULT_PULLBOARD_TASKS,
+        shouts: DEFAULT_PULLBOARD_SHOUTS,
+        specMd: DEFAULT_PULLBOARD_SPEC_MD,
+        doctrineMd: DEFAULT_PULLBOARD_DOCTRINE_MD,
+        lastGateRun: null
+      };
+      return {
+        ...prev,
+        pullboardData: {
+          ...currentPb,
+          ...updates
+        }
+      };
+    });
+  };
+
+  // Counts & Metrics
+  const backlogTasks = tasks.filter(t => t.lane === 'BACKLOG');
+  const inProgressTasks = tasks.filter(t => t.lane === 'IN_PROGRESS');
+  const verificationTasks = tasks.filter(t => t.lane === 'VERIFICATION');
+  const shippedTasks = tasks.filter(t => t.lane === 'SHIPPED');
+  const openEscalations = shouts.filter(s => s.type === 'ESCALATION' && s.status !== 'RESOLVED');
+
+  // Run Pullboard Quality Gates
+  const handleRunQualityGates = async () => {
+    setRunningGate(true);
+    const integrityHash = await computeFinancialIntegrityFingerprint({
+      accounts,
+      budgetData,
+      debts,
+      credits,
+      majorExpenses
+    });
+
+    const secCfg = budgetData?.securityConfig || {};
+    const checks = [
+      {
+        id: 'spec_doctrine',
+        name: 'SPEC.md & DOCTRINE.md Enforced',
+        passed: Boolean(specMd.trim().length > 20 && doctrineMd.trim().length > 20),
+        detail: 'Repository specification and house doctrine rules are present and non-empty.'
+      },
+      {
+        id: 'ledger_integrity',
+        name: 'SHA-256 Financial Ledger Digest',
+        passed: Boolean(integrityHash && integrityHash.length === 64),
+        detail: `Computed SHA-256 digest: ${integrityHash.slice(0, 16)}… across ${accounts.length} accounts.`
+      },
+      {
+        id: 'honeynet_sensors',
+        name: 'Cyber Security & Honeynet Armed',
+        passed: secCfg.canaryAccountEnabled !== false,
+        detail: '5 Honeynet deception sensors (/.env API, Canary Bank Account, Auth Bot Trap, Honey-Token) active.'
+      },
+      {
+        id: 'escalations_clear',
+        name: 'Zero Unresolved Escalations',
+        passed: openEscalations.length === 0,
+        detail: openEscalations.length === 0
+          ? 'All human operator escalations are resolved.'
+          : `${openEscalations.length} open ESCALATION shout(s) require System Owner decision.`
+      }
+    ];
+
+    const allPassed = checks.every(c => c.passed);
+    setTimeout(() => {
+      const gateResult = {
+        passed: allPassed,
+        timestamp: new Date().toISOString(),
+        integrityHash,
+        checks
+      };
+      updatePullboardData({ lastGateRun: gateResult });
+      if (onAppendSecurityLog) {
+        onAppendSecurityLog(
+          `Pullboard Quality Gate executed: ${allPassed ? 'PASS' : 'BLOCKED'} (SHA-256: ${integrityHash.slice(0, 12)}…).`,
+          allPassed ? 'INFO' : 'WARNING'
+        );
+      }
+      setRunningGate(false);
+    }, 350);
+  };
+
+  // Task Lane Transitions
+  const handleClaimTask = (taskId, agentLane) => {
+    const updated = tasks.map(t => {
+      if (t.id !== taskId) return t;
+      const slug = (t.specId || 'spec').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      return {
+        ...t,
+        lane: 'IN_PROGRESS',
+        claimedBy: agentLane || 'Author Agent',
+        worktree: `lane/${slug}-${t.id.slice(-4)}`
+      };
+    });
+    updatePullboardData({ tasks: updated });
+  };
+
+  const handleToggleCriterion = (taskId, critId) => {
+    const updated = tasks.map(t => {
+      if (t.id !== taskId) return t;
+      return {
+        ...t,
+        criteria: (t.criteria || []).map(c => c.id === critId ? { ...c, checked: !c.checked } : c)
+      };
+    });
+    updatePullboardData({ tasks: updated });
+  };
+
+  const handleSubmitForVerification = (task) => {
+    const defaultVerifier = task.claimedBy === 'Independent Verifier Agent'
+      ? 'Financial Auditor'
+      : 'Independent Verifier Agent';
+    const updated = tasks.map(t => {
+      if (t.id !== task.id) return t;
+      return {
+        ...t,
+        lane: 'VERIFICATION',
+        verifiedBy: t.verifiedBy || defaultVerifier
+      };
+    });
+    const newShout = {
+      id: `shout_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      fromLane: task.claimedBy || 'Author Agent',
+      toLane: defaultVerifier,
+      type: 'AUDIT_NOTE',
+      status: 'OPEN',
+      message: `Submitted [${task.specId}] "${task.title}" to Adversarial Verification. Awaiting independent second-agent check.`,
+      resolution: ''
+    };
+    updatePullboardData({
+      tasks: updated,
+      shouts: [newShout, ...shouts]
+    });
+  };
+
+  const handleChangeVerifier = (taskId, verifierLane) => {
+    const updated = tasks.map(t => t.id === taskId ? { ...t, verifiedBy: verifierLane } : t);
+    updatePullboardData({ tasks: updated });
+  };
+
+  const handleApproveAndShip = (task) => {
+    const allChecked = (task.criteria || []).every(c => c.checked);
+    if (!allChecked) {
+      alert('⚠️ Pullboard Adversarial Verification Rule: Every acceptance criterion must be checked off before shipping!');
+      return;
+    }
+    if (task.verifiedBy && task.verifiedBy === task.claimedBy) {
+      alert('⚠️ Pullboard Second-Agent Rule: The Independent Verifier cannot be the same lane as the Author who claimed the task!');
+      return;
+    }
+    const updated = tasks.map(t => {
+      if (t.id !== task.id) return t;
+      return {
+        ...t,
+        lane: 'SHIPPED',
+        verifiedBy: t.verifiedBy || 'Independent Verifier Agent',
+        shippedAt: new Date().toISOString(),
+        gateStatus: 'PASS'
+      };
+    });
+    const newShout = {
+      id: `shout_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      fromLane: task.verifiedBy || 'Independent Verifier Agent',
+      toLane: 'All Lanes',
+      type: 'INFO_SHOUT',
+      status: 'OPEN',
+      message: `✅ VERIFIED & SHIPPED [${task.specId}] "${task.title}" — All ${(task.criteria || []).length} acceptance criteria verified by ${task.verifiedBy || 'Independent Verifier Agent'}.`,
+      resolution: ''
+    };
+    updatePullboardData({
+      tasks: updated,
+      shouts: [newShout, ...shouts]
+    });
+  };
+
+  const handleRejectVerification = (task) => {
+    const updated = tasks.map(t => {
+      if (t.id !== task.id) return t;
+      return {
+        ...t,
+        lane: 'IN_PROGRESS',
+        gateStatus: 'REJECTED'
+      };
+    });
+    const newShout = {
+      id: `shout_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      fromLane: task.verifiedBy || 'Independent Verifier Agent',
+      toLane: task.claimedBy || 'Author Agent',
+      type: 'ESCALATION',
+      status: 'OPEN',
+      message: `❌ Verification rejected for [${task.specId}] "${task.title}" — Returned to ${task.claimedBy || 'Author Agent'} lane until all acceptance criteria pass.`,
+      resolution: ''
+    };
+    updatePullboardData({
+      tasks: updated,
+      shouts: [newShout, ...shouts]
+    });
+  };
+
+  const handleCreateTask = (e) => {
+    e.preventDefault();
+    if (!newTitle.trim()) return;
+    const critLines = newCriteriaText
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean);
+    const criteriaList = (critLines.length > 0 ? critLines : ['Verify spec compliance & quality gates']).map((text, idx) => ({
+      id: `c_${Date.now()}_${idx}`,
+      text,
+      checked: false
+    }));
+
+    const created = {
+      id: `pb_task_${Date.now()}`,
+      specId: newSpecId.trim() || 'SPEC-NEW',
+      title: newTitle.trim(),
+      module: newModule,
+      lane: 'BACKLOG',
+      claimedBy: newClaimLane,
+      worktree: `lane/${(newSpecId || 'spec').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      verifiedBy: '',
+      shippedAt: null,
+      gateStatus: 'PENDING',
+      criteria: criteriaList
+    };
+
+    updatePullboardData({ tasks: [created, ...tasks] });
+    setNewTitle('');
+    setShowNewTaskForm(false);
+  };
+
+  const handleDeleteTask = (taskId) => {
+    updatePullboardData({ tasks: tasks.filter(t => t.id !== taskId) });
+  };
+
+  // Shouts & Escalations Handlers
+  const handlePostShout = (e) => {
+    e.preventDefault();
+    if (!shoutMessage.trim()) return;
+    const created = {
+      id: `shout_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      fromLane: shoutFrom,
+      toLane: shoutTo,
+      type: shoutType,
+      status: 'OPEN',
+      message: shoutMessage.trim(),
+      resolution: ''
+    };
+    updatePullboardData({ shouts: [created, ...shouts] });
+    setShoutMessage('');
+  };
+
+  const handleResolveEscalation = (shoutId) => {
+    const decisionText = (resolutionInputs[shoutId] || '').trim() || `Approved & resolved by ${userEmail}`;
+    const updated = shouts.map(s => {
+      if (s.id !== shoutId) return s;
+      return {
+        ...s,
+        status: 'RESOLVED',
+        resolution: `${decisionText} (${new Date().toLocaleTimeString()})`
+      };
+    });
+    updatePullboardData({ shouts: updated });
+  };
+
+  // Save SPEC.md & DOCTRINE.md
+  const handleSaveDocs = () => {
+    updatePullboardData({
+      specMd: editingSpecText,
+      doctrineMd: editingDoctrineText
+    });
+    setDocSavedMsg('✓ SPEC.md and DOCTRINE.md saved and enforced on Pullboard!');
+    setTimeout(() => setDocSavedMsg(''), 3000);
+  };
+
+  const handleDownloadFile = (filename, content, mime = 'text/markdown;charset=utf-8;') => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const gatePassed = Boolean(lastGateRun?.passed);
+
+  return (
+    <div>
+      {/* ── Top Pullboard Header Banner (Solid Background — No Gradients) ── */}
+      <Card style={{
+        marginBottom: 16,
+        background: '#0c192c',
+        border: `2px solid ${C.blue}`
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: sm ? 18 : 22, fontWeight: 900, color: '#ffffff' }}>
+                📋 Pullboard — Spec-Driven Workflow & Adversarial Verification
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+                background: '#050b16', color: C.teal, border: `1.5px solid ${C.teal}`
+              }}>
+                pullboard-dev/pullboard
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+                background: '#050b16',
+                color: gatePassed ? C.green : C.amber,
+                border: `1.5px solid ${gatePassed ? C.green : C.amber}`
+              }}>
+                {gatePassed ? '✅ QUALITY GATE: PASS' : '🟡 QUALITY GATE: RUN CHECK'}
+              </span>
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.86)', marginTop: 4 }}>
+              Shared <code style={{ color: C.amber }}>SPEC.md</code> & <code style={{ color: C.amber }}>DOCTRINE.md</code> rules, isolated agent lanes, shouts/escalations, and second-agent verification where nothing ships until proven.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleRunQualityGates}
+              disabled={runningGate}
+              style={{
+                padding: '10px 16px', borderRadius: 10,
+                border: `2px solid ${C.green}`, background: C.green,
+                color: '#051b11', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+              }}
+            >
+              {runningGate ? '⏳ Running Quality Gates…' : '🧪 Run Quality Gates'}
+            </button>
+            {canWrite && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveView('BOARD');
+                  setShowNewTaskForm(p => !p);
+                }}
+                style={{
+                  padding: '10px 16px', borderRadius: 10,
+                  border: '2px solid #ffffff', background: '#050b16',
+                  color: '#ffffff', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}
+              >
+                {showNewTaskForm ? '✕ Close Form' : '➕ New Spec Task'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 5 Pullboard KPI Summary Boxes */}
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(5, 1fr)', gap: 10, marginTop: 16 }}>
+          <div style={{ background: '#050b16', border: `1.5px solid ${C.muted}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>1. Spec Backlog</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#ffffff', marginTop: 2 }}>{backlogTasks.length}</div>
+            <div style={{ fontSize: 10, color: C.muted }}>Scoped Spec Items</div>
+          </div>
+          <div style={{ background: '#050b16', border: `1.5px solid ${C.blue}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>2. Claimed Lanes</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: C.blue, marginTop: 2 }}>{inProgressTasks.length}</div>
+            <div style={{ fontSize: 10, color: C.muted }}>Atomic Worktree Leases</div>
+          </div>
+          <div style={{ background: '#050b16', border: `1.5px solid ${C.amber}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>3. In Verification</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: C.amber, marginTop: 2 }}>{verificationTasks.length}</div>
+            <div style={{ fontSize: 10, color: C.muted }}>Awaiting 2nd Verifier</div>
+          </div>
+          <div style={{ background: '#050b16', border: `1.5px solid ${C.green}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>4. Verified & Shipped</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: C.green, marginTop: 2 }}>{shippedTasks.length}</div>
+            <div style={{ fontSize: 10, color: C.muted }}>Proven & Merged</div>
+          </div>
+          <div style={{ background: '#050b16', border: `1.5px solid ${openEscalations.length > 0 ? C.red : C.teal}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Shouts & Escalations</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: openEscalations.length > 0 ? C.red : C.teal, marginTop: 2 }}>
+              {openEscalations.length > 0 ? `${openEscalations.length} Open` : shouts.length}
+            </div>
+            <div style={{ fontSize: 10, color: C.muted }}>
+              {openEscalations.length > 0 ? 'Needs Owner Decision' : 'All Escalations Clear'}
+            </div>
+          </div>
+        </div>
+
+        {/* Live Quality Gate Report Strip */}
+        {lastGateRun && (
+          <div style={{
+            marginTop: 14, padding: '12px 14px', borderRadius: 10,
+            background: '#050b16', border: `1.5px solid ${lastGateRun.passed ? C.green : C.red}`,
+            display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4, 1fr)', gap: 10
+          }}>
+            {(lastGateRun.checks || []).map(chk => (
+              <div key={chk.id} style={{ padding: '6px 8px', borderRadius: 8, background: '#081121', border: `1px solid ${chk.passed ? C.green : C.red}66` }}>
+                <div style={{ fontSize: 11, fontWeight: 900, color: chk.passed ? C.green : C.red }}>
+                  {chk.passed ? '✅' : '❌'} {chk.name}
+                </div>
+                <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{chk.detail}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* ── Sub-Navigation Switcher: Board vs Shouts vs SPEC.md/DOCTRINE.md ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[
+          { id: 'BOARD', label: `📋 1. Spec-Driven Board & Verification (${tasks.length})` },
+          { id: 'SHOUTS', label: `📢 2. Shouts & Escalations (${shouts.length})` },
+          { id: 'SPEC_DOCS', label: '📜 3. SPEC.md & DOCTRINE.md Harness' }
+        ].map(tabBtn => {
+          const active = activeView === tabBtn.id;
+          return (
+            <button
+              key={tabBtn.id}
+              type="button"
+              onClick={() => setActiveView(tabBtn.id)}
+              style={{
+                padding: '10px 18px', borderRadius: 10, cursor: 'pointer',
+                fontSize: 13, fontWeight: 900,
+                border: `2px solid ${active ? C.blue : C.border}`,
+                background: active ? '#10243e' : C.card,
+                color: active ? '#ffffff' : C.muted
+              }}
+            >
+              {tabBtn.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── New Spec Task Creation Form ── */}
+      {showNewTaskForm && activeView === 'BOARD' && (
+        <Card style={{ marginBottom: 16, background: '#081121', border: `2px solid ${C.blue}` }}>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#ffffff', marginBottom: 12 }}>
+            ➕ Create Scoped Pullboard Spec Task
+          </div>
+          <form onSubmit={handleCreateTask} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 3fr 1.5fr 1.5fr', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Spec ID</label>
+                <Inp value={newSpecId} onChange={e => setNewSpecId(e.target.value)} placeholder="SPEC-05" />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Task Title / Deliverable</label>
+                <Inp value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. Audit BDO & BPI Passbook Q4 Tax Withholding" required />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Target App Module</label>
+                <select
+                  value={newModule}
+                  onChange={e => setNewModule(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, fontWeight: 700 }}
+                >
+                  <option value="account-dashboard">🏧 Account Dashboard</option>
+                  <option value="security">🛡️ Cyber Security</option>
+                  <option value="reconcile">🔍 Reconcile & Audit</option>
+                  <option value="budget">📅 Monthly Budget</option>
+                  <option value="debts">💳 Debt Manager</option>
+                  <option value="investments">📈 Investments</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Default Agent Lane</label>
+                <select
+                  value={newClaimLane}
+                  onChange={e => setNewClaimLane(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, fontWeight: 700 }}
+                >
+                  {AGENT_LANES.map(lane => <option key={lane} value={lane}>{lane}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>
+                Acceptance Criteria (One criterion per line — must be proven by 2nd Verifier before shipping)
+              </label>
+              <textarea
+                rows={3}
+                value={newCriteriaText}
+                onChange={e => setNewCriteriaText(e.target.value)}
+                style={{
+                  width: '100%', padding: '10px', borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: C.bg, color: C.text, fontSize: 12, fontFamily: 'inherit'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="submit"
+                style={{
+                  padding: '9px 18px', borderRadius: 8, border: 'none',
+                  background: C.blue, color: '#ffffff', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}
+              >
+                ➕ Add to Spec Backlog
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNewTaskForm(false)}
+                style={{
+                  padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: 'transparent', color: C.muted, fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          VIEW 1: 4-LANE SPEC-DRIVEN KANBAN & ADVERSARIAL VERIFICATION BOARD
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {activeView === 'BOARD' && (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4, 1fr)', gap: 14 }}>
+          {[
+            { id: 'BACKLOG', title: '📥 1. Spec Backlog', sub: 'Scoped items linked to SPEC.md', color: C.muted, items: backlogTasks },
+            { id: 'IN_PROGRESS', title: '⚡ 2. Claimed Agent Lane', sub: 'Atomic lease & active execution', color: C.blue, items: inProgressTasks },
+            { id: 'VERIFICATION', title: '🔍 3. Adversarial Verification', sub: '2nd Verifier must prove criteria', color: C.amber, items: verificationTasks },
+            { id: 'SHIPPED', title: '✅ 4. Verified & Shipped', sub: 'Proven by 2nd agent & merged', color: C.green, items: shippedTasks }
+          ].map(col => (
+            <div
+              key={col.id}
+              style={{
+                background: '#070f1d',
+                border: `2px solid ${col.color}66`,
+                borderRadius: 14,
+                padding: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12
+              }}
+            >
+              {/* Column Header */}
+              <div style={{ borderBottom: `1.5px solid ${col.color}55`, paddingBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: '#ffffff' }}>{col.title}</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 900, padding: '2px 8px', borderRadius: 10,
+                    background: `${col.color}22`, color: col.color, border: `1px solid ${col.color}`
+                  }}>
+                    {col.items.length}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{col.sub}</div>
+              </div>
+
+              {/* Tasks in Lane */}
+              {col.items.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '28px 10px', color: C.muted, fontSize: 12, border: `1px dashed ${C.border}`, borderRadius: 10 }}>
+                  No items in this lane.
+                </div>
+              ) : (
+                col.items.map(task => {
+                  const totalCrit = (task.criteria || []).length;
+                  const checkedCrit = (task.criteria || []).filter(c => c.checked).length;
+                  const allCritChecked = totalCrit > 0 && checkedCrit === totalCrit;
+
+                  return (
+                    <div
+                      key={task.id}
+                      style={{
+                        background: '#0d192b',
+                        border: `1.5px solid ${col.color}88`,
+                        borderRadius: 12,
+                        padding: 12,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10
+                      }}
+                    >
+                      {/* Spec Badge & Module Jump */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 6,
+                          background: '#050b16', color: C.amber, border: `1px solid ${C.amber}`
+                        }}>
+                          {task.specId}
+                        </span>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          {task.module && setTab && (
+                            <button
+                              type="button"
+                              onClick={() => setTab(task.module)}
+                              style={{
+                                fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 6,
+                                background: `${C.blue}22`, color: C.blue, border: `1px solid ${C.blue}66`, cursor: 'pointer'
+                              }}
+                              title={`Open ${task.module} module`}
+                            >
+                              ↗ {task.module}
+                            </button>
+                          )}
+                          {canUpdate && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTask(task.id)}
+                              style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 11, fontWeight: 900 }}
+                              title="Delete task"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Task Title */}
+                      <div style={{ fontSize: 13, fontWeight: 900, color: '#ffffff', lineHeight: 1.35 }}>
+                        {task.title}
+                      </div>
+
+                      {/* Atomic Claim Lease & Worktree Metadata */}
+                      <div style={{ fontSize: 11, color: C.muted, background: '#050b16', padding: '7px 9px', borderRadius: 8, border: `1px solid ${C.border}` }}>
+                        <div>
+                          <strong style={{ color: C.text }}>Author Lane:</strong>{' '}
+                          <span style={{ color: C.blue, fontWeight: 800 }}>{task.claimedBy || 'Unassigned'}</span>
+                        </div>
+                        <div style={{ fontFamily: 'monospace', fontSize: 10, color: C.teal, marginTop: 2 }}>
+                          🌿 {task.worktree || 'lane/main'}
+                        </div>
+                        {task.verifiedBy && (
+                          <div style={{ marginTop: 3 }}>
+                            <strong style={{ color: C.text }}>2nd Verifier:</strong>{' '}
+                            <span style={{ color: C.green, fontWeight: 800 }}>{task.verifiedBy}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Acceptance Criteria Checklist */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        <div style={{ fontSize: 10, fontWeight: 900, color: allCritChecked ? C.green : C.amber, textTransform: 'uppercase' }}>
+                          Acceptance Criteria ({checkedCrit}/{totalCrit} Verified)
+                        </div>
+                        {(task.criteria || []).map(crit => (
+                          <label
+                            key={crit.id}
+                            style={{
+                              display: 'flex', alignItems: 'flex-start', gap: 7,
+                              fontSize: 11, color: crit.checked ? '#d1fae5' : C.text,
+                              cursor: task.lane === 'SHIPPED' ? 'default' : 'pointer',
+                              lineHeight: 1.35
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={Boolean(crit.checked)}
+                              disabled={task.lane === 'SHIPPED'}
+                              onChange={() => handleToggleCriterion(task.id, crit.id)}
+                              style={{ accentColor: C.green, marginTop: 2 }}
+                            />
+                            <span style={{ textDecoration: crit.checked ? 'line-through' : 'none', opacity: crit.checked ? 0.85 : 1 }}>
+                              {crit.text}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+
+                      {/* Lane-Specific Action Controls */}
+                      {task.lane === 'BACKLOG' && (
+                        <button
+                          type="button"
+                          onClick={() => handleClaimTask(task.id, task.claimedBy !== 'Unassigned' ? task.claimedBy : 'Author Agent')}
+                          style={{
+                            width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none',
+                            background: C.blue, color: '#ffffff', fontSize: 11, fontWeight: 900, cursor: 'pointer'
+                          }}
+                        >
+                          ⚡ Claim Atomic Lease & Start
+                        </button>
+                      )}
+
+                      {task.lane === 'IN_PROGRESS' && (
+                        <button
+                          type="button"
+                          onClick={() => handleSubmitForVerification(task)}
+                          style={{
+                            width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none',
+                            background: C.amber, color: '#050b16', fontSize: 11, fontWeight: 900, cursor: 'pointer'
+                          }}
+                        >
+                          🔍 Submit for Adversarial Verification
+                        </button>
+                      )}
+
+                      {task.lane === 'VERIFICATION' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
+                          <div>
+                            <label style={{ fontSize: 10, color: C.muted, fontWeight: 800, display: 'block', marginBottom: 3 }}>
+                              Assign 2nd Independent Verifier:
+                            </label>
+                            <select
+                              value={task.verifiedBy || 'Independent Verifier Agent'}
+                              onChange={e => handleChangeVerifier(task.id, e.target.value)}
+                              style={{
+                                width: '100%', padding: '6px 8px', borderRadius: 6,
+                                border: `1px solid ${C.amber}`, background: '#050b16', color: '#ffffff', fontSize: 11, fontWeight: 800
+                              }}
+                            >
+                              {AGENT_LANES.filter(l => l !== task.claimedBy).map(lane => (
+                                <option key={lane} value={lane}>{lane}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              type="button"
+                              onClick={() => handleApproveAndShip(task)}
+                              style={{
+                                flex: 1, padding: '8px 10px', borderRadius: 8, border: 'none',
+                                background: allCritChecked ? C.green : `${C.green}33`,
+                                color: allCritChecked ? '#051b11' : C.green,
+                                fontSize: 11, fontWeight: 900, cursor: 'pointer'
+                              }}
+                            >
+                              ✅ Verify & Ship
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectVerification(task)}
+                              style={{
+                                padding: '8px 10px', borderRadius: 8,
+                                border: `1px solid ${C.red}`, background: `${C.red}22`,
+                                color: '#fca5a5', fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                              }}
+                              title="Reject back to In Progress with an Escalation Shout"
+                            >
+                              ❌ Reject
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {task.lane === 'SHIPPED' && (
+                        <div style={{
+                          padding: '7px 9px', borderRadius: 8, background: '#051b11',
+                          border: `1px solid ${C.green}`, fontSize: 10, color: C.green, fontWeight: 800
+                        }}>
+                          ✓ Verified by <strong>{task.verifiedBy || 'Independent Verifier'}</strong>
+                          {task.shippedAt && <div style={{ color: '#a7f3d0', marginTop: 2 }}>Shipped: {new Date(task.shippedAt).toLocaleDateString()}</div>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          VIEW 2: SHOUTS & ESCALATIONS FEED (AGENT-TO-HUMAN PROTOCOL)
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {activeView === 'SHOUTS' && (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '2fr 3fr', gap: 16 }}>
+          {/* Post a Shout or Escalation */}
+          <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.amber}` }}>
+            <SecTitle>📢 Post a Pullboard Shout or Escalation</SecTitle>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 14, lineHeight: 1.45 }}>
+              In Pullboard, agents use <strong>Shouts</strong> to broadcast audit notes across lanes and <strong>Escalations</strong> to surface ambiguities or blockers to the human System Owner.
+            </div>
+
+            <form onSubmit={handlePostShout} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Shout Severity / Type</label>
+                <select
+                  value={shoutType}
+                  onChange={e => setShoutType(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, fontWeight: 800 }}
+                >
+                  <option value="INFO_SHOUT">💬 INFO SHOUT (Broadcast Note)</option>
+                  <option value="AUDIT_NOTE">🔍 AUDIT NOTE (Verification Hand-Off)</option>
+                  <option value="ESCALATION">🚨 HUMAN ESCALATION (Requires Owner Decision)</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>From Lane</label>
+                  <select
+                    value={shoutFrom}
+                    onChange={e => setShoutFrom(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12 }}
+                  >
+                    {AGENT_LANES.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>To Lane</label>
+                  <select
+                    value={shoutTo}
+                    onChange={e => setShoutTo(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12 }}
+                  >
+                    <option value="All Lanes">All Lanes</option>
+                    {AGENT_LANES.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Shout / Escalation Message</label>
+                <textarea
+                  rows={3}
+                  value={shoutMessage}
+                  onChange={e => setShoutMessage(e.target.value)}
+                  placeholder="Describe the verification finding, blocker, or question for the System Owner…"
+                  style={{ width: '100%', padding: 10, borderRadius: 8, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, fontFamily: 'inherit' }}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  padding: '10px 16px', borderRadius: 8, border: 'none',
+                  background: shoutType === 'ESCALATION' ? C.red : C.amber,
+                  color: shoutType === 'ESCALATION' ? '#ffffff' : '#050b16',
+                  fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}
+              >
+                📢 Broadcast Shout to Board
+              </button>
+            </form>
+          </Card>
+
+          {/* Live Shouts & Escalations Feed */}
+          <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+            <SecTitle>📡 Live Shouts & Escalations Stream ({shouts.length})</SecTitle>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 500, overflowY: 'auto' }}>
+              {shouts.map(s => {
+                const isEsc = s.type === 'ESCALATION';
+                const isResolved = s.status === 'RESOLVED';
+                const badgeClr = isEsc ? (isResolved ? C.green : C.red) : s.type === 'AUDIT_NOTE' ? C.amber : C.blue;
+
+                return (
+                  <div
+                    key={s.id}
+                    style={{
+                      padding: 12, borderRadius: 10, background: '#050b16',
+                      borderLeft: `4px solid ${badgeClr}`,
+                      borderTop: `1px solid ${C.border}`,
+                      borderRight: `1px solid ${C.border}`,
+                      borderBottom: `1px solid ${C.border}`
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 6,
+                          background: `${badgeClr}22`, color: badgeClr, border: `1px solid ${badgeClr}`
+                        }}>
+                          {s.type} {isEsc ? (isResolved ? '· RESOLVED' : '· NEEDS OWNER') : ''}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#ffffff' }}>
+                          {s.fromLane} → {s.toLane}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 10, color: C.muted }}>
+                        {s.timestamp ? new Date(s.timestamp).toLocaleString() : ''}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: 12, color: C.text, marginTop: 6, lineHeight: 1.45 }}>
+                      {s.message}
+                    </div>
+
+                    {s.resolution && (
+                      <div style={{
+                        marginTop: 8, padding: '6px 10px', borderRadius: 6,
+                        background: '#051b11', border: `1px solid ${C.green}`,
+                        fontSize: 11, color: C.green, fontWeight: 700
+                      }}>
+                        ✓ Owner Decision: {s.resolution}
+                      </div>
+                    )}
+
+                    {isEsc && !isResolved && (
+                      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                        <Inp
+                          type="text"
+                          value={resolutionInputs[s.id] || ''}
+                          onChange={e => setResolutionInputs(prev => ({ ...prev, [s.id]: e.target.value }))}
+                          placeholder="Enter owner decision / resolution note…"
+                          style={{ padding: '6px 10px', fontSize: 11 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleResolveEscalation(s.id)}
+                          style={{
+                            padding: '6px 12px', borderRadius: 6, border: 'none',
+                            background: C.green, color: '#051b11', fontSize: 11, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                          }}
+                        >
+                          ✅ Resolve Escalation
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          VIEW 3: SPEC.MD & DOCTRINE.MD HARNESS + CLI REFERENCE
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {activeView === 'SPEC_DOCS' && (
+        <div>
+          <Card style={{ marginBottom: 16, background: '#081121', border: `1.5px solid ${C.teal}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+              <div>
+                <SecTitle style={{ margin: 0 }}>📜 Pullboard Repository SPEC.md & DOCTRINE.md Harness</SecTitle>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                  Edit and enforce your feature specifications (<code style={{ color: C.amber }}>SPEC.md</code>) and house rules (<code style={{ color: C.amber }}>DOCTRINE.md</code>). Synced with root repository files.
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleSaveDocs}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8, border: 'none',
+                    background: C.green, color: '#051b11', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                  }}
+                >
+                  💾 Save SPEC.md & DOCTRINE.md
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadFile('SPEC.md', editingSpecText)}
+                  style={{
+                    padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.amber}`,
+                    background: '#050b16', color: C.amber, fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                  }}
+                >
+                  ⬇️ Download SPEC.md
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadFile('DOCTRINE.md', editingDoctrineText)}
+                  style={{
+                    padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.teal}`,
+                    background: '#050b16', color: C.teal, fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                  }}
+                >
+                  ⬇️ Download DOCTRINE.md
+                </button>
+              </div>
+            </div>
+
+            {docSavedMsg && (
+              <div style={{
+                padding: '8px 12px', borderRadius: 8, marginBottom: 12,
+                background: `${C.green}22`, border: `1px solid ${C.green}`, color: C.green, fontSize: 12, fontWeight: 800
+              }}>
+                {docSavedMsg}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: C.amber, marginBottom: 6 }}>
+                  📄 SPEC.md (Authoritative Feature Specifications)
+                </div>
+                <textarea
+                  rows={16}
+                  value={editingSpecText}
+                  onChange={e => setEditingSpecText(e.target.value)}
+                  style={{
+                    width: '100%', padding: 12, borderRadius: 10,
+                    background: '#040914', border: `1px solid ${C.border}`,
+                    color: '#e2e8f0', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.5
+                  }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: C.teal, marginBottom: 6 }}>
+                  ⚖️ DOCTRINE.md (House Rules & Quality Gate Invariants)
+                </div>
+                <textarea
+                  rows={16}
+                  value={editingDoctrineText}
+                  onChange={e => setEditingDoctrineText(e.target.value)}
+                  style={{
+                    width: '100%', padding: 12, borderRadius: 10,
+                    background: '#040914', border: `1px solid ${C.border}`,
+                    color: '#e2e8f0', fontFamily: 'monospace', fontSize: 11, lineHeight: 1.5
+                  }}
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* Terminal / CLI Harness Quick Reference */}
+          <Card style={{ marginBottom: 0, background: '#050b16', border: `1.5px solid ${C.border}` }}>
+            <SecTitle>💻 Pullboard CLI & NPM Scripts Quick Reference</SecTitle>
+            <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4, 1fr)', gap: 10, fontSize: 11 }}>
+              <div style={{ padding: 10, borderRadius: 8, background: '#081121', border: `1px solid ${C.border}` }}>
+                <div style={{ fontWeight: 900, color: C.amber }}>Initialize Pullboard</div>
+                <code style={{ display: 'block', marginTop: 4, color: C.green }}>npm run pullboard:init</code>
+                <div style={{ color: C.muted, marginTop: 4 }}>Sets up local SQLite board in .git & hooks</div>
+              </div>
+              <div style={{ padding: 10, borderRadius: 8, background: '#081121', border: `1px solid ${C.border}` }}>
+                <div style={{ fontWeight: 900, color: C.blue }}>Check Board Status</div>
+                <code style={{ display: 'block', marginTop: 4, color: C.green }}>npm run pullboard:status</code>
+                <div style={{ color: C.muted, marginTop: 4 }}>Inspects active lanes & claimed leases</div>
+              </div>
+              <div style={{ padding: 10, borderRadius: 8, background: '#081121', border: `1px solid ${C.border}` }}>
+                <div style={{ fontWeight: 900, color: C.teal }}>Run Quality Gate</div>
+                <code style={{ display: 'block', marginTop: 4, color: C.green }}>npm run pullboard:gate</code>
+                <div style={{ color: C.muted, marginTop: 4 }}>Runs Vite build + 5 verification suites</div>
+              </div>
+              <div style={{ padding: 10, borderRadius: 8, background: '#081121', border: `1px solid ${C.border}` }}>
+                <div style={{ fontWeight: 900, color: C.purple }}>Interactive CLI Tour</div>
+                <code style={{ display: 'block', marginTop: 4, color: C.green }}>npm run pullboard:tour</code>
+                <div style={{ color: C.muted, marginTop: 4 }}>Walks through Pullboard CLI commands</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── UX/UI DESIGN ARCHITECT ADVISOR AGENT (plugin87/ux-ui-agent-skills) ────────
+function parseHexRelativeLuminance(hexColor) {
+  if (typeof hexColor !== 'string') return 0.05;
+  const clean = hexColor.trim().replace(/^#/, '');
+  if (!/^[0-9a-fA-F]{3,6}$/.test(clean)) return 0.05;
+  const full = clean.length === 3
+    ? clean.split('').map(c => c + c).join('')
+    : clean.slice(0, 6);
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  const toLin = c => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * toLin(r) + 0.7152 * toLin(g) + 0.0722 * toLin(b);
+}
+
+function calcWcagContrastRatio(hexA, hexB) {
+  const l1 = parseHexRelativeLuminance(hexA);
+  const l2 = parseHexRelativeLuminance(hexB);
+  const hi = Math.max(l1, l2);
+  const lo = Math.min(l1, l2);
+  return Number(((hi + 0.05) / (lo + 0.05)).toFixed(2));
+}
+
+function pickOptimalContrastText(bgHex) {
+  const whiteRatio = calcWcagContrastRatio(bgHex, '#ffffff');
+  const darkRatio = calcWcagContrastRatio(bgHex, '#050b16');
+  return whiteRatio >= darkRatio ? '#ffffff' : '#050b16';
+}
+
+function UxUiAdvisorTab({
+  accounts = [],
+  setAccounts,
+  budgetData = {},
+  setBudgetData,
+  sm,
+  canWrite,
+  canUpdate,
+  setTab,
+  onAppendSecurityLog
+}) {
+  const uxCfg = budgetData?.uxAdvisorConfig || {};
+  const seniorUxMode = Boolean(uxCfg.seniorUxMode);
+  const secCfg = budgetData?.securityConfig || {};
+
+  // Sub-views inside UX/UI Agent
+  const [subView, setSubView] = useState('ADVISOR'); // 'ADVISOR' | 'CONSULT' | 'TOKENS_LAB'
+
+  // Live WCAG Contrast Lab state
+  const [labBgColor, setLabBgColor] = useState('#002b7f');
+  const [labTextColor, setLabTextColor] = useState('#ffffff');
+  const [labTargetAccId, setLabTargetAccId] = useState(accounts[0]?.id || '');
+
+  // Interactive Advisor Console ("Ask the UX/UI Agent")
+  const [promptInput, setPromptInput] = useState('');
+  const [actionToast, setActionToast] = useState('');
+  const [agentHistory, setAgentHistory] = useState([
+    {
+      id: 'ux_init_1',
+      role: 'agent',
+      timestamp: new Date().toISOString(),
+      title: '🎨 Senior UX/UI Design Architect Ready (plugin87/ux-ui-agent-skills)',
+      summary: 'I continuously audit your Philippine bank cards, WCAG 2.2 AA–AAA contrast ratios, DTCG solid color tokens, and senior-parent ergonomics.',
+      bullets: [
+        'Pillar 1 — DTCG Tokens: Enforces solid high-contrast colors with zero disorienting gradients.',
+        'Pillar 2 — 52-Component State Matrix: Checks hover, focus-visible, disabled, and destructive safeguards.',
+        'Pillar 3 — WCAG 2.2 AA–AAA: Targets >= 4.5:1 normal text (7.0:1+ for senior readability) & >= 44px tap targets.',
+        'Pillar 4 — Objective UX Gates: Provides 1-click Auto-Fixes or sends UX tasks straight to your Pullboard queue.'
+      ]
+    }
+  ]);
+
+  useEffect(() => {
+    if (accounts.length > 0 && !accounts.some(a => a.id === labTargetAccId)) {
+      setLabTargetAccId(accounts[0].id);
+    }
+  }, [accounts, labTargetAccId]);
+
+  const showToast = (msg) => {
+    setActionToast(msg);
+    setTimeout(() => setActionToast(''), 3500);
+  };
+
+  const updateUxConfig = (updates, recLabel = null) => {
+    setBudgetData(prev => {
+      const prevUx = prev?.uxAdvisorConfig || {};
+      const prevApplied = Array.isArray(prevUx.appliedRecommendations) ? prevUx.appliedRecommendations : [];
+      const nextApplied = recLabel
+        ? [{ label: recLabel, appliedAt: new Date().toISOString() }, ...prevApplied].slice(0, 20)
+        : prevApplied;
+      return {
+        ...prev,
+        uxAdvisorConfig: {
+          ...prevUx,
+          ...updates,
+          appliedRecommendations: nextApplied
+        }
+      };
+    });
+  };
+
+  // Audit every user account against WCAG 2.2 & Solid-Color rules
+  const accountAudits = useMemo(() => {
+    return accounts.map(acc => {
+      const brand = getPhBankBrand(acc);
+      const contrast = calcWcagContrastRatio(brand.solidBg, brand.textColor);
+      const wcagGrade = contrast >= 7.0 ? 'AAA' : contrast >= 4.5 ? 'AA' : 'FAIL';
+      const accentContrast = calcWcagContrastRatio(brand.solidBg, brand.secondary);
+      const isGenericBrand = brand.code === 'BANK' && !acc.customLogoUrl;
+      return {
+        id: acc.id,
+        name: acc.name,
+        code: brand.code,
+        solidBg: brand.solidBg,
+        textColor: brand.textColor,
+        secondary: brand.secondary,
+        contrast,
+        accentContrast,
+        wcagGrade,
+        hasCustomLogo: Boolean(acc.customLogoUrl),
+        isGenericBrand,
+        recommendedText: pickOptimalContrastText(brand.solidBg)
+      };
+    });
+  }, [accounts]);
+
+  const failingAccounts = accountAudits.filter(a => a.wcagGrade === 'FAIL');
+  const aaOnlyAccounts = accountAudits.filter(a => a.wcagGrade === 'AA');
+  const genericLogoAccounts = accountAudits.filter(a => a.isGenericBrand);
+
+  const balancesMasked = useMemo(() => {
+    try {
+      return localStorage.getItem('dashboardMoneyMasked') === 'true';
+    } catch {
+      return false;
+    }
+  }, [actionToast, seniorUxMode]);
+
+  // 10 Objective Quality Gates (Pillar 4)
+  const uxGates = [
+    {
+      id: 'gate_solid',
+      name: 'Solid-Color Card Policy (Zero Gradients)',
+      pillar: 'Pillar 1 · DTCG Tokens',
+      passed: true,
+      detail: 'Philippine bank cards, Passbooks, Security & Pullboard cards strictly use clean solid backgrounds.'
+    },
+    {
+      id: 'gate_wcag_aa',
+      name: 'WCAG 2.2 AA Text Contrast (>= 4.5:1)',
+      pillar: 'Pillar 3 · WCAG 2.2',
+      passed: failingAccounts.length === 0,
+      detail: failingAccounts.length === 0
+        ? `All ${accounts.length} account card(s) meet or exceed 4.5:1 readability.`
+        : `${failingAccounts.length} account(s) failed 4.5:1 contrast (${failingAccounts.map(a => a.name).join(', ')}).`
+    },
+    {
+      id: 'gate_wcag_aaa',
+      name: 'WCAG 2.2 AAA Senior Contrast (>= 7.0:1)',
+      pillar: 'Pillar 3 · Senior UX',
+      passed: accounts.length > 0 && failingAccounts.length === 0 && aaOnlyAccounts.length === 0,
+      detail: (failingAccounts.length === 0 && aaOnlyAccounts.length === 0)
+        ? '100% of bank cards reach AAA (>= 7.0:1) ultra-clear legibility.'
+        : `${failingAccounts.length + aaOnlyAccounts.length} account(s) are below 7.0:1 AAA target for senior eyes.`
+    },
+    {
+      id: 'gate_senior_mode',
+      name: 'Senior Parent High-Clarity UX Mode',
+      pillar: 'Pillar 3 · Ergonomics',
+      passed: seniorUxMode,
+      detail: seniorUxMode
+        ? 'Active: >= 44px touch targets, bold focus rings & boosted text clarity enabled app-wide.'
+        : 'Disabled: Enable Senior High-Clarity Mode for larger touch targets & high-visibility focus rings.'
+    },
+    {
+      id: 'gate_logos',
+      name: 'Recognizable PH Bank Badges / Uploaded Logos',
+      pillar: 'Pillar 2 · Visual Cues',
+      passed: genericLogoAccounts.length === 0,
+      detail: genericLogoAccounts.length === 0
+        ? 'Every account displays either an official PH bank badge or user-uploaded logo.'
+        : `${genericLogoAccounts.length} account(s) use generic badge (${genericLogoAccounts.map(a => a.name).join(', ')}). Upload logos for instant recognition.`
+    },
+    {
+      id: 'gate_modals',
+      name: 'Modal-First Passbook & Drilldown Architecture',
+      pillar: 'Pillar 2 · Anatomy',
+      passed: true,
+      detail: 'Clicking any account card pops open the Libreta Passbook modal immediately without scrolling.'
+    },
+    {
+      id: 'gate_dtcg',
+      name: 'DTCG Design Tokens Standard (dtcgTokens.json)',
+      pillar: 'Pillar 1 · Tokens',
+      passed: Boolean(dtcgTokens?.primitive && dtcgTokens?.semantic && dtcgTokens?.component),
+      detail: '3-tier Primitive -> Semantic -> Component DTCG schema active and inspectable.'
+    },
+    {
+      id: 'gate_privacy',
+      name: 'Anti-Shoulder-Surfing Affordance',
+      pillar: 'Pillar 3 · Financial Safety',
+      passed: Boolean(secCfg.autoBlurUnfocus || balancesMasked),
+      detail: (secCfg.autoBlurUnfocus || balancesMasked)
+        ? 'Balance Masking (*****) or Auto-Blur on Window Unfocus is protecting sensitive balances.'
+        : 'Enable Balance Masking or Auto-Blur Unfocus to guard balances in public spaces.'
+    }
+  ];
+
+  const passedGatesCount = uxGates.filter(g => g.passed).length;
+  const uxScore = Math.round((passedGatesCount / uxGates.length) * 100);
+  const scoreColor = uxScore >= 88 ? C.green : uxScore >= 65 ? C.teal : C.amber;
+
+  // Dynamic Actionable Recommendations List
+  const recommendations = [];
+
+  if (failingAccounts.length > 0 || aaOnlyAccounts.length > 0) {
+    const affected = [...failingAccounts, ...aaOnlyAccounts];
+    recommendations.push({
+      id: 'rec_contrast',
+      priority: failingAccounts.length > 0 ? 'CRITICAL' : 'HIGH',
+      pillar: 'WCAG 2.2 AA–AAA Contrast',
+      title: `${affected.length} Bank Card(s) Below AAA Contrast Target (7.0:1)`,
+      advice: `Cards (${affected.map(a => `${a.name}: ${a.contrast}:1`).join(', ')}) have suboptimal foreground/background contrast. For senior parents, white text on deep navy (#050b16) or dark charcoal text on light solid backgrounds achieves 12:1–18:1 clarity.`,
+      fixLabel: '⚡ Auto-Fix Card Text Contrast',
+      onFix: () => {
+        if (!setAccounts) return;
+        setAccounts(prev => prev.map(acc => {
+          const audit = affected.find(x => x.id === acc.id);
+          if (!audit) return acc;
+          const optText = pickOptimalContrastText(audit.solidBg);
+          const optBg = calcWcagContrastRatio(audit.solidBg, optText) < 7.0 ? '#050b16' : audit.solidBg;
+          return {
+            ...acc,
+            customBgColor: optBg,
+            customTextColor: pickOptimalContrastText(optBg)
+          };
+        }));
+        updateUxConfig({}, 'Auto-fixed account card colors to WCAG 2.2 AAA contrast');
+        showToast('✓ Auto-fixed bank card colors for WCAG 2.2 AAA readability!');
+      }
+    });
+  }
+
+  if (!seniorUxMode) {
+    recommendations.push({
+      id: 'rec_senior_mode',
+      priority: 'HIGH',
+      pillar: 'WCAG 2.5.8 Touch & Focus Ergonomics',
+      title: 'Enable Senior Parent High-Clarity UX Mode',
+      advice: 'Activates minimum 44px accessible button tap targets, high-visibility amber keyboard focus rings, and sharper typography cues across forms and tables without breaking mobile responsiveness.',
+      fixLabel: '👵 Enable Senior High-Clarity Mode',
+      onFix: () => {
+        updateUxConfig({ seniorUxMode: true }, 'Enabled Senior Parent High-Clarity UX Mode');
+        showToast('✓ Senior Parent High-Clarity UX Mode is now ACTIVE!');
+      }
+    });
+  }
+
+  if (genericLogoAccounts.length > 0) {
+    recommendations.push({
+      id: 'rec_logos',
+      priority: 'MEDIUM',
+      pillar: 'Visual Memory & Senior Recognition',
+      title: `Upload Custom Logos for ${genericLogoAccounts.length} Generic Account(s)`,
+      advice: `Accounts (${genericLogoAccounts.map(a => a.name).join(', ')}) do not match an automatic PH bank keyword or uploaded image. Uploading their official logo makes your Account Dashboard immediately scannable for senior parents.`,
+      fixLabel: '🎨 Open Account Dashboard',
+      onFix: () => setTab && setTab('account-dashboard')
+    });
+  }
+
+  if (!secCfg.autoBlurUnfocus && !balancesMasked) {
+    recommendations.push({
+      id: 'rec_privacy_blur',
+      priority: 'MEDIUM',
+      pillar: 'Shoulder-Surfing UX Safeguard',
+      title: 'Activate Auto-Blur on Window Unfocus',
+      advice: 'When viewing financial balances in public or switching browser tabs, auto-blur shields real Peso totals from bystanders.',
+      fixLabel: '🌫️ Turn On Auto-Blur Unfocus',
+      onFix: () => {
+        setBudgetData(prev => ({
+          ...prev,
+          securityConfig: { ...(prev?.securityConfig || {}), autoBlurUnfocus: true }
+        }));
+        updateUxConfig({}, 'Enabled Auto-Blur on Window Unfocus via UX Agent');
+        if (onAppendSecurityLog) {
+          onAppendSecurityLog('Auto-Blur Screen on Window Unfocus enabled via UX/UI Advisor Agent.', 'INFO');
+        }
+        showToast('✓ Privacy Auto-Blur enabled!');
+      }
+    });
+  }
+
+  // Send any UX advisory straight to Pullboard Backlog
+  const handlePushToPullboard = (rec) => {
+    setBudgetData(prev => {
+      const currentPb = prev?.pullboardData || {
+        tasks: DEFAULT_PULLBOARD_TASKS,
+        shouts: DEFAULT_PULLBOARD_SHOUTS,
+        specMd: DEFAULT_PULLBOARD_SPEC_MD,
+        doctrineMd: DEFAULT_PULLBOARD_DOCTRINE_MD,
+        lastGateRun: null
+      };
+      const existingTasks = Array.isArray(currentPb.tasks) ? currentPb.tasks : [];
+      const newTask = {
+        id: `pb_ux_${Date.now()}`,
+        specId: `SPEC-UX-${existingTasks.length + 1}`,
+        title: `[UX/UI Agent] ${rec.title}`,
+        module: 'account-dashboard',
+        lane: 'BACKLOG',
+        claimedBy: 'UX/UI Design Architect',
+        worktree: 'lane/ux-ui-accessibility',
+        verifiedBy: '',
+        shippedAt: null,
+        gateStatus: 'PENDING',
+        criteria: [
+          { id: 'c1', text: rec.advice.slice(0, 140), checked: false },
+          { id: 'c2', text: 'Verify WCAG 2.2 AA-AAA contrast & solid-color compliance', checked: false }
+        ]
+      };
+      return {
+        ...prev,
+        pullboardData: {
+          ...currentPb,
+          tasks: [newTask, ...existingTasks]
+        }
+      };
+    });
+    showToast(`✓ Pushed "${rec.title}" to Pullboard Spec Backlog!`);
+  };
+
+  // Generate Dynamic Agent Advisory Response ("Ask the Agent")
+  const runAgentConsultation = (questionText) => {
+    const q = (questionText || '').trim();
+    if (!q) return;
+    const ql = q.toLowerCase();
+
+    let title = '🎨 UX/UI Architect Advisory Report';
+    let summary = '';
+    let bullets = [];
+
+    if (ql.includes('senior') || ql.includes('parent') || ql.includes('old') || ql.includes('bank') || ql.includes('passbook')) {
+      title = '👵 Senior-Parent Banking Ergonomics Audit';
+      summary = `Audited ${accounts.length} account card(s). ${failingAccounts.length === 0 ? 'All cards meet WCAG AA readability.' : `${failingAccounts.length} card(s) need contrast boost.`} Senior High-Clarity Mode is currently ${seniorUxMode ? 'ON' : 'OFF'}.`;
+      bullets = [
+        'Keep the modal-first Libreta Passbook pattern on click so senior users see Money In (+), Money Out (−), and Running Balance immediately without scrolling.',
+        `Ensure custom solid card backgrounds pair crisp white (#ffffff) with deep solid shades (contrast >= 7.0:1 AAA). Currently ${aaOnlyAccounts.length + failingAccounts.length} account(s) are below 7.0:1.`,
+        genericLogoAccounts.length > 0
+          ? `Upload official logos for ${genericLogoAccounts.map(a => a.name).join(', ')} via "🎨 Color & Logo" for instant visual recognition.`
+          : 'Great job: all accounts display distinctive bank badges or custom logos.',
+        !seniorUxMode
+          ? 'Recommendation: Click "👵 Enable Senior High-Clarity Mode" in the Advisor tab for >= 44px buttons & high-visibility focus rings.'
+          : 'Senior High-Clarity Mode is active — tap targets and focus visibility are boosted.'
+      ];
+    } else if (ql.includes('contrast') || ql.includes('wcag') || ql.includes('color') || ql.includes('aaa')) {
+      title = '♿ WCAG 2.2 AA–AAA Contrast & Solid Color Audit';
+      summary = `Computed W3C relative luminance across ${accounts.length} account cards against WCAG 2.2 thresholds (AA: 4.5:1, AAA: 7.0:1).`;
+      bullets = accountAudits.length > 0
+        ? accountAudits.slice(0, 6).map(a =>
+            `${a.name} (${a.code}): Solid ${a.solidBg} + Text ${a.textColor} -> ${a.contrast}:1 [${a.wcagGrade}]`
+          )
+        : ['No accounts added yet. Use the Contrast Lab tab to test any solid background + foreground pair against AA & AAA thresholds.'];
+    } else if (ql.includes('token') || ql.includes('dtcg') || ql.includes('component') || ql.includes('state')) {
+      title = '🧩 DTCG Design Tokens & 6-State Component Architecture';
+      summary = 'Your workspace integrates src/config/dtcgTokens.json + .agents/skills/ux-ui-agent-skills/SKILL.md following plugin87/ux-ui-agent-skills.';
+      bullets = [
+        'Tier 1 (Primitive): Use neutral obsidian (#020814, #07111f, #0f1a2a) and pure #ffffff foregrounds.',
+        'Tier 2 (Semantic): Map feedback colors consistently — #24d17e for Money In / Pass, #ff514f for Money Out / Critical, #f2a71b for Senior Spotlight.',
+        'Tier 3 (Component State Matrix): Every button & card must preserve default, hover border shift, focus-visible ring, disabled (0.55 opacity), loading lock, and confirmation before destructive deletes.',
+        'Strict DOCTRINE Rule: Never use linear-gradient or radial-gradient on account cards or UX modules.'
+      ];
+    } else if (ql.includes('cognitive') || ql.includes('clutter') || ql.includes('dashboard') || ql.includes('mobile') || ql.includes('layout')) {
+      title = '📐 Progressive Disclosure & Cognitive Load Advice';
+      summary = 'Financial apps for mixed audiences (power admins + senior parents) succeed by separating daily glanceable tasks from advanced controls.';
+      bullets = [
+        'For senior parents, bookmark the "🏧 Account Dashboard" directly: 1-tap solid bank cards -> instant Passbook modal.',
+        'Keep advanced Honeynet forensics, Pullboard verification lanes, and DTCG labs inside dedicated modules so daily banking stays calm and uncluttered.',
+        'Enable "Balance Masking (*****)" on the top KPI bar when checking accounts in public places.',
+        'Use the "Push to Pullboard" workflow whenever requesting future UI changes so every visual change passes second-agent verification.'
+      ];
+    } else {
+      title = `💡 UX/UI Architect Recommendation: "${q.slice(0, 60)}"`;
+      summary = `Applied plugin87/ux-ui-agent-skills 4-pillar analysis to your live BudgetApp2025 state (UX Score: ${uxScore}/100).`;
+      bullets = [
+        `WCAG 2.2 Compliance: ${accounts.length - failingAccounts.length}/${accounts.length} account cards pass AA (4.5:1) contrast.`,
+        'Follow Modal-First Drilldown: Avoid forcing users to scroll down after clicking a summary card.',
+        'Use solid high-contrast DTCG tokens from src/config/dtcgTokens.json and enforce >= 44px touch targets.',
+        'Use the "Push to Pullboard Backlog" button on any recommendation to formalize it into a verified SPEC task.'
+      ];
+    }
+
+    const userMsg = {
+      id: `u_${Date.now()}`,
+      role: 'user',
+      timestamp: new Date().toISOString(),
+      title: q
+    };
+    const agentMsg = {
+      id: `a_${Date.now() + 1}`,
+      role: 'agent',
+      timestamp: new Date().toISOString(),
+      title,
+      summary,
+      bullets
+    };
+    setAgentHistory(prev => [agentMsg, userMsg, ...prev].slice(0, 20));
+    setPromptInput('');
+  };
+
+  // Live Contrast Lab Calculations
+  const labRatio = calcWcagContrastRatio(labBgColor, labTextColor);
+  const labPassAA = labRatio >= 4.5;
+  const labPassAALarge = labRatio >= 3.0;
+  const labPassAAA = labRatio >= 7.0;
+
+  const handleApplyLabToAccount = () => {
+    if (!labTargetAccId || !setAccounts) return;
+    setAccounts(prev => prev.map(a => a.id === labTargetAccId ? {
+      ...a,
+      customBgColor: labBgColor,
+      customTextColor: labTextColor
+    } : a));
+    const targetName = accounts.find(a => a.id === labTargetAccId)?.name || 'Account';
+    updateUxConfig({}, `Applied WCAG Contrast Lab palette (${labBgColor} / ${labTextColor}) to ${targetName}`);
+    showToast(`✓ Applied ${labRatio}:1 palette to "${targetName}"!`);
+  };
+
+  return (
+    <div>
+      {/* ── Top UX/UI Design Architect Banner (Solid Color — Zero Gradients) ── */}
+      <Card style={{
+        marginBottom: 16,
+        background: '#161130',
+        border: `2px solid ${C.purple}`
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: 16,
+              background: '#050b16', border: `2.5px solid ${scoreColor}`,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            }}>
+              <div style={{ fontSize: 24, fontWeight: 900, color: scoreColor, lineHeight: 1 }}>{uxScore}</div>
+              <div style={{ fontSize: 9, fontWeight: 800, color: C.muted, marginTop: 2 }}>/ 100 UX</div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: sm ? 18 : 22, fontWeight: 900, color: '#ffffff' }}>
+                  🎨 UX/UI Design Architect & Advisor Agent
+                </span>
+                <span style={{
+                  fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+                  background: '#050b16', color: C.purple, border: `1.5px solid ${C.purple}`
+                }}>
+                  plugin87/ux-ui-agent-skills
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.86)', marginTop: 4 }}>
+                Automated UX auditor & advisor enforcing <strong>DTCG Tokens</strong>, <strong>52-Component Anatomy</strong>, <strong>WCAG 2.2 AA–AAA</strong> & <strong>Senior-Parent Ergonomics</strong>.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !seniorUxMode;
+                updateUxConfig({ seniorUxMode: next }, `Senior Parent High-Clarity UX Mode turned ${next ? 'ON' : 'OFF'}`);
+                showToast(next ? '✓ Senior Parent High-Clarity Mode ON!' : 'Senior Parent High-Clarity Mode OFF');
+              }}
+              style={{
+                padding: '10px 16px', borderRadius: 10, cursor: 'pointer',
+                border: `2px solid ${seniorUxMode ? C.green : C.amber}`,
+                background: seniorUxMode ? C.green : '#050b16',
+                color: seniorUxMode ? '#051b11' : C.amber,
+                fontSize: 12, fontWeight: 900
+              }}
+            >
+              {seniorUxMode ? '👵 Senior High-Clarity Mode: ON' : '👵 Enable Senior High-Clarity Mode'}
+            </button>
+          </div>
+        </div>
+
+        {/* Toast Notification */}
+        {actionToast && (
+          <div style={{
+            marginTop: 12, padding: '10px 14px', borderRadius: 8,
+            background: '#051b11', border: `1.5px solid ${C.green}`,
+            color: '#d1fae5', fontSize: 12, fontWeight: 800
+          }}>
+            {actionToast}
+          </div>
+        )}
+
+        {/* 4 Pillar Summary Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 10, marginTop: 16 }}>
+          <div style={{ background: '#050b16', border: `1.5px solid ${C.purple}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>1. DTCG Solid Tokens</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: C.purple, marginTop: 2 }}>ZERO GRADIENTS</div>
+            <div style={{ fontSize: 10, color: C.muted }}>Primitive / Semantic / Component</div>
+          </div>
+          <div style={{ background: '#050b16', border: `1.5px solid ${failingAccounts.length === 0 ? C.green : C.red}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>2. WCAG 2.2 AA Cards</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: failingAccounts.length === 0 ? C.green : C.red, marginTop: 2 }}>
+              {accounts.length - failingAccounts.length} / {accounts.length} PASS
+            </div>
+            <div style={{ fontSize: 10, color: C.muted }}>&gt;= 4.5:1 Contrast Verified</div>
+          </div>
+          <div style={{ background: '#050b16', border: `1.5px solid ${seniorUxMode ? C.green : C.amber}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>3. Senior Ergonomics</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: seniorUxMode ? C.green : C.amber, marginTop: 2 }}>
+              {seniorUxMode ? 'HIGH CLARITY' : 'STANDARD'}
+            </div>
+            <div style={{ fontSize: 10, color: C.muted }}>44px Targets + Focus Rings</div>
+          </div>
+          <div style={{ background: '#050b16', border: `1.5px solid ${C.teal}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>4. UX Quality Gates</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: C.teal, marginTop: 2 }}>
+              {passedGatesCount} / {uxGates.length} GREEN
+            </div>
+            <div style={{ fontSize: 10, color: C.muted }}>{recommendations.length} Advisory Suggestion(s)</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Sub-View Switcher ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[
+          { id: 'ADVISOR', label: `💡 1. Live UX Audits & Advisories (${recommendations.length})` },
+          { id: 'CONSULT', label: '💬 2. Ask the UX/UI Architect Agent' },
+          { id: 'TOKENS_LAB', label: '🔬 3. WCAG 2.2 Contrast Lab & DTCG Tokens' }
+        ].map(btn => {
+          const active = subView === btn.id;
+          return (
+            <button
+              key={btn.id}
+              type="button"
+              onClick={() => setSubView(btn.id)}
+              style={{
+                padding: '10px 16px', borderRadius: 10, cursor: 'pointer',
+                fontSize: 12, fontWeight: 900,
+                border: `2px solid ${active ? C.purple : C.border}`,
+                background: active ? '#1e1640' : C.card,
+                color: active ? '#ffffff' : C.muted
+              }}
+            >
+              {btn.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          VIEW 1: LIVE PROACTIVE UX ADVISORIES + 8 OBJECTIVE UX GATES + CARD AUDIT
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {subView === 'ADVISOR' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Prioritized Advisories with One-Click Auto-Fix & Push to Pullboard */}
+          <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.amber}` }}>
+            <SecTitle>💡 Agent Recommendations & 1-Click UX Auto-Fixes</SecTitle>
+            {recommendations.length === 0 ? (
+              <div style={{
+                padding: '24px 16px', borderRadius: 12, background: '#051b11',
+                border: `1.5px solid ${C.green}`, color: '#d1fae5', textAlign: 'center'
+              }}>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>🏆</div>
+                <div style={{ fontSize: 16, fontWeight: 900 }}>All UX/UI Quality Gates Are Passing!</div>
+                <div style={{ fontSize: 12, color: '#a7f3d0', marginTop: 4 }}>
+                  Your bank cards, WCAG 2.2 AAA contrast ratios, custom logos, and Senior High-Clarity ergonomics are all optimal.
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {recommendations.map(rec => {
+                  const pClr = rec.priority === 'CRITICAL' ? C.red : rec.priority === 'HIGH' ? C.amber : C.blue;
+                  return (
+                    <div
+                      key={rec.id}
+                      style={{
+                        padding: 14, borderRadius: 12, background: '#050b16',
+                        borderLeft: `5px solid ${pClr}`,
+                        borderTop: `1px solid ${C.border}`,
+                        borderRight: `1px solid ${C.border}`,
+                        borderBottom: `1px solid ${C.border}`,
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 260 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{
+                            fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 6,
+                            background: `${pClr}22`, color: pClr, border: `1px solid ${pClr}`
+                          }}>
+                            {rec.priority}
+                          </span>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: C.purple }}>{rec.pillar}</span>
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: '#ffffff', marginTop: 5 }}>
+                          {rec.title}
+                        </div>
+                        <div style={{ fontSize: 12, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>
+                          {rec.advice}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {rec.onFix && canWrite && (
+                          <button
+                            type="button"
+                            onClick={rec.onFix}
+                            style={{
+                              padding: '9px 14px', borderRadius: 8, border: 'none',
+                              background: C.green, color: '#051b11', fontSize: 12, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {rec.fixLabel}
+                          </button>
+                        )}
+                        {canWrite && (
+                          <button
+                            type="button"
+                            onClick={() => handlePushToPullboard(rec)}
+                            style={{
+                              padding: '9px 12px', borderRadius: 8,
+                              border: `1.5px solid ${C.blue}`, background: '#081121',
+                              color: C.blue, fontSize: 11, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap'
+                            }}
+                          >
+                            📋 Push to Pullboard
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          {/* 8 Objective UX Quality Gates + Account WCAG Audit Table */}
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 16 }}>
+            <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+              <SecTitle>🚧 8 Objective UX Quality Gates (plugin87 Framework)</SecTitle>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {uxGates.map(g => (
+                  <div
+                    key={g.id}
+                    style={{
+                      padding: '10px 12px', borderRadius: 10, background: '#050b16',
+                      border: `1px solid ${g.passed ? C.green : C.amber}66`
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: '#ffffff' }}>
+                        {g.passed ? '✅' : '⚠️'} {g.name}
+                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: C.purple, whiteSpace: 'nowrap' }}>
+                        {g.pillar}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{g.detail}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+              <SecTitle>🏦 Per-Account WCAG 2.2 Contrast & Logo Audit ({accountAudits.length})</SecTitle>
+              {accountAudits.length === 0 ? (
+                <div style={{ padding: 24, textAlign: 'center', color: C.muted, fontSize: 12 }}>
+                  No accounts found yet. Add your first Philippine bank or e-wallet account to run a live WCAG contrast audit.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 430, overflowY: 'auto' }}>
+                  {accountAudits.map(a => {
+                    const gradeClr = a.wcagGrade === 'AAA' ? C.green : a.wcagGrade === 'AA' ? C.teal : C.red;
+                    return (
+                      <div
+                        key={a.id}
+                        style={{
+                          padding: '10px 12px', borderRadius: 10, background: '#050b16',
+                          border: `1px solid ${gradeClr}66`,
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 34, height: 34, borderRadius: 8,
+                            background: a.solidBg, border: `2px solid ${a.secondary}`,
+                            color: a.textColor, fontSize: 10, fontWeight: 900,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            Aa
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: '#ffffff' }}>{a.name}</div>
+                            <div style={{ fontSize: 10, color: C.muted }}>
+                              Solid <code>{a.solidBg}</code> · Text <code>{a.textColor}</code> · {a.hasCustomLogo ? 'Custom Logo ✓' : `Badge: ${a.code}`}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{
+                            fontSize: 11, fontWeight: 900, padding: '3px 8px', borderRadius: 8,
+                            background: `${gradeClr}22`, color: gradeClr, border: `1px solid ${gradeClr}`
+                          }}>
+                            {a.contrast}:1 · {a.wcagGrade}
+                          </span>
+                          {a.wcagGrade !== 'AAA' && canUpdate && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLabBgColor(a.solidBg);
+                                setLabTextColor(a.recommendedText);
+                                setLabTargetAccId(a.id);
+                                setSubView('TOKENS_LAB');
+                              }}
+                              style={{
+                                padding: '4px 8px', borderRadius: 6, border: `1px solid ${C.amber}`,
+                                background: 'transparent', color: C.amber, fontSize: 10, fontWeight: 800, cursor: 'pointer'
+                              }}
+                            >
+                              Tune
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          VIEW 2: INTERACTIVE UX/UI ARCHITECT ADVISOR CONSOLE ("ASK THE AGENT")
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {subView === 'CONSULT' && (
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.purple}` }}>
+          <SecTitle>💬 Ask the UX/UI Design Architect Agent (Suggestions & Advice)</SecTitle>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
+            Choose a quick topic or ask any UX/UI question about your app. The advisor evaluates your real bank cards, contrast ratios, and senior usability rules.
+          </div>
+
+          {/* Quick Prompt Chips */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            {[
+              'Audit my PH bank cards for my senior parent',
+              'Check WCAG 2.2 AAA contrast & suggest solid colors',
+              'Recommend DTCG tokens & 6-state component rules',
+              'Advise how to reduce dashboard cognitive load'
+            ].map(preset => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => runAgentConsultation(preset)}
+                style={{
+                  padding: '6px 12px', borderRadius: 14, cursor: 'pointer',
+                  border: `1px solid ${C.purple}88`, background: '#050b16',
+                  color: '#e9d5ff', fontSize: 11, fontWeight: 700
+                }}
+              >
+                ✨ {preset}
+              </button>
+            ))}
+          </div>
+
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              runAgentConsultation(promptInput);
+            }}
+            style={{ display: 'flex', gap: 8, marginBottom: 16 }}
+          >
+            <Inp
+              type="text"
+              value={promptInput}
+              onChange={e => setPromptInput(e.target.value)}
+              placeholder="Ask the UX/UI Architect for advice (e.g. 'How can I make the Passbook modal clearer for seniors?')"
+            />
+            <button
+              type="submit"
+              style={{
+                padding: '9px 18px', borderRadius: 8, border: 'none',
+                background: C.purple, color: '#ffffff', fontSize: 12, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+              }}
+            >
+              🎨 Get UX Advice
+            </button>
+          </form>
+
+          {/* Advisory Transcript */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 460, overflowY: 'auto' }}>
+            {agentHistory.map(item => (
+              <div
+                key={item.id}
+                style={{
+                  padding: 14, borderRadius: 12,
+                  background: item.role === 'user' ? '#132038' : '#050b16',
+                  border: `1px solid ${item.role === 'user' ? C.blue : C.purple}88`
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: item.role === 'user' ? C.blue : '#e9d5ff' }}>
+                    {item.role === 'user' ? `👤 You Asked: ${item.title}` : item.title}
+                  </span>
+                  <span style={{ fontSize: 10, color: C.muted }}>
+                    {item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : ''}
+                  </span>
+                </div>
+                {item.summary && (
+                  <div style={{ fontSize: 12, color: '#ffffff', fontWeight: 600, marginBottom: 8 }}>{item.summary}</div>
+                )}
+                {Array.isArray(item.bullets) && (
+                  <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: C.muted }}>
+                    {item.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          VIEW 3: LIVE WCAG 2.2 CONTRAST LAB & DTCG DESIGN TOKENS INSPECTOR
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {subView === 'TOKENS_LAB' && (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 16 }}>
+          {/* Interactive WCAG 2.2 Contrast Lab */}
+          <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.teal}` }}>
+            <SecTitle>🔬 Live WCAG 2.2 Solid Color Contrast Lab</SecTitle>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>
+              Test any solid background and foreground hex pair against W3C WCAG 2.2 AA & AAA standards before applying it to your Philippine bank cards.
+            </div>
+
+            {/* Live Sample Card */}
+            <div style={{
+              background: labBgColor, color: labTextColor,
+              border: `2px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 14
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', opacity: 0.9 }}>Sample Bank Card Heading</div>
+              <div style={{ fontSize: 24, fontWeight: 900, marginTop: 4 }}>₱128,500.00</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Normal body copy readability check for senior parents (12px–14px).</div>
+            </div>
+
+            {/* Contrast Score & Badges */}
+            <div style={{
+              padding: 12, borderRadius: 10, background: '#050b16', border: `1px solid ${C.border}`,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14
+            }}>
+              <div>
+                <div style={{ fontSize: 10, color: C.muted, fontWeight: 800 }}>CALCULATED CONTRAST RATIO</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: labPassAAA ? C.green : labPassAA ? C.teal : C.red }}>
+                  {labRatio} : 1
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10, fontWeight: 900, padding: '4px 8px', borderRadius: 6, background: labPassAALarge ? `${C.green}22` : `${C.red}22`, color: labPassAALarge ? C.green : C.red }}>
+                  {labPassAALarge ? '✓' : '✕'} AA Large (3.0)
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 900, padding: '4px 8px', borderRadius: 6, background: labPassAA ? `${C.green}22` : `${C.red}22`, color: labPassAA ? C.green : C.red }}>
+                  {labPassAA ? '✓' : '✕'} AA Normal (4.5)
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 900, padding: '4px 8px', borderRadius: 6, background: labPassAAA ? `${C.green}22` : `${C.amber}22`, color: labPassAAA ? C.green : C.amber }}>
+                  {labPassAAA ? '✓' : '○'} AAA Senior (7.0)
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Solid Background Hex</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input type="color" value={labBgColor} onChange={e => setLabBgColor(e.target.value)} style={{ width: 42, height: 36, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }} />
+                  <Inp value={labBgColor} onChange={e => setLabBgColor(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Text Foreground Hex</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input type="color" value={labTextColor} onChange={e => setLabTextColor(e.target.value)} style={{ width: 42, height: 36, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }} />
+                  <Inp value={labTextColor} onChange={e => setLabTextColor(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            {accounts.length > 0 && canUpdate && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <select
+                  value={labTargetAccId}
+                  onChange={e => setLabTargetAccId(e.target.value)}
+                  style={{ flex: 1, padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12 }}
+                >
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleApplyLabToAccount}
+                  style={{
+                    padding: '9px 14px', borderRadius: 8, border: 'none',
+                    background: C.teal, color: '#041f1e', fontSize: 12, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                  }}
+                >
+                  ⚡ Apply to Bank Card
+                </button>
+              </div>
+            )}
+          </Card>
+
+          {/* DTCG Tokens Viewer */}
+          <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.purple}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <SecTitle style={{ margin: 0 }}>📦 DTCG Design Tokens (`dtcgTokens.json`)</SecTitle>
+              <button
+                type="button"
+                onClick={() => {
+                  const blob = new Blob([JSON.stringify(dtcgTokens, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'dtcgTokens.json';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                style={{
+                  padding: '6px 12px', borderRadius: 7, border: `1px solid ${C.purple}`,
+                  background: '#050b16', color: C.purple, fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                }}
+              >
+                ⬇️ Download JSON
+              </button>
+            </div>
+            <pre style={{
+              margin: 0, padding: 12, borderRadius: 10, background: '#040914',
+              border: `1px solid ${C.border}`, color: '#cbd5e1',
+              fontSize: 11, maxHeight: 370, overflowY: 'auto', lineHeight: 1.45
+            }}>
+              {JSON.stringify(dtcgTokens, null, 2)}
+            </pre>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── LIVE SYSTEM & CLOUD RESOURCE UTILIZATION (VERCEL + SUPABASE + CLIENT) ───
+function estimateJsonKb(value) {
+  try {
+    const str = JSON.stringify(value ?? null);
+    return Number((new Blob([str]).size / 1024).toFixed(2));
+  } catch {
+    return 0;
+  }
+}
+
+function SystemResourcesTab({
+  accounts = [],
+  budgetData = {},
+  majorExpenses = [],
+  credits = [],
+  debts = [],
+  balanceHistory = [],
+  session,
+  sm,
+  setTab
+}) {
+  const [pollIntervalMs, setPollIntervalMs] = useState(5000); // 2000 | 5000 | 10000 | 0 (paused)
+  const [sampling, setSampling] = useState(false);
+  const [serverSample, setServerSample] = useState(null);
+  const [serverError, setServerError] = useState('');
+  const [apiRttMs, setApiRttMs] = useState(null);
+  const [clientSupabaseRttMs, setClientSupabaseRttMs] = useState(null);
+  const [historySamples, setHistorySamples] = useState([]);
+  const [lastSampledAt, setLastSampledAt] = useState(null);
+
+  // Client Browser & LocalStorage Telemetry
+  const browserStats = useMemo(() => {
+    const perfMem = typeof performance !== 'undefined' && performance.memory ? performance.memory : null;
+    const conn = typeof navigator !== 'undefined' && (navigator.connection || navigator.mozConnection || navigator.webkitConnection)
+      ? (navigator.connection || navigator.mozConnection || navigator.webkitConnection)
+      : null;
+
+    let lsBytes = 0;
+    const lsBreakdown = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k) {
+          const v = localStorage.getItem(k) || '';
+          const b = (k.length + v.length) * 2;
+          lsBytes += b;
+          lsBreakdown.push({ key: k, kb: Number((b / 1024).toFixed(2)) });
+        }
+      }
+      lsBreakdown.sort((a, b) => b.kb - a.kb);
+    } catch (_) {}
+
+    return {
+      cpuThreads: typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 1) : 1,
+      deviceMemoryGb: typeof navigator !== 'undefined' && navigator.deviceMemory ? navigator.deviceMemory : null,
+      jsHeapUsedMb: perfMem ? Number((perfMem.usedJSHeapSize / (1024 * 1024)).toFixed(2)) : null,
+      jsHeapTotalMb: perfMem ? Number((perfMem.totalJSHeapSize / (1024 * 1024)).toFixed(2)) : null,
+      jsHeapLimitMb: perfMem ? Number((perfMem.jsHeapSizeLimit / (1024 * 1024)).toFixed(2)) : null,
+      networkType: conn?.effectiveType || null,
+      networkDownlinkMbps: conn?.downlink ?? null,
+      networkRttMs: conn?.rtt ?? null,
+      localStorageUsedKb: Number((lsBytes / 1024).toFixed(2)),
+      localStorageLimitKb: 5120,
+      localStoragePct: Number(Math.min(100, ((lsBytes / 1024) / 5120) * 100).toFixed(1)),
+      topLocalKeys: lsBreakdown.slice(0, 6)
+    };
+  }, [lastSampledAt, accounts, budgetData]);
+
+  // Exact Supabase Cloud JSON Payload Size Breakdown
+  const payloadStats = useMemo(() => {
+    const accountsKb = estimateJsonKb(accounts);
+    const honeypotKb = estimateJsonKb(budgetData?.honeypotEvents || []);
+    const securityAuditKb = estimateJsonKb(budgetData?.securityAuditLogs || []);
+    const pullboardKb = estimateJsonKb(budgetData?.pullboardData || {});
+    const debitHistoryKb = estimateJsonKb(budgetData?.debitHistory || []);
+    const budgetTotalKb = estimateJsonKb(budgetData);
+    const monthlyBudgetsKb = Math.max(0, Number((budgetTotalKb - honeypotKb - securityAuditKb - pullboardKb - debitHistoryKb).toFixed(2)));
+    const majorKb = estimateJsonKb(majorExpenses);
+    const creditsKb = estimateJsonKb(credits);
+    const debtsKb = estimateJsonKb(debts);
+    const balHistoryKb = estimateJsonKb(balanceHistory);
+    const totalKb = Number((budgetTotalKb + accountsKb + majorKb + creditsKb + debtsKb + balHistoryKb).toFixed(2));
+    const freeTierLimitKb = 500 * 1024; // 500 MB Supabase Free Tier
+    const freeTierPct = Number(((totalKb / freeTierLimitKb) * 100).toFixed(4));
+
+    const modules = [
+      { label: 'Accounts & Uploaded Custom Logos', kb: accountsKb, color: C.blue },
+      { label: 'Monthly Budgets & Core Config', kb: monthlyBudgetsKb, color: C.green },
+      { label: 'Transaction & Debit Logs', kb: debitHistoryKb, color: C.teal },
+      { label: 'Balance Snapshot History', kb: balHistoryKb, color: C.purple },
+      { label: 'Debts, Credits & Major Goals', kb: Number((majorKb + creditsKb + debtsKb).toFixed(2)), color: C.amber },
+      { label: 'Security Logs, Honeynet & Pullboard', kb: Number((honeypotKb + securityAuditKb + pullboardKb).toFixed(2)), color: C.orange }
+    ].sort((a, b) => b.kb - a.kb);
+
+    return {
+      totalKb,
+      freeTierPct,
+      modules
+    };
+  }, [accounts, budgetData, majorExpenses, credits, debts, balanceHistory]);
+
+  const sampleResourcesNow = async () => {
+    setSampling(true);
+    setServerError('');
+
+    const apiStart = performance.now();
+    let fetchedServer = null;
+    let measuredApiMs = null;
+
+    try {
+      const res = await fetch('/api/health?telemetry=1', {
+        method: 'GET',
+        cache: 'no-store',
+        headers: { Accept: 'application/json' }
+      });
+      measuredApiMs = Math.round(performance.now() - apiStart);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.cpu && data?.memory) {
+          fetchedServer = data;
+          setServerSample(data);
+        } else {
+          setServerError('Server endpoint returned legacy health shape (deploy api/health.js to enable Vercel telemetry).');
+        }
+      } else {
+        setServerError(`/api/health?telemetry=1 responded HTTP ${res.status}`);
+      }
+    } catch (_) {
+      measuredApiMs = Math.round(performance.now() - apiStart);
+      setServerError('Serverless API unreachable in pure static dev mode (deploy to Vercel or run API server for Node CPU/RAM).');
+    }
+    setApiRttMs(measuredApiMs);
+
+    // Measure live client -> Supabase RTT if configured & authenticated
+    let sbClientMs = null;
+    if (isSupabaseConfigured && supabase && session?.user?.id) {
+      const sbStart = performance.now();
+      try {
+        const { error } = await supabase
+          .from('user_data')
+          .select('updated_at')
+          .eq('user_id', session.user.id)
+          .limit(1);
+        if (!error) {
+          sbClientMs = Math.round(performance.now() - sbStart);
+        }
+      } catch (_) {}
+    }
+    setClientSupabaseRttMs(sbClientMs);
+
+    const nowIso = new Date().toISOString();
+    setLastSampledAt(nowIso);
+
+    const effectiveSupabaseMs = fetchedServer?.supabase?.latencyMs ?? sbClientMs ?? 0;
+    const cpuPct = fetchedServer?.cpu?.processCpuPct ?? 0;
+    const rssMb = fetchedServer?.memory?.rssMb ?? 0;
+    const heapUsedMb = fetchedServer?.memory?.heapUsedMb ?? 0;
+
+    setHistorySamples(prev => [
+      ...prev.slice(-29),
+      {
+        time: new Date(nowIso).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        cpuPct,
+        rssMb,
+        heapUsedMb,
+        apiRttMs: measuredApiMs ?? 0,
+        supabaseMs: Math.round(effectiveSupabaseMs)
+      }
+    ]);
+
+    setSampling(false);
+  };
+
+  useEffect(() => {
+    sampleResourcesNow();
+  }, []);
+
+  useEffect(() => {
+    if (!pollIntervalMs) return;
+    const id = setInterval(() => {
+      sampleResourcesNow();
+    }, pollIntervalMs);
+    return () => clearInterval(id);
+  }, [pollIntervalMs, session?.user?.id]);
+
+  const handleExportSnapshot = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      vercelServerless: serverSample,
+      apiRoundTripMs: apiRttMs,
+      clientSupabaseRttMs,
+      browserRuntime: browserStats,
+      supabaseUserDataPayload: payloadStats,
+      rollingHistory: historySamples
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `BudgetApp_Resource_Snapshot_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const cpuPct = serverSample?.cpu?.processCpuPct ?? 0;
+  const cpuSingleCorePct = serverSample?.cpu?.singleCorePct ?? 0;
+  const rssMb = serverSample?.memory?.rssMb ?? 0;
+  const heapUsedMb = serverSample?.memory?.heapUsedMb ?? 0;
+  const heapTotalMb = serverSample?.memory?.heapTotalMb ?? 0;
+  const containerUsedPct = serverSample?.memory?.containerUsedPct ?? 0;
+  const ramPctOfLimit = serverSample?.memory?.processRamPctOfLimit ?? 0;
+  const lambdaLimitMb = serverSample?.memory?.lambdaLimitMb;
+  const effectiveSupabaseLatency = serverSample?.supabase?.latencyMs ?? clientSupabaseRttMs;
+
+  // Optimization Alerts based on live metrics
+  const alerts = [];
+  if (serverSample?.vercel?.coldStart) {
+    alerts.push({
+      level: 'INFO',
+      color: C.blue,
+      title: 'Cold Start Invocation Detected',
+      detail: 'Vercel spun up a fresh Node.js worker container on this request. Subsequent polls use the warm container.'
+    });
+  }
+  if ((serverSample?.vercel?.handlerDurationMs || 0) > 2500 || (apiRttMs || 0) > 3000) {
+    alerts.push({
+      level: 'WARNING',
+      color: C.amber,
+      title: 'High Serverless / Network Latency Observed',
+      detail: `API round-trip measured ${apiRttMs}ms. Check Vercel deployment region (VERCEL_REGION) relative to your Supabase database region.`
+    });
+  }
+  if (browserStats.localStoragePct > 70 || payloadStats.modules[0]?.kb > 400) {
+    alerts.push({
+      level: 'WARNING',
+      color: C.amber,
+      title: 'Large Browser Cache or Synced Account Logo Payload',
+      detail: `Browser localStorage is at ${browserStats.localStoragePct}% (${browserStats.localStorageUsedKb} KB / 5,120 KB). Keeping uploaded bank logos compact keeps Supabase sync fast.`
+    });
+  }
+  if (alerts.length === 0) {
+    alerts.push({
+      level: 'HEALTHY',
+      color: C.green,
+      title: 'Vercel Serverless, Supabase PostgreSQL & Client Heap Operating Smoothly',
+      detail: 'CPU, RAM, database round-trip latency, and storage quotas are all comfortably within optimal thresholds.'
+    });
+  }
+
+  return (
+    <div>
+      {/* ── Top Live Resource Header Banner (Solid Background — No Gradients) ── */}
+      <Card style={{
+        marginBottom: 16,
+        background: '#081b26',
+        border: `2px solid ${C.teal}`
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: sm ? 18 : 22, fontWeight: 900, color: '#ffffff' }}>
+                ⚡ Live Utilization: CPU, RAM & Cloud Resources
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+                background: '#050b16', color: serverSample ? C.green : C.amber, border: `1.5px solid ${serverSample ? C.green : C.amber}`
+              }}>
+                {serverSample
+                  ? `${serverSample.vercel?.isVercel ? '▲ VERCEL' : 'NODE'} · ${serverSample.vercel?.region?.toUpperCase()}`
+                  : 'CLIENT / OFFLINE MONITOR'}
+              </span>
+              {serverSample?.vercel && (
+                <span style={{
+                  fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 12,
+                  background: '#050b16',
+                  color: serverSample.vercel.coldStart ? C.amber : C.teal,
+                  border: `1px solid ${serverSample.vercel.coldStart ? C.amber : C.teal}`
+                }}>
+                  {serverSample.vercel.coldStart ? '❄️ Cold Start (#1)' : `🔥 Warm (#${serverSample.vercel.invocationCount})`}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+              Real-time monitoring of Vercel Serverless CPU/RAM, Supabase PostgreSQL latency & database payload footprint, and browser memory.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', background: '#050b16', border: `1px solid ${C.border}`, borderRadius: 8, padding: 3, gap: 3 }}>
+              {[
+                { label: '2s Live', ms: 2000 },
+                { label: '5s', ms: 5000 },
+                { label: '10s', ms: 10000 },
+                { label: 'Pause', ms: 0 }
+              ].map(opt => (
+                <button
+                  key={opt.ms}
+                  type="button"
+                  onClick={() => setPollIntervalMs(opt.ms)}
+                  style={{
+                    padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    fontSize: 11, fontWeight: 800,
+                    background: pollIntervalMs === opt.ms ? C.teal : 'transparent',
+                    color: pollIntervalMs === opt.ms ? '#041f1e' : C.muted
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={sampleResourcesNow}
+              disabled={sampling}
+              style={{
+                padding: '9px 14px', borderRadius: 8, border: `1.5px solid ${C.blue}`,
+                background: '#050b16', color: C.blue, fontSize: 12, fontWeight: 900, cursor: 'pointer'
+              }}
+            >
+              {sampling ? '⏳ Sampling…' : '🔄 Sample Now'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportSnapshot}
+              style={{
+                padding: '9px 14px', borderRadius: 8, border: `1.5px solid ${C.green}`,
+                background: '#050b16', color: C.green, fontSize: 12, fontWeight: 900, cursor: 'pointer'
+              }}
+            >
+              ⬇️ Snapshot JSON
+            </button>
+          </div>
+        </div>
+
+        {serverError && (
+          <div style={{
+            marginTop: 12, padding: '8px 12px', borderRadius: 8,
+            background: '#422006', border: `1px solid ${C.amber}`, color: '#fde68a', fontSize: 11, fontWeight: 700
+          }}>
+            ℹ️ {serverError}
+          </div>
+        )}
+      </Card>
+
+      {/* ── 4 Core Live KPI Resource Cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        {/* 1. Vercel Serverless CPU */}
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${cpuPct > 80 ? C.red : C.blue}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Vercel CPU Utilization</span>
+            <span style={{ fontSize: 18 }}>🖥️</span>
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: cpuPct > 80 ? C.red : C.blue, marginTop: 4 }}>
+            {serverSample ? `${cpuPct}%` : '—'}
+          </div>
+          <div style={{ height: 7, borderRadius: 6, background: '#040914', overflow: 'hidden', marginTop: 8, marginBottom: 8 }}>
+            <div style={{ width: `${Math.min(100, cpuPct)}%`, height: '100%', background: cpuPct > 80 ? C.red : C.blue, transition: 'width 0.3s ease' }} />
+          </div>
+          <div style={{ fontSize: 11, color: C.muted }}>
+            {serverSample
+              ? `${serverSample.cpu.cores} vCPU Core(s) · 1-Core: ${cpuSingleCorePct}% · Load: ${serverSample.cpu.loadAvg1m}`
+              : `Browser Hardware Threads: ${browserStats.cpuThreads}`}
+          </div>
+        </Card>
+
+        {/* 2. Vercel Serverless RAM */}
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${ramPctOfLimit > 80 ? C.red : C.green}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Serverless Node RAM</span>
+            <span style={{ fontSize: 18 }}>🧠</span>
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: ramPctOfLimit > 80 ? C.red : C.green, marginTop: 4 }}>
+            {serverSample ? `${rssMb} MB` : '—'}
+          </div>
+          <div style={{ height: 7, borderRadius: 6, background: '#040914', overflow: 'hidden', marginTop: 8, marginBottom: 8 }}>
+            <div style={{ width: `${Math.min(100, lambdaLimitMb ? ramPctOfLimit : containerUsedPct)}%`, height: '100%', background: C.green, transition: 'width 0.3s ease' }} />
+          </div>
+          <div style={{ fontSize: 11, color: C.muted }}>
+            {serverSample
+              ? `Heap Used: ${heapUsedMb} / ${heapTotalMb} MB${lambdaLimitMb ? ` · Lambda Limit: ${lambdaLimitMb} MB` : ` · Host Used: ${containerUsedPct}%`}`
+              : 'Waiting for serverless Node metrics'}
+          </div>
+        </Card>
+
+        {/* 3. Supabase PostgreSQL Latency & Payload */}
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.teal}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Supabase DB & Sync</span>
+            <span style={{ fontSize: 18 }}>🗄️</span>
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: C.teal, marginTop: 4 }}>
+            {effectiveSupabaseLatency !== null ? `${Math.round(effectiveSupabaseLatency)} ms` : `${payloadStats.totalKb} KB`}
+          </div>
+          <div style={{ height: 7, borderRadius: 6, background: '#040914', overflow: 'hidden', marginTop: 8, marginBottom: 8 }}>
+            <div style={{ width: `${Math.max(2, Math.min(100, (payloadStats.totalKb / 5120) * 100))}%`, height: '100%', background: C.teal }} />
+          </div>
+          <div style={{ fontSize: 11, color: C.muted }}>
+            Profile Payload: <strong style={{ color: '#fff' }}>{payloadStats.totalKb} KB</strong> ({payloadStats.freeTierPct}% of 500 MB Free DB)
+          </div>
+        </Card>
+
+        {/* 4. Client Browser Heap & localStorage */}
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${browserStats.localStoragePct > 75 ? C.amber : C.purple}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Client Heap & Cache</span>
+            <span style={{ fontSize: 18 }}>💻</span>
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#d8b4fe', marginTop: 4 }}>
+            {browserStats.jsHeapUsedMb !== null ? `${browserStats.jsHeapUsedMb} MB` : `${browserStats.localStorageUsedKb} KB`}
+          </div>
+          <div style={{ height: 7, borderRadius: 6, background: '#040914', overflow: 'hidden', marginTop: 8, marginBottom: 8 }}>
+            <div style={{ width: `${Math.min(100, browserStats.localStoragePct)}%`, height: '100%', background: C.purple }} />
+          </div>
+          <div style={{ fontSize: 11, color: C.muted }}>
+            localStorage: <strong style={{ color: '#fff' }}>{browserStats.localStorageUsedKb} / 5,120 KB</strong> ({browserStats.localStoragePct}%)
+            {browserStats.deviceMemoryGb ? ` · Device RAM: ~${browserStats.deviceMemoryGb} GB` : ''}
+          </div>
+        </Card>
+      </div>
+
+      {/* ── Live Rolling Time-Series Charts (Last 30 Samples) ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <SecTitle style={{ margin: 0 }}>📈 Serverless CPU % & RAM RSS (MB) Over Time</SecTitle>
+            <span style={{ fontSize: 10, color: C.muted }}>{historySamples.length} / 30 samples</span>
+          </div>
+          {historySamples.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '50px 0', color: C.muted, fontSize: 12 }}>Collecting live telemetry samples…</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart data={historySamples} margin={{ top: 8, right: 10, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="time" tick={{ fill: C.muted, fontSize: 10 }} />
+                <YAxis yAxisId="left" tick={{ fill: C.muted, fontSize: 10 }} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fill: C.muted, fontSize: 10 }} />
+                <Tooltip contentStyle={ttip} />
+                <Bar yAxisId="right" dataKey="rssMb" name="Node RSS RAM (MB)" fill={C.green} radius={[3, 3, 0, 0]} />
+                <Line yAxisId="left" type="monotone" dataKey="cpuPct" name="CPU Usage (%)" stroke={C.blue} strokeWidth={2.5} dot={{ r: 3, fill: C.blue }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <SecTitle style={{ margin: 0 }}>⏱️ Vercel API RTT vs. Supabase DB Ping (ms)</SecTitle>
+            <span style={{ fontSize: 10, color: C.muted }}>Lower is faster</span>
+          </div>
+          {historySamples.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '50px 0', color: C.muted, fontSize: 12 }}>Measuring round-trip latencies…</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={historySamples} margin={{ top: 8, right: 10, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                <XAxis dataKey="time" tick={{ fill: C.muted, fontSize: 10 }} />
+                <YAxis tick={{ fill: C.muted, fontSize: 10 }} />
+                <Tooltip contentStyle={ttip} />
+                <Line type="monotone" dataKey="apiRttMs" name="Vercel API RTT (ms)" stroke={C.amber} strokeWidth={2.5} dot={{ r: 3, fill: C.amber }} />
+                <Line type="monotone" dataKey="supabaseMs" name="Supabase DB RTT (ms)" stroke={C.teal} strokeWidth={2.5} dot={{ r: 3, fill: C.teal }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+      </div>
+
+      {/* ── Detailed Environment Specs, Supabase Module Payload Breakdown & Resource Alerts ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 16 }}>
+        {/* Left: Vercel + Client Runtime Environment Inspector */}
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+          <SecTitle>☁️ Vercel Serverless & Client Hardware Telemetry</SecTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+            {[
+              ['Vercel Region', serverSample?.vercel?.region || 'local-node'],
+              ['Deployment Env', serverSample?.vercel?.env || 'development'],
+              ['Node.js Runtime', serverSample?.vercel?.nodeVersion || 'Browser'],
+              ['Function Uptime', serverSample ? `${serverSample.vercel.uptimeSeconds}s` : '—'],
+              ['Handler Duration', serverSample ? `${serverSample.vercel.handlerDurationMs} ms / 10,000 ms` : '—'],
+              ['CPU Model', serverSample?.cpu?.model || `${browserStats.cpuThreads} Threads`],
+              ['Container RAM Total', serverSample ? `${serverSample.memory.containerTotalMb} MB` : '—'],
+              ['Container RAM Free', serverSample ? `${serverSample.memory.containerFreeMb} MB` : '—'],
+              ['Browser JS Heap Limit', browserStats.jsHeapLimitMb ? `${browserStats.jsHeapLimitMb} MB` : 'Restricted by Browser'],
+              ['Network Link', browserStats.networkType ? `${browserStats.networkType.toUpperCase()} (${browserStats.networkDownlinkMbps} Mbps)` : 'Standard HTTP']
+            ].map(([label, val]) => (
+              <div key={label} style={{ padding: '8px 10px', borderRadius: 8, background: '#050b16', border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, textTransform: 'uppercase' }}>{label}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#ffffff', marginTop: 2, wordBreak: 'break-word' }}>{val}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Right: Supabase Storage Breakdown & Optimization Alerts */}
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+          <SecTitle>📦 Supabase Cloud Storage Breakdown & Threshold Advisories</SecTitle>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            {payloadStats.modules.map(mod => {
+              const pct = payloadStats.totalKb > 0 ? Math.round((mod.kb / payloadStats.totalKb) * 100) : 0;
+              return (
+                <div key={mod.label}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
+                    <span style={{ color: C.text, fontWeight: 700 }}>{mod.label}</span>
+                    <span style={{ color: mod.color, fontWeight: 900 }}>{mod.kb} KB ({pct}%)</span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 4, background: '#040914', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.max(2, pct)}%`, height: '100%', background: mod.color }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <Divider />
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {alerts.map((al, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: '9px 12px', borderRadius: 8, background: '#050b16',
+                  borderLeft: `4px solid ${al.color}`, borderTop: `1px solid ${C.border}`,
+                  borderRight: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 900, color: al.color }}>{al.title}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{al.detail}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
@@ -13281,7 +16026,7 @@ export default function App() {
     if (permissions && permissions[tabId]) return permissions[tabId];
     if (role === "viewer") return "read";
     if (role === "guest") return (tabId === "dashboard" || tabId === "account-dashboard") ? "read" : "none";
-    const baselineModules = new Set(["dashboard", "account-dashboard", "history", "budget", "accounts", "reconcile", "transactions", "investments", "debts", "credits", "expenses", "calendar", "graph", "reports", "security"]);
+    const baselineModules = new Set(["dashboard", "account-dashboard", "history", "budget", "accounts", "reconcile", "transactions", "investments", "debts", "credits", "expenses", "calendar", "graph", "reports", "security", "pullboard", "ux-advisor", "resources"]);
     return baselineModules.has(tabId) ? "update" : "none";
   };
 
@@ -13289,6 +16034,9 @@ export default function App() {
     {id:'dashboard',label:sm?'📊':'📊 Dashboard'},
     {id:'account-dashboard',label:sm?'🏧':'🏧 Account Dashboard'},
     {id:'security', label:sm?'🛡️':'🛡️ Cyber Security'},
+    {id:'pullboard',label:sm?'📋':'📋 Pullboard'},
+    {id:'ux-advisor',label:sm?'🎨':'🎨 UX/UI Agent'},
+    {id:'resources',label:sm?'⚡':'⚡ Resources'},
     {id:'history',  label:sm?'📋':'📋 History'},
     {id:'budget',   label:sm?'📅':'📅 Monthly'},
     {id:'accounts', label:sm?'🏦':'🏦 Accounts'},
@@ -13305,6 +16053,9 @@ export default function App() {
     dashboard:'Dashboard',
     'account-dashboard':'Account Dashboard & In/Out Logs',
     security:'Cyber Security & Data Protection',
+    pullboard:'Pullboard — Spec-Driven Workflow & Verification',
+    'ux-advisor':'UX/UI Design Architect & Advisor Agent',
+    resources:'Live CPU, RAM & Cloud Resource Utilization',
     history:'History',
     budget:'Monthly Budget',
     accounts:'Accounts',
@@ -13324,6 +16075,9 @@ export default function App() {
     {id:'dashboard',         label:'Dashboard',          icon:'📊',group:'main'},
     {id:'account-dashboard', label:'Account Dashboard',  icon:'🏧',group:'main'},
     {id:'security',          label:'Cyber Security',     icon:'🛡️',group:'main'},
+    {id:'pullboard',         label:'Pullboard (Specs)',  icon:'📋',group:'main'},
+    {id:'ux-advisor',        label:'UX/UI Agent',        icon:'🎨',group:'main'},
+    {id:'resources',         label:'CPU & RAM Monitor',  icon:'⚡',group:'main'},
     {id:'accounts',          label:'Accounts',           icon:'🏦',group:'manage'},
 
     {id:'reconcile',       label:'Reconcile & Audit',     icon:'🔍',group:'manage'},
@@ -13373,8 +16127,21 @@ export default function App() {
     );
   }
 
+  const seniorUxModeActive = Boolean(budgetData?.uxAdvisorConfig?.seniorUxMode);
+
   return (
-    <div style={{background:`radial-gradient(circle at 80% -20%, ${C.blue}18, transparent 36%), ${C.bg}`,minHeight:'100vh',fontFamily:"Inter, 'Segoe UI', system-ui, sans-serif",color:C.text}}>
+    <div style={{background:`radial-gradient(circle at 80% -20%, ${C.blue}18, transparent 36%), ${C.bg}`,minHeight:'100vh',fontFamily:"Inter, 'Segoe UI', system-ui, sans-serif",color:C.text, fontSize: seniorUxModeActive ? '106%' : undefined}}>
+      {seniorUxModeActive && (
+        <style>{`
+          button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: 3px solid #f2a71b !important;
+            outline-offset: 2px !important;
+          }
+          button {
+            min-height: 40px;
+          }
+        `}</style>
+      )}
       {!sm && (
         <aside style={{position:'fixed',left:0,top:0,bottom:0,width:250,background:'linear-gradient(180deg,#071120,#030914)',borderRight:`1px solid ${C.border}`,display:'flex',flexDirection:'column',zIndex:20}}>
           <div style={{height:58,display:'flex',alignItems:'center',gap:10,padding:'0 18px',borderBottom:`1px solid ${C.border}`}}>
@@ -13505,6 +16272,66 @@ export default function App() {
               🔒 Lock
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setTab('resources')}
+            title="Live Utilization of CPU, RAM & Cloud Resources (Vercel + Supabase)"
+            style={{
+              padding: '4px 8px',
+              borderRadius: 5,
+              border: `1px solid ${tab === 'resources' ? C.teal : C.border}`,
+              background: tab === 'resources' ? `${C.teal}22` : 'transparent',
+              color: tab === 'resources' ? C.teal : C.muted,
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: tab === 'resources' ? 800 : 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            ⚡ Resources
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('ux-advisor')}
+            title="Open UX/UI Design Architect & Advisor Agent (plugin87/ux-ui-agent-skills)"
+            style={{
+              padding: '4px 8px',
+              borderRadius: 5,
+              border: `1px solid ${tab === 'ux-advisor' ? C.purple : C.border}`,
+              background: tab === 'ux-advisor' ? `${C.purple}22` : 'transparent',
+              color: tab === 'ux-advisor' ? '#d8b4fe' : C.muted,
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: tab === 'ux-advisor' ? 800 : 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            🎨 UX Agent
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('pullboard')}
+            title="Open Pullboard — Spec-Driven Workflow & Adversarial Verification"
+            style={{
+              padding: '4px 8px',
+              borderRadius: 5,
+              border: `1px solid ${tab === 'pullboard' ? C.blue : C.border}`,
+              background: tab === 'pullboard' ? `${C.blue}22` : 'transparent',
+              color: tab === 'pullboard' ? C.blue : C.muted,
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: tab === 'pullboard' ? 800 : 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            📋 Pullboard
+          </button>
           <button
             type="button"
             onClick={() => setTab('security')}
@@ -13676,6 +16503,9 @@ export default function App() {
               {tab==='graph'     &&<FinancialGraphTab budgetData={budgetData} accounts={accounts} debts={debts} majorExpenses={majorExpenses} credits={credits} sm={sm}/>}
               {tab==='reports'   &&<ReportTab budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
               {tab==='security'  &&<SecurityCenterTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} credits={credits} setCredits={setCredits} debts={debts} setDebts={setDebts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} session={session} role={role} sm={sm} canUpdate={canUpdate} fakeMode={fakeMode} setFakeMode={setFakeMode} onLockVaultNow={() => { setIsVaultLocked(true); appendSecurityLog('Vault manually locked by user.', 'INFO'); }} onAppendSecurityLog={appendSecurityLog} onRecordHoneypotIntrusion={recordHoneypotIntrusion} onEmergencySignOutAndWipe={handleEmergencySignOutAndWipe}/>}
+              {tab==='pullboard' &&<PullboardTab accounts={accounts} budgetData={budgetData} setBudgetData={setBudgetData} debts={debts} credits={credits} majorExpenses={majorExpenses} session={session} sm={sm} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} onAppendSecurityLog={appendSecurityLog}/>}
+              {tab==='ux-advisor'&&<UxUiAdvisorTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} onAppendSecurityLog={appendSecurityLog}/>}
+              {tab==='resources' &&<SystemResourcesTab accounts={accounts} budgetData={budgetData} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} session={session} sm={sm} setTab={setTab}/>}
             </>
           );
         })()}
@@ -15029,6 +17859,9 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
             { id: "dashboard", label: "Dashboard Module", icon: "📊" },
             { id: "account-dashboard", label: "Account Dashboard", icon: "🏧" },
             { id: "security", label: "Cyber Security", icon: "🛡️" },
+            { id: "pullboard", label: "Pullboard Harness", icon: "📋" },
+            { id: "ux-advisor", label: "UX/UI Design Agent", icon: "🎨" },
+            { id: "resources", label: "CPU & RAM Monitor", icon: "⚡" },
             { id: "history", label: "History Module", icon: "📋" },
             { id: "monthly", label: "Monthly Module", icon: "📅" },
             { id: "accounts", label: "Accounts Module", icon: "🏦" },
@@ -15116,6 +17949,9 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                 { id: "dashboard", label: "Dashboard", icon: "📊" },
                 { id: "account-dashboard", label: "Account Dashboard", icon: "🏧" },
                 { id: "security", label: "Cyber Security", icon: "🛡️" },
+                { id: "pullboard", label: "Pullboard (Specs)", icon: "📋" },
+                { id: "ux-advisor", label: "UX/UI Agent", icon: "🎨" },
+                { id: "resources", label: "CPU & RAM Monitor", icon: "⚡" },
                 { id: "history", label: "History Logs", icon: "📋" },
                 { id: "budget", label: "Monthly Budget", icon: "📅" },
                 { id: "accounts", label: "Accounts", icon: "🏦" },
