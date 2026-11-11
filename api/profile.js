@@ -135,9 +135,11 @@ export default async function handler(req, res) {
       "pullboard",
       "ux-advisor",
       "resources",
+      "second-brain",
+      "ai-office",
       "admin"
     ];
-    
+
     const baselineUserModules = new Set([
       "dashboard",
       "account-dashboard",
@@ -156,7 +158,9 @@ export default async function handler(req, res) {
       "security",
       "pullboard",
       "ux-advisor",
-      "resources"
+      "resources",
+      "second-brain",
+      "ai-office"
     ]);
 
     defaultModules.forEach(mod => {

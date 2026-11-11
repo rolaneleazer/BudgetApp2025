@@ -100,6 +100,9 @@ const moduleNames = [
   "pullboard",
   "ux-advisor",
   "resources",
+  "second-brain",
+  "second-brain",
+  "ai-office",
   "raw",
 ];
 
@@ -801,9 +804,9 @@ function parseHexLuminance(hexColor) {
   const full =
     clean.length === 3
       ? clean
-          .split("")
-          .map((c) => c + c)
-          .join("")
+        .split("")
+        .map((c) => c + c)
+        .join("")
       : clean.slice(0, 6);
   const r = parseInt(full.slice(0, 2), 16) / 255;
   const g = parseInt(full.slice(2, 4), 16) / 255;
@@ -912,6 +915,80 @@ function summarizeResourcesModule(profile) {
   };
 }
 
+function summarizeSecondBrainModule(profile) {
+  const sb = profile.budgetData?.secondBrain || {};
+  const notes = Array.isArray(sb.notes) ? sb.notes : [];
+  const rules = Array.isArray(sb.rules) ? sb.rules : [];
+  const routines = Array.isArray(sb.routines) ? sb.routines : [];
+  const lastBrief = sb.lastMorningBrief || null;
+
+  const paraCounts = {
+    context: notes.filter((n) => n.para === "0_Context").length,
+    projects: notes.filter((n) => n.para === "1_Projects").length,
+    areas: notes.filter((n) => n.para === "2_Areas").length,
+    resources: notes.filter((n) => n.para === "3_Resources").length,
+    archive: notes.filter((n) => n.para === "4_Archive").length,
+  };
+
+  return {
+    architecture: "Four Cs (Context, Connections, Capabilities, Cadence) + PARA Vault",
+    totalNotes: notes.length,
+    paraCounts,
+    permanentRulesCount: rules.filter((r) => r.active !== false).length,
+    permanentRules: rules.filter((r) => r.active !== false).slice(0, 20),
+    cadenceRoutinesCount: routines.length,
+    lastMorningBriefAt: lastBrief?.generatedAt || null,
+    recentNotes: notes.slice(0, 15),
+  };
+}
+
+function summarizeSecondBrainModule(profile) {
+  const sb = profile.budgetData?.secondBrain || {};
+  const notes = Array.isArray(sb.notes) ? sb.notes : [];
+  const rules = Array.isArray(sb.rules) ? sb.rules : [];
+  const routines = Array.isArray(sb.routines) ? sb.routines : [];
+  const lastBrief = sb.lastMorningBrief || null;
+
+  return {
+    architecture: "Four Cs (Context, Connections, Capabilities, Cadence) + PARA Vault",
+    totalNotes: notes.length,
+    permanentRulesCount: rules.filter((r) => r.active !== false).length,
+    cadenceRoutinesCount: routines.length,
+    lastMorningBriefAt: lastBrief?.generatedAt || null,
+    recentNotes: notes.slice(0, 10),
+  };
+}
+
+function summarizeAiOfficeModule(profile) {
+  const logs = Array.isArray(profile.budgetData?.aiOfficeLog)
+    ? profile.budgetData.aiOfficeLog
+    : [];
+  const rooms = [
+    "THE BRAIN (Command Center)",
+    "FINANCIAL OPS HUB",
+    "CYBER & CLOUD INTEL LAB",
+    "DEV & UX STUDIO",
+    "PANTRY & LOUNGE",
+  ];
+  return {
+    officeRoomsCount: rooms.length,
+    rooms,
+    activeAgentsCount: 8,
+    roster: [
+      "Boss",
+      "Librarian",
+      "Balanse",
+      "Kinsenas",
+      "Bantay",
+      "VercelBot",
+      "Vero",
+      "Tala",
+    ],
+    totalMissionsExecuted: logs.length,
+    recentMissions: logs.slice(0, 15),
+  };
+}
+
 export function buildModulePayload(profile, moduleName, args = {}) {
   switch (moduleName) {
     case "dashboard":
@@ -948,6 +1025,12 @@ export function buildModulePayload(profile, moduleName, args = {}) {
       return summarizeUxAdvisorModule(profile);
     case "resources":
       return summarizeResourcesModule(profile);
+    case "second-brain":
+      return summarizeSecondBrainModule(profile);
+    case "second-brain":
+      return summarizeSecondBrainModule(profile);
+    case "ai-office":
+      return summarizeAiOfficeModule(profile);
     case "raw":
       return profile;
     default:

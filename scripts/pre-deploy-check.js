@@ -27,7 +27,7 @@ check("Vite Frontend Compilation Build", () => {
 check("MCP Tool Registrations", () => {
   const server = createBudgetMcpServer();
   const registeredTools = Object.keys(server._registeredTools || {});
-  
+
   const expectedTools = [
     "project_overview",
     "list_project_files",
@@ -77,6 +77,9 @@ check("Financial Modules Calculations", () => {
     "pullboard",
     "ux-advisor",
     "resources",
+    "second-brain",
+    "second-brain",
+    "ai-office",
     "raw"
   ];
 
@@ -143,7 +146,7 @@ check("Scheduler Rules & Timezone Checks", () => {
   for (const schedule of mockSchedules) {
     shouldFire(schedule);
   }
-  
+
   // Test already-sent daily schedule today (should evaluate to false to prevent duplicates)
   const sentDaily = {
     frequency: "daily",
@@ -160,7 +163,7 @@ check("Scheduler Rules & Timezone Checks", () => {
 // 5. Super Admin Role & Permission Verification
 check("Super Admin Role & Permission Verification", () => {
   const testEmail = "rolanmolano_77@yahoo.com";
-  
+
   if (!isSuperAdminEmail(testEmail)) {
     throw new Error(`Super Admin check failed! '${testEmail}' was not recognized as Super Admin.`);
   }
@@ -168,12 +171,12 @@ check("Super Admin Role & Permission Verification", () => {
   // Test case with empty process.env.ADMIN_EMAILS (tests fallback protection)
   const oldEnv = process.env.ADMIN_EMAILS;
   delete process.env.ADMIN_EMAILS;
-  
+
   if (!isSuperAdminEmail("rolanmolano_77@yahoo.com")) {
     process.env.ADMIN_EMAILS = oldEnv;
     throw new Error("Super Admin fallback failed when ADMIN_EMAILS environment variable is missing!");
   }
-  
+
   if (oldEnv) process.env.ADMIN_EMAILS = oldEnv;
   console.log(`Verified Super Admin protection for ${testEmail}!`);
 });

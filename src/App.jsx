@@ -8,63 +8,63 @@ import Auth from "./Auth";
 import { isSuperAdminEmail } from "./config/superAdmins";
 import dtcgTokens from "./config/dtcgTokens.json";
 
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const OT_RATES = { weekday: 750, weekend: 680 };
 const TAX_RATE = 0.20;
 const NOW = new Date();
-const CUR_YEAR  = NOW.getFullYear();
+const CUR_YEAR = NOW.getFullYear();
 const CUR_MONTH = NOW.getMonth();
 
 const makeKey = (year, mi) => `${year}-${String(mi + 1).padStart(2, '0')}`;
-const parseKey = k => { const [y,m] = k.split('-'); return { year: parseInt(y), monthIdx: parseInt(m)-1 }; };
-const displayKey = k => { if (!k) return ''; const {year,monthIdx} = parseKey(k); return `${MONTH_NAMES[monthIdx]} ${year}`; };
-const shortKey   = k => { if (!k) return ''; const {year,monthIdx} = parseKey(k); return `${MONTH_NAMES[monthIdx].slice(0,3)} ${String(year).slice(2)}`; };
+const parseKey = k => { const [y, m] = k.split('-'); return { year: parseInt(y), monthIdx: parseInt(m) - 1 }; };
+const displayKey = k => { if (!k) return ''; const { year, monthIdx } = parseKey(k); return `${MONTH_NAMES[monthIdx]} ${year}`; };
+const shortKey = k => { if (!k) return ''; const { year, monthIdx } = parseKey(k); return `${MONTH_NAMES[monthIdx].slice(0, 3)} ${String(year).slice(2)}`; };
 
 const OLD_MAP = {
-  'August':'2024-08','September':'2024-09','October':'2024-10','November':'2024-11',
-  'December':'2024-12','January':'2025-01','February':'2025-02','March':'2025-03',
-  'April':'2025-04','May':'2025-05','June':'2025-06','July':'2025-07',
+  'August': '2024-08', 'September': '2024-09', 'October': '2024-10', 'November': '2024-11',
+  'December': '2024-12', 'January': '2025-01', 'February': '2025-02', 'March': '2025-03',
+  'April': '2025-04', 'May': '2025-05', 'June': '2025-06', 'July': '2025-07',
 };
 
 const EXPENSE_TPL = [
-  {name:'Rent',budget:18000,amount:18000},{name:'RCBC CC',budget:9400,amount:9400},{name:'RCBC Gold',budget:2200,amount:2200},
-  {name:'RCBC Watch',budget:5000,amount:5000},{name:'SB CC',budget:0,amount:0},{name:'Parents',budget:5000,amount:5000},
-  {name:'Atome',budget:0,amount:0},{name:'ZED',budget:0,amount:0},{name:'Prulife',budget:2600,amount:2600},
-  {name:'iPhone',budget:3200,amount:3200},{name:'Animals',budget:800,amount:800},{name:'Gas',budget:2000,amount:2000},
-  {name:'Toll',budget:1500,amount:1500},{name:'Electricity',budget:1000,amount:1000},{name:'Pagibig MP2',budget:2500,amount:2500},
-  {name:'Laundry',budget:800,amount:800},{name:'Grocery',budget:0,amount:0},{name:'Food',budget:0,amount:0},{name:'Other',budget:0,amount:0},
+  { name: 'Rent', budget: 18000, amount: 18000 }, { name: 'RCBC CC', budget: 9400, amount: 9400 }, { name: 'RCBC Gold', budget: 2200, amount: 2200 },
+  { name: 'RCBC Watch', budget: 5000, amount: 5000 }, { name: 'SB CC', budget: 0, amount: 0 }, { name: 'Parents', budget: 5000, amount: 5000 },
+  { name: 'Atome', budget: 0, amount: 0 }, { name: 'ZED', budget: 0, amount: 0 }, { name: 'Prulife', budget: 2600, amount: 2600 },
+  { name: 'iPhone', budget: 3200, amount: 3200 }, { name: 'Animals', budget: 800, amount: 800 }, { name: 'Gas', budget: 2000, amount: 2000 },
+  { name: 'Toll', budget: 1500, amount: 1500 }, { name: 'Electricity', budget: 1000, amount: 1000 }, { name: 'Pagibig MP2', budget: 2500, amount: 2500 },
+  { name: 'Laundry', budget: 800, amount: 800 }, { name: 'Grocery', budget: 0, amount: 0 }, { name: 'Food', budget: 0, amount: 0 }, { name: 'Other', budget: 0, amount: 0 },
 ];
 
 const DEF_ACCOUNTS = [
-  {id:'sla-c',name:'SLA Capcon',balance:507000,type:'Investment'},
-  {id:'sla-s',name:'SLA Saving',balance:15000,type:'Savings'},
-  {id:'mp2',name:'Pagibig MP2',balance:128000,type:'Investment'},
-  {id:'git',name:'Business Gitstack',balance:40000,type:'Checking'},
-  {id:'sbc',name:'SB Checking',balance:25000,type:'Checking'},
-  {id:'sbe1',name:'SB eSaving 1',balance:263000,type:'Savings'},
-  {id:'sbe2',name:'SB eSaving 2',balance:500,type:'Savings'},
-  {id:'maya',name:'Maya / Ownbank',balance:306900,type:'Digital'},
+  { id: 'sla-c', name: 'SLA Capcon', balance: 507000, type: 'Investment' },
+  { id: 'sla-s', name: 'SLA Saving', balance: 15000, type: 'Savings' },
+  { id: 'mp2', name: 'Pagibig MP2', balance: 128000, type: 'Investment' },
+  { id: 'git', name: 'Business Gitstack', balance: 40000, type: 'Checking' },
+  { id: 'sbc', name: 'SB Checking', balance: 25000, type: 'Checking' },
+  { id: 'sbe1', name: 'SB eSaving 1', balance: 263000, type: 'Savings' },
+  { id: 'sbe2', name: 'SB eSaving 2', balance: 500, type: 'Savings' },
+  { id: 'maya', name: 'Maya / Ownbank', balance: 306900, type: 'Digital' },
 ];
 
 const DEF_MAJOR = [
-  {id:1,name:'Parent Birthday',budget:60000,actual:0,done:false,date:'2026-08-15'},
-  {id:2,name:'Eisley Wedding',budget:60000,actual:0,done:false,date:'2026-10-10'},
-  {id:3,name:'Zed Wedding',budget:45000,actual:0,done:false,date:'2026-11-20'},
-  {id:4,name:'Papa Hospital',budget:172000,actual:0,done:true,date:'2025-11-15'},
-  {id:5,name:'Christmas Food',budget:38000,actual:38000,done:true,date:'2025-12-25'},
-  {id:6,name:'Christmas Gifts',budget:48000,actual:0,done:false,date:'2026-12-24'},
-  {id:7,name:'Omega Watch',budget:30000,actual:0,done:false,date:'2027-02-14'},
-  {id:8,name:'Birthday (Office)',budget:30000,actual:0,done:false,date:'2026-07-01'},
-  {id:9,name:'Japan Trip',budget:180000,actual:0,done:false,date:'2027-04-10'},
+  { id: 1, name: 'Parent Birthday', budget: 60000, actual: 0, done: false, date: '2026-08-15' },
+  { id: 2, name: 'Eisley Wedding', budget: 60000, actual: 0, done: false, date: '2026-10-10' },
+  { id: 3, name: 'Zed Wedding', budget: 45000, actual: 0, done: false, date: '2026-11-20' },
+  { id: 4, name: 'Papa Hospital', budget: 172000, actual: 0, done: true, date: '2025-11-15' },
+  { id: 5, name: 'Christmas Food', budget: 38000, actual: 38000, done: true, date: '2025-12-25' },
+  { id: 6, name: 'Christmas Gifts', budget: 48000, actual: 0, done: false, date: '2026-12-24' },
+  { id: 7, name: 'Omega Watch', budget: 30000, actual: 0, done: false, date: '2027-02-14' },
+  { id: 8, name: 'Birthday (Office)', budget: 30000, actual: 0, done: false, date: '2026-07-01' },
+  { id: 9, name: 'Japan Trip', budget: 180000, actual: 0, done: false, date: '2027-04-10' },
 ];
 
 const DEF_DEBTS = [
-  {id:'d1',name:'RCBC CC',balance:24500,limit:100000,apr:3.5,minPayment:1200},
-  {id:'d2',name:'RCBC Gold',balance:12000,limit:50000,apr:3.5,minPayment:600},
-  {id:'d3',name:'Atome',balance:5000,limit:20000,apr:0,minPayment:1666},
+  { id: 'd1', name: 'RCBC CC', balance: 24500, limit: 100000, apr: 3.5, minPayment: 1200 },
+  { id: 'd2', name: 'RCBC Gold', balance: 12000, limit: 50000, apr: 3.5, minPayment: 600 },
+  { id: 'd3', name: 'Atome', balance: 5000, limit: 20000, apr: 0, minPayment: 1666 },
 ];
 
-const TYPE_CLR = {Investment:'#bc8cff',Savings:'#3fb950',Checking:'#388bfd',Digital:'#56d364'};
+const TYPE_CLR = { Investment: '#bc8cff', Savings: '#3fb950', Checking: '#388bfd', Digital: '#56d364' };
 
 const classifyExpense = (name) => {
   const n = (name || '').toLowerCase();
@@ -116,27 +116,29 @@ function makePeriod() {
     expenses: isAdmin ? EXPENSE_TPL.map(e => ({ ...e, done: false })) : []
   };
 }
-function makeMonthData() { return {'5th':makePeriod(),'20th':makePeriod()}; }
+function makeMonthData() { return { '5th': makePeriod(), '20th': makePeriod() }; }
 function getOrMake(budgetData, key) { return budgetData[key] || makeMonthData(); }
 
 function calcOT(ot) {
-  const wdE=ot.weekday*OT_RATES.weekday, weE=ot.weekend*OT_RATES.weekend;
-  const gross=wdE+weE, tax=gross*TAX_RATE;
-  return {gross,tax,net:gross-tax,weekdayEarned:wdE,weekendEarned:weE};
+  const wdE = ot.weekday * OT_RATES.weekday, weE = ot.weekend * OT_RATES.weekend;
+  const gross = wdE + weE, tax = gross * TAX_RATE;
+  return { gross, tax, net: gross - tax, weekdayEarned: wdE, weekendEarned: weE };
 }
 function calcSummary(p) {
-  const otCalc=calcOT(p.ot), totalIncome=p.salary+otCalc.net;
-  const totalExpenses=p.expenses.reduce((s,e)=>s+(Number(e.amount)||0),0);
-  const paidExpenses=p.expenses.filter(e=>e.done).reduce((s,e)=>s+(Number(e.amount)||0),0);
-  return {otCalc,totalIncome,totalExpenses,paidExpenses,netSavings:totalIncome-totalExpenses};
+  const otCalc = calcOT(p.ot), totalIncome = p.salary + otCalc.net;
+  const totalExpenses = p.expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const paidExpenses = p.expenses.filter(e => e.done).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  return { otCalc, totalIncome, totalExpenses, paidExpenses, netSavings: totalIncome - totalExpenses };
 }
 function calcMonth(md) {
-  const s5=calcSummary(md['5th']), s20=calcSummary(md['20th']);
-  const income=s5.totalIncome+s20.totalIncome, expenses=s5.totalExpenses+s20.totalExpenses, savings=s5.netSavings+s20.netSavings;
-  return {income,expenses,savings,s5,s20,
-    otIncome:s5.otCalc.net+s20.otCalc.net,
-    otHours:md['5th'].ot.weekday+md['5th'].ot.weekend+md['20th'].ot.weekday+md['20th'].ot.weekend,
-    savingsRate:income>0?(savings/income)*100:0};
+  const s5 = calcSummary(md['5th']), s20 = calcSummary(md['20th']);
+  const income = s5.totalIncome + s20.totalIncome, expenses = s5.totalExpenses + s20.totalExpenses, savings = s5.netSavings + s20.netSavings;
+  return {
+    income, expenses, savings, s5, s20,
+    otIncome: s5.otCalc.net + s20.otCalc.net,
+    otHours: md['5th'].ot.weekday + md['5th'].ot.weekend + md['20th'].ot.weekday + md['20th'].ot.weekend,
+    savingsRate: income > 0 ? (savings / income) * 100 : 0
+  };
 }
 
 const isPeriodInRange = (year, monthIdx, period, startStr, endStr) => {
@@ -159,7 +161,7 @@ function calcMonthFiltered(md, key, range, customStart, customEnd) {
 
   const otIncome = s5.otCalc.net + s20.otCalc.net;
   const otHours = (include5 ? (md['5th'].ot.weekday + md['5th'].ot.weekend) : 0) +
-                  (include20 ? (md['20th'].ot.weekday + md['20th'].ot.weekend) : 0);
+    (include20 ? (md['20th'].ot.weekday + md['20th'].ot.weekend) : 0);
 
   return {
     income,
@@ -188,46 +190,48 @@ const peso = n => {
 
 const fmtK = n => {
   const val = scaleFake(n);
-  return val >= 1000000 
-    ? '₱' + (val / 1e6).toFixed(2) + 'M' 
-    : val >= 1000 
-      ? '₱' + (val / 1000).toFixed(0) + 'k' 
+  return val >= 1000000
+    ? '₱' + (val / 1e6).toFixed(2) + 'M'
+    : val >= 1000
+      ? '₱' + (val / 1000).toFixed(0) + 'k'
       : '₱' + Math.abs(Math.round(val)).toLocaleString();
 };
 
 // ─── STORAGE (fixed) ──────────────────────────────────────────────────────────
 // Each key wrapped separately so one missing key doesn't break the others
 async function safeGet(key) {
-  try { const r=await window.storage.get(key); return r?JSON.parse(r.value):null; } catch(_){return null;}
+  try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : null; } catch (_) { return null; }
 }
-async function safeSet(key,val) {
-  try { await window.storage.set(key,JSON.stringify(val)); } catch(_){}
+async function safeSet(key, val) {
+  try { await window.storage.set(key, JSON.stringify(val)); } catch (_) { }
 }
 
 // ─── RESPONSIVE ───────────────────────────────────────────────────────────────
 function useWidth() {
-  const [w,setW]=useState(typeof window!=='undefined'?window.innerWidth:800);
-  useEffect(()=>{const h=()=>setW(window.innerWidth);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
+  const [w, setW] = useState(typeof window !== 'undefined' ? window.innerWidth : 800);
+  useEffect(() => { const h = () => setW(window.innerWidth); window.addEventListener('resize', h); return () => window.removeEventListener('resize', h); }, []);
   return w;
 }
 
 // ─── THEME ────────────────────────────────────────────────────────────────────
-const C={bg:'#020814',panel:'#07111f',card:'#0f1a2a',card2:'#101d31',border:'#1c2b42',text:'#eef5ff',
-  muted:'#8ea0b8',green:'#24d17e',red:'#ff514f',amber:'#f2a71b',
-  blue:'#4b8dff',teal:'#30d6b0',purple:'#7257ff',orange:'#ff7a45',pink:'#f45f93'};
-const ttip={background:C.card,border:`1px solid ${C.border}`,borderRadius:8,color:C.text,fontSize:11};
+const C = {
+  bg: '#020814', panel: '#07111f', card: '#0f1a2a', card2: '#101d31', border: '#1c2b42', text: '#eef5ff',
+  muted: '#8ea0b8', green: '#24d17e', red: '#ff514f', amber: '#f2a71b',
+  blue: '#4b8dff', teal: '#30d6b0', purple: '#7257ff', orange: '#ff7a45', pink: '#f45f93'
+};
+const ttip = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 11 };
 
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
-const Divider=()=><div style={{borderTop:`1px solid ${C.border}`,margin:'12px 0'}}/>;
-const Tag=({children,color})=><span style={{fontSize:11,padding:'2px 8px',borderRadius:10,background:`${color}22`,color,fontWeight:600}}>{children}</span>;
-const SecTitle=({children,style})=><div style={{fontSize:11,fontWeight:700,color:C.text,textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:12,...style}}>{children}</div>;
-const Card=({children,style})=><div style={{background:`linear-gradient(180deg, ${C.card2}, ${C.card})`,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:'0 18px 42px rgba(0,0,0,0.22)',padding:'16px 18px',marginBottom:14,...style}}>{children}</div>;
+const Divider = () => <div style={{ borderTop: `1px solid ${C.border}`, margin: '12px 0' }} />;
+const Tag = ({ children, color }) => <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: `${color}22`, color, fontWeight: 600 }}>{children}</span>;
+const SecTitle = ({ children, style }) => <div style={{ fontSize: 11, fontWeight: 700, color: C.text, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 12, ...style }}>{children}</div>;
+const Card = ({ children, style }) => <div style={{ background: `linear-gradient(180deg, ${C.card2}, ${C.card})`, borderRadius: 8, border: `1px solid ${C.border}`, boxShadow: '0 18px 42px rgba(0,0,0,0.22)', padding: '16px 18px', marginBottom: 14, ...style }}>{children}</div>;
 const Inp = ({ style, disabled, ...p }) => {
   const activePerm = typeof window !== 'undefined' ? window.activePermission : null;
   const isReadOnly = activePerm === 'read';
   return (
-    <input 
-      disabled={disabled || isReadOnly} 
+    <input
+      disabled={disabled || isReadOnly}
       style={{
         background: '#08111f',
         border: `1px solid ${C.border}`,
@@ -239,65 +243,65 @@ const Inp = ({ style, disabled, ...p }) => {
         boxSizing: 'border-box',
         opacity: (disabled || isReadOnly) ? 0.6 : 1,
         ...style
-      }} 
+      }}
       {...p}
     />
   );
 };
-const BtnG=({children,style,...p})=><button style={{padding:'8px 14px',borderRadius:7,border:`1px solid ${C.green}`,background:'rgba(63,185,80,0.15)',color:C.green,cursor:'pointer',fontSize:13,fontWeight:600,...style}} {...p}>{children}</button>;
-const Btn=({children,style,...p})=><button style={{padding:'7px 12px',borderRadius:6,border:`1px solid ${C.border}`,background:'transparent',color:C.muted,cursor:'pointer',fontSize:13,...style}} {...p}>{children}</button>;
+const BtnG = ({ children, style, ...p }) => <button style={{ padding: '8px 14px', borderRadius: 7, border: `1px solid ${C.green}`, background: 'rgba(63,185,80,0.15)', color: C.green, cursor: 'pointer', fontSize: 13, fontWeight: 600, ...style }} {...p}>{children}</button>;
+const Btn = ({ children, style, ...p }) => <button style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontSize: 13, ...style }} {...p}>{children}</button>;
 
-function MetricCard({label,value,sub,color,sm,masked,onToggleMask,icon}) {
-  return(
-    <div style={{background:`radial-gradient(circle at top left, ${color || C.blue}22, transparent 48%), linear-gradient(180deg, ${C.card2}, ${C.card})`,borderRadius:8,border:`1px solid ${C.border}`,boxShadow:'0 14px 34px rgba(0,0,0,0.24)',padding:sm?'12px 14px':'16px 18px',minHeight:sm?96:112}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,marginBottom:10}}>
-        <div style={{width:34,height:34,borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center',background:`${color || C.blue}22`,border:`1px solid ${color || C.blue}44`,color:color||C.blue,fontSize:16,fontWeight:800}}>{icon || 'o'}</div>
-        {onToggleMask&&(
+function MetricCard({ label, value, sub, color, sm, masked, onToggleMask, icon }) {
+  return (
+    <div style={{ background: `radial-gradient(circle at top left, ${color || C.blue}22, transparent 48%), linear-gradient(180deg, ${C.card2}, ${C.card})`, borderRadius: 8, border: `1px solid ${C.border}`, boxShadow: '0 14px 34px rgba(0,0,0,0.24)', padding: sm ? '12px 14px' : '16px 18px', minHeight: sm ? 96 : 112 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color || C.blue}22`, border: `1px solid ${color || C.blue}44`, color: color || C.blue, fontSize: 16, fontWeight: 800 }}>{icon || 'o'}</div>
+        {onToggleMask && (
           <button
             type="button"
             onClick={onToggleMask}
-            title={masked?'Show amount':'Hide amount'}
-            aria-label={masked?'Show amount':'Hide amount'}
-            style={{width:24,height:24,borderRadius:6,border:`1px solid ${C.border}`,background:'rgba(255,255,255,0.02)',color:masked?C.amber:C.muted,cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',padding:0}}
+            title={masked ? 'Show amount' : 'Hide amount'}
+            aria-label={masked ? 'Show amount' : 'Hide amount'}
+            style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${C.border}`, background: 'rgba(255,255,255,0.02)', color: masked ? C.amber : C.muted, cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
           >
-            {masked?'***':'$'}
+            {masked ? '***' : '$'}
           </button>
         )}
       </div>
-      <div style={{fontSize:10,color:C.muted,textTransform:'uppercase',fontWeight:800,letterSpacing:'0.04em',marginBottom:4}}>{label}</div>
-      <div style={{fontSize:sm?18:23,fontWeight:800,color:C.text,lineHeight:1.1}}>{value}</div>
-      {sub&&<div style={{fontSize:11,color:color||C.muted,marginTop:7,fontWeight:700}}>{sub}</div>}
+      <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: sm ? 18 : 23, fontWeight: 800, color: C.text, lineHeight: 1.1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: color || C.muted, marginTop: 7, fontWeight: 700 }}>{sub}</div>}
     </div>
   );
 }
-function Legend({items}){
-  return(<div style={{display:'flex',flexWrap:'wrap',gap:10,justifyContent:'center',marginTop:8}}>
-    {items.map(([l,c])=><span key={l} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:C.muted}}><span style={{width:9,height:9,borderRadius:2,background:c,display:'inline-block'}}/>{l}</span>)}
+function Legend({ items }) {
+  return (<div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 8 }}>
+    {items.map(([l, c]) => <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: C.muted }}><span style={{ width: 9, height: 9, borderRadius: 2, background: c, display: 'inline-block' }} />{l}</span>)}
   </div>);
 }
 
 // ─── YEAR/MONTH PICKER ────────────────────────────────────────────────────────
-function YMPicker({year,monthIdx,onYear,onMonth,sm}) {
-  return(
-    <div style={{background:C.card,borderRadius:12,border:`1px solid ${C.border}`,padding:'14px 16px',marginBottom:14}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:20,marginBottom:14}}>
-        <button onClick={()=>onYear(year-1)} style={{background:'none',border:`1px solid ${C.border}`,borderRadius:8,color:C.muted,cursor:'pointer',fontSize:22,width:38,height:38,display:'flex',alignItems:'center',justifyContent:'center'}}>‹</button>
-        <span style={{fontSize:22,fontWeight:700,minWidth:60,textAlign:'center'}}>{year}</span>
-        <button onClick={()=>onYear(year+1)} style={{background:'none',border:`1px solid ${C.border}`,borderRadius:8,color:C.muted,cursor:'pointer',fontSize:22,width:38,height:38,display:'flex',alignItems:'center',justifyContent:'center'}}>›</button>
+function YMPicker({ year, monthIdx, onYear, onMonth, sm }) {
+  return (
+    <div style={{ background: C.card, borderRadius: 12, border: `1px solid ${C.border}`, padding: '14px 16px', marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 14 }}>
+        <button onClick={() => onYear(year - 1)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, cursor: 'pointer', fontSize: 22, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+        <span style={{ fontSize: 22, fontWeight: 700, minWidth: 60, textAlign: 'center' }}>{year}</span>
+        <button onClick={() => onYear(year + 1)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, color: C.muted, cursor: 'pointer', fontSize: 22, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:6}}>
-        {MONTH_NAMES.map((m,i)=>{
-          const sel=i===monthIdx, cur=year===CUR_YEAR&&i===CUR_MONTH;
-          return(
-            <button key={m} onClick={()=>onMonth(i)} style={{padding:'8px 2px',borderRadius:8,border:`1px solid ${sel?C.green:cur?C.amber+'88':C.border}`,background:sel?'rgba(63,185,80,0.2)':cur?`${C.amber}11`:'transparent',color:sel?C.green:cur?C.amber:C.muted,cursor:'pointer',fontSize:sm?11:12,fontWeight:sel?700:400}}>
-              {m.slice(0,3)}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 6 }}>
+        {MONTH_NAMES.map((m, i) => {
+          const sel = i === monthIdx, cur = year === CUR_YEAR && i === CUR_MONTH;
+          return (
+            <button key={m} onClick={() => onMonth(i)} style={{ padding: '8px 2px', borderRadius: 8, border: `1px solid ${sel ? C.green : cur ? C.amber + '88' : C.border}`, background: sel ? 'rgba(63,185,80,0.2)' : cur ? `${C.amber}11` : 'transparent', color: sel ? C.green : cur ? C.amber : C.muted, cursor: 'pointer', fontSize: sm ? 11 : 12, fontWeight: sel ? 700 : 400 }}>
+              {m.slice(0, 3)}
             </button>
           );
         })}
       </div>
-      <div style={{marginTop:12,textAlign:'center',fontSize:14,fontWeight:600}}>
+      <div style={{ marginTop: 12, textAlign: 'center', fontSize: 14, fontWeight: 600 }}>
         {MONTH_NAMES[monthIdx]} {year}
-        {year===CUR_YEAR&&monthIdx===CUR_MONTH&&<span style={{marginLeft:8,fontSize:11,color:C.amber,fontWeight:400}}>● Now</span>}
+        {year === CUR_YEAR && monthIdx === CUR_MONTH && <span style={{ marginLeft: 8, fontSize: 11, color: C.amber, fontWeight: 400 }}>● Now</span>}
       </div>
     </div>
   );
@@ -362,7 +366,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   const [moneyMasked, setMoneyMasked] = useState(() => {
     try {
       return localStorage.getItem('dashboardMoneyMasked') === 'true';
-    } catch {}
+    } catch { }
     return false;
   });
   const toggleMoneyMask = () => {
@@ -370,7 +374,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     setMoneyMasked(next);
     try {
       localStorage.setItem('dashboardMoneyMasked', String(next));
-    } catch {}
+    } catch { }
   };
   const confidentialValue = (value) => moneyMasked ? '*****' : value;
 
@@ -385,21 +389,21 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
         DEFAULT_CARD_ORDER.forEach(id => { if (!merged.includes(id)) merged.push(id); });
         return merged;
       }
-    } catch {}
+    } catch { }
     return [...DEFAULT_CARD_ORDER];
   });
-  const dragId   = useRef(null);
+  const dragId = useRef(null);
   const dragOver = useRef(null);
   const [dragActive, setDragActive] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
 
   const handleDragStart = (id) => { dragId.current = id; setDragActive(id); };
   const handleDragEnter = (id) => { dragOver.current = id; setDropTarget(id); };
-  const handleDragEnd   = () => {
+  const handleDragEnd = () => {
     if (dragId.current && dragOver.current && dragId.current !== dragOver.current) {
       const next = [...cardOrder];
       const from = next.indexOf(dragId.current);
-      const to   = next.indexOf(dragOver.current);
+      const to = next.indexOf(dragOver.current);
       next.splice(from, 1);
       next.splice(to, 0, dragId.current);
       setCardOrder(next);
@@ -422,13 +426,13 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     try {
       const saved = localStorage.getItem('dashboardHiddenCards');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return [];
   });
 
   const toggleCardVisibility = (id) => {
-    const next = hiddenCards.includes(id) 
-      ? hiddenCards.filter(x => x !== id) 
+    const next = hiddenCards.includes(id)
+      ? hiddenCards.filter(x => x !== id)
       : [...hiddenCards, id];
     setHiddenCards(next);
     localStorage.setItem('dashboardHiddenCards', JSON.stringify(next));
@@ -437,7 +441,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     try {
       const saved = localStorage.getItem('dashboardCardSizes');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return {};
   });
   const toggleSize = (id) => {
@@ -451,7 +455,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     try {
       const saved = localStorage.getItem('dashboardCardCollapsed');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     return {};
   });
   const toggleCollapse = (id) => {
@@ -495,9 +499,9 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
 
   const getGroupedHistoryData = () => {
     if (!balanceHistory || balanceHistory.length === 0) return [];
-    
+
     const sorted = [...balanceHistory].sort((a, b) => a.date.localeCompare(b.date));
-    
+
     let grouped = [];
     if (historyGrouping === 'monthly') {
       const monthlyMap = {};
@@ -516,19 +520,19 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     } else {
       grouped = sorted;
     }
-    
+
     return grouped.map(entry => {
       const point = {
         date: entry.date,
         label: formatLabel(entry.date, historyGrouping),
         total: Math.round(Object.values(entry.balances).reduce((sum, v) => sum + v, 0) / 1000)
       };
-      
+
       const categories = ['Investment', 'Savings', 'Checking', 'Digital'];
       categories.forEach(cat => {
         point[cat] = 0;
       });
-      
+
       accounts.forEach(acc => {
         const bal = entry.balances[acc.id] ?? 0;
         point[acc.name] = Math.round(bal / 1000);
@@ -539,7 +543,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
           point[cat] = Math.round(bal / 1000);
         }
       });
-      
+
       return point;
     });
   };
@@ -594,7 +598,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   const stats = keys.map(key => {
     const isCurrentMonth = key === makeKey(CUR_YEAR, CUR_MONTH);
     const md = budgetData[key] || (isCurrentMonth ? makeMonthData() : null);
-    
+
     // Custom breakdown calculations
     let fixed = 0, variable = 0, debt = 0, investment = 0;
     if (md) {
@@ -614,9 +618,9 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     }
 
     const mt = md ? calcMonthFiltered(md, key, range, customStart, customEnd) : { income: 0, expenses: 0, savings: 0, otIncome: 0, otHours: 0, savingsRate: 0 };
-    return { 
-      key, 
-      label: shortKey(key), 
+    return {
+      key,
+      label: shortKey(key),
       ...mt,
       fixed: Math.round(fixed / 1000),
       variable: Math.round(variable / 1000),
@@ -649,7 +653,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   const liquid = accounts.filter(a => ['Savings', 'Checking', 'Digital'].includes(a.type)).reduce((s, a) => s + a.balance, 0);
   const safetyMonths = avgExp > 0 ? liquid / avgExp : 0;
   const avgRate = active.length ? active.reduce((s, m) => s + m.savingsRate, 0) / active.length : 0;
-  
+
   // Calculate Debt Ratio
   const totalIncomeRange = stats.reduce((sum, s) => sum + s.income, 0);
   const totalDebtPaidRange = stats.reduce((sum, s) => {
@@ -688,15 +692,15 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     if (avgRate >= 30) score += 30;
     else if (avgRate >= 20) score += 20;
     else if (avgRate >= 10) score += 10;
-    
+
     if (safetyMonths >= 6) score += 30;
     else if (safetyMonths >= 3) score += 20;
     else if (safetyMonths >= 1) score += 10;
-    
+
     if (debtRatio <= 15) score += 25;
     else if (debtRatio <= 30) score += 15;
     else if (debtRatio <= 45) score += 5;
-    
+
     const overspentCount = majorExpenses.filter(e => e.actual > e.budget).length;
     if (overspentCount === 0) score += 15;
     else if (overspentCount <= 2) score += 5;
@@ -750,7 +754,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
         });
       }
     }
-    return list.sort((a,b) => a.daysLeft - b.daysLeft).slice(0, 5);
+    return list.sort((a, b) => a.daysLeft - b.daysLeft).slice(0, 5);
   };
   const upcomingBills = getUpcomingBills();
 
@@ -773,7 +777,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
         });
       }
     });
-    return Object.values(grouped).sort((a,b) => b.budget - a.budget);
+    return Object.values(grouped).sort((a, b) => b.budget - a.budget);
   };
   const bvsA = getBudgetVsActual();
 
@@ -781,7 +785,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   const curMonthKey = makeKey(CUR_YEAR, CUR_MONTH);
   const curMd = budgetData[curMonthKey] || makeMonthData();
   let catFixed = 0, catDebt = 0, catVariable = 0, catInvestment = 0;
-  ['5th','20th'].forEach(p => {
+  ['5th', '20th'].forEach(p => {
     if (curMd[p]) curMd[p].expenses.forEach(e => {
       const cat = classifyExpense(e.name), amt = Number(e.amount) || 0;
       if (cat === 'Fixed') catFixed += amt;
@@ -791,7 +795,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     });
   });
   // Unbudgeted manual debits this month
-  const catUnbudgeted = (budgetData.debitHistory || []).filter(d => !d.isCredit && !!d.excludeFromBudget && (d.date||'').slice(0,7) === curMonthKey).reduce((s,d) => s + (d.amount||0), 0);
+  const catUnbudgeted = (budgetData.debitHistory || []).filter(d => !d.isCredit && !!d.excludeFromBudget && (d.date || '').slice(0, 7) === curMonthKey).reduce((s, d) => s + (d.amount || 0), 0);
   const expenseDonutData = [
     { name: 'Fixed', value: catFixed, color: C.red },
     { name: 'Debt', value: catDebt, color: C.amber },
@@ -801,15 +805,15 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
   ].filter(d => d.value > 0);
 
   // ── Payroll period burn ──
-  const period5  = curMd['5th']  || makePeriod();
+  const period5 = curMd['5th'] || makePeriod();
   const period20 = curMd['20th'] || makePeriod();
-  const sum5  = calcSummary(period5);
+  const sum5 = calcSummary(period5);
   const sum20 = calcSummary(period20);
 
   // ── Today at a glance ──
   const todayFull = new Date();
   const todayDayNum = todayFull.getDate();
-  const daysTo5  = todayDayNum <= 5  ? 5  - todayDayNum : null;
+  const daysTo5 = todayDayNum <= 5 ? 5 - todayDayNum : null;
   const daysTo20 = todayDayNum <= 20 ? 20 - todayDayNum : null;
   const activePeriodLabel = todayDayNum <= 15 ? '5th' : '20th';
   const activePeriodSum = activePeriodLabel === '5th' ? sum5 : sum20;
@@ -838,7 +842,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
     });
   }
 
-  const best = active.length ? [...active].sort((a,b) => b.savings - a.savings)[0] : null;
+  const best = active.length ? [...active].sort((a, b) => b.savings - a.savings)[0] : null;
   const majorBudget = majorExpenses.reduce((s, e) => s + e.budget, 0);
   const majorSpent = majorExpenses.reduce((s, e) => s + e.actual, 0);
   const pieData = accounts.map(a => ({ name: a.name, value: a.balance, color: TYPE_CLR[a.type] || C.muted }));
@@ -931,10 +935,10 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
           <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 14 }}>
             {[['5th', sum5, period5], ['20th', sum20, period20]].map(([label, s, pd]) => {
               const income = s.totalIncome;
-              const paid   = s.paidExpenses;
-              const total  = s.totalExpenses;
-              const pct    = income > 0 ? Math.min(100, (paid / income) * 100) : 0;
-              const tc     = pct > 90 ? C.red : pct > 65 ? C.amber : C.green;
+              const paid = s.paidExpenses;
+              const total = s.totalExpenses;
+              const pct = income > 0 ? Math.min(100, (paid / income) * 100) : 0;
+              const tc = pct > 90 ? C.red : pct > 65 ? C.amber : C.green;
               const unpaidExpenses = pd.expenses.filter(e => !e.done && e.amount > 0);
               return (
                 <div key={label}>
@@ -955,7 +959,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
                   </div>
                   {unpaidExpenses.length > 0 && (
                     <div style={{ fontSize: 10, color: C.muted, padding: '6px 8px', background: `${C.border}33`, borderRadius: 5 }}>
-                      ⚠ {unpaidExpenses.length} unpaid: {unpaidExpenses.slice(0,3).map(e => e.name).join(', ')}{unpaidExpenses.length > 3 ? '...' : ''}
+                      ⚠ {unpaidExpenses.length} unpaid: {unpaidExpenses.slice(0, 3).map(e => e.name).join(', ')}{unpaidExpenses.length > 3 ? '...' : ''}
                     </div>
                   )}
                 </div>
@@ -1065,8 +1069,8 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {activeInstPlans.slice(0, 5).map(pl => {
                 const totalM = Number(pl.months) || 12;
-                const paid   = pl.paidMonths || 0;
-                const pct    = (paid / totalM) * 100;
+                const paid = pl.paidMonths || 0;
+                const pct = (paid / totalM) * 100;
                 const monthly = getInstBreakdownSimple(pl.total, pl.months, pl.interestRate, pl.customMonthly);
                 return (
                   <div key={pl.id}>
@@ -1102,7 +1106,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
         <Card style={{ marginBottom: 0 }}>
           <SecTitle>Recent Balance Logs</SecTitle>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8, justifyContent: 'center' }}>
-            {['daily','monthly','yearly'].map(f => (
+            {['daily', 'monthly', 'yearly'].map(f => (
               <button key={f} onClick={() => setBalanceFilter(f)} style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${balanceFilter === f ? C.green : C.border}`, background: balanceFilter === f ? 'rgba(63,185,80,0.15)' : 'transparent', color: balanceFilter === f ? C.green : C.muted, cursor: 'pointer', fontSize: 11 }}>
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
@@ -1442,7 +1446,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
             const ccAccounts = accounts.filter(a => a.type === 'Credit Card' || Number(a.creditLimit) > 0);
             const totalLimits = ccAccounts.reduce((s, a) => s + (Number(a.creditLimit) || 0), 0);
             const totalBalance = ccAccounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
-            
+
             const instPlans = budgetData?.installmentPlans || [];
             const totalInstRem = instPlans.reduce((s, p) => {
               const tot = Number(p.total) || 0, m = Number(p.months) || 12, paid = Number(p.paidMonths) || 0, r = Number(p.interestRate) || 0, c = Number(p.customMonthly) || 0;
@@ -1459,8 +1463,8 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
             const healthScore = Math.min(100, utilPts + instPts + 35);
             const grade = healthScore >= 85 ? { label: 'Excellent', emoji: '🟢', color: C.green }
               : healthScore >= 70 ? { label: 'Healthy', emoji: '🟡', color: C.amber }
-              : healthScore >= 50 ? { label: 'Moderate', emoji: '🟠', color: C.purple }
-              : { label: 'High Risk', emoji: '🔴', color: C.red };
+                : healthScore >= 50 ? { label: 'Moderate', emoji: '🟠', color: C.purple }
+                  : { label: 'High Risk', emoji: '🔴', color: C.red };
 
             return (
               <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4, 1fr)', gap: 10 }}>
@@ -1473,7 +1477,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
                 <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.panel}88`, border: `1px solid ${C.border}` }}>
                   <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase', fontWeight: 700 }}>True Available Credit</div>
                   <div style={{ fontSize: 18, fontWeight: 800, color: trueAvail > 0 ? C.green : C.red, marginTop: 2 }}>{totalLimits > 0 ? peso(trueAvail) : '₱0'}</div>
-                  <div style={{ fontSize: 10, color: C.amber, marginTop: 2 }}>{totalInstRem > 0 ? `₱${(totalInstRem/1000).toFixed(1)}k in inst` : 'No active inst'}</div>
+                  <div style={{ fontSize: 10, color: C.amber, marginTop: 2 }}>{totalInstRem > 0 ? `₱${(totalInstRem / 1000).toFixed(1)}k in inst` : 'No active inst'}</div>
                 </div>
 
                 <div style={{ padding: '10px 12px', borderRadius: 8, background: `${C.panel}88`, border: `1px solid ${C.border}` }}>
@@ -1596,15 +1600,15 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
 
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:sm?'flex-start':'center',gap:14,marginBottom:16,flexDirection:sm?'column':'row'}}>
-          {(() => {
-            const greetingName = session?.user?.user_metadata?.first_name || (session?.user?.user_metadata?.full_name || session?.user?.email || 'User').split(' ')[0].split('@')[0];
-            return <div style={{fontSize:sm?20:25,fontWeight:800,letterSpacing:0,color:C.text}}>Welcome back, {greetingName}!</div>;
-          })()}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: sm ? 'flex-start' : 'center', gap: 14, marginBottom: 16, flexDirection: sm ? 'column' : 'row' }}>
+        {(() => {
+          const greetingName = session?.user?.user_metadata?.first_name || (session?.user?.user_metadata?.full_name || session?.user?.email || 'User').split(' ')[0].split('@')[0];
+          return <div style={{ fontSize: sm ? 20 : 25, fontWeight: 800, letterSpacing: 0, color: C.text }}>Welcome back, {greetingName}!</div>;
+        })()}
         <select
           value={range}
           onChange={e => setRange(e.target.value)}
-          style={{background:C.panel,border:`1px solid ${C.border}`,color:C.text,borderRadius:7,padding:'9px 12px',fontSize:12,minWidth:sm?'100%':190,outline:'none'}}
+          style={{ background: C.panel, border: `1px solid ${C.border}`, color: C.text, borderRadius: 7, padding: '9px 12px', fontSize: 12, minWidth: sm ? '100%' : 190, outline: 'none' }}
         >
           <option value="current">Current month</option>
           <option value="12m">Last 12 months</option>
@@ -1622,7 +1626,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
           ['2024', '2024'],
           ['custom', 'Custom']
         ].map(([v, l]) => (
-          <button key={v} onClick={() => setRange(v)} style={{ padding: '6px 11px', borderRadius: 6, border: `1px solid ${range === v ? C.purple : C.border}`, background: range === v ? `${C.purple}33` : C.panel, color: range === v ? C.text : C.muted, cursor: 'pointer', fontSize: 11, fontWeight:700 }}>
+          <button key={v} onClick={() => setRange(v)} style={{ padding: '6px 11px', borderRadius: 6, border: `1px solid ${range === v ? C.purple : C.border}`, background: range === v ? `${C.purple}33` : C.panel, color: range === v ? C.text : C.muted, cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
             {l}
           </button>
         ))}
@@ -1660,7 +1664,7 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 14, alignItems: 'start' }}>
         {cardOrder.map(id => {
           if (hiddenCards.includes(id)) return null;
-          const isHalf     = cardSizes[id] === 'half';
+          const isHalf = cardSizes[id] === 'half';
           const isCollapsed = !!cardCollapsed[id];
           return (
             <div
@@ -1778,13 +1782,13 @@ function Dashboard({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
       </div>
 
       {showCustomizeModal && (
-        <CustomizeDashboardModal 
-          cardOrder={cardOrder} 
-          setCardOrder={setCardOrder} 
-          hiddenCards={hiddenCards} 
-          toggleCardVisibility={toggleCardVisibility} 
-          resetCardOrder={resetCardOrder} 
-          onClose={() => setShowCustomizeModal(false)} 
+        <CustomizeDashboardModal
+          cardOrder={cardOrder}
+          setCardOrder={setCardOrder}
+          hiddenCards={hiddenCards}
+          toggleCardVisibility={toggleCardVisibility}
+          resetCardOrder={resetCardOrder}
+          onClose={() => setShowCustomizeModal(false)}
         />
       )}
     </div>
@@ -1820,7 +1824,7 @@ function CustomizeDashboardModal({ cardOrder, setCardOrder, hiddenCards, toggleC
             const isHidden = hiddenCards.includes(id);
 
             return (
-              <div 
+              <div
                 key={id}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1852,7 +1856,7 @@ function CustomizeDashboardModal({ cardOrder, setCardOrder, hiddenCards, toggleC
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
-          <button 
+          <button
             onClick={() => { resetCardOrder(); localStorage.removeItem('dashboardHiddenCards'); window.location.reload(); }}
             style={{ border: 'none', background: 'none', color: C.amber, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
           >
@@ -1868,136 +1872,136 @@ function CustomizeDashboardModal({ cardOrder, setCardOrder, hiddenCards, toggleC
 
 
 // ─── HISTORY ─────────────────────────────────────────────────────────────────
-function PeriodDetail({data,summary}) {
-  return(
-    <div style={{background:'#0d1117',borderRadius:8,padding:'10px 12px'}}>
-      {[['Salary',peso(data.salary),C.text],['Wkday OT',data.ot.weekday>0?`${data.ot.weekday}h → ${peso(summary.otCalc.weekdayEarned)}`:'—',C.muted],['Wknd OT',data.ot.weekend>0?`${data.ot.weekend}h → ${peso(summary.otCalc.weekendEarned)}`:'—',C.muted],['Net OT',peso(summary.otCalc.net),C.purple],['Income',peso(summary.totalIncome),C.blue],['Expenses',peso(summary.totalExpenses),C.red],['Saved',peso(summary.netSavings),summary.netSavings>=0?C.green:C.red]].map(([l,v,c])=>(
-      <div key={l} style={{display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:`1px solid ${C.border}22`,fontSize:12}}>
-        <span style={{color:C.muted}}>{l}</span><span style={{color:c,fontWeight:['Income','Saved'].includes(l)?700:400}}>{v}</span>
-      </div>))}
+function PeriodDetail({ data, summary }) {
+  return (
+    <div style={{ background: '#0d1117', borderRadius: 8, padding: '10px 12px' }}>
+      {[['Salary', peso(data.salary), C.text], ['Wkday OT', data.ot.weekday > 0 ? `${data.ot.weekday}h → ${peso(summary.otCalc.weekdayEarned)}` : '—', C.muted], ['Wknd OT', data.ot.weekend > 0 ? `${data.ot.weekend}h → ${peso(summary.otCalc.weekendEarned)}` : '—', C.muted], ['Net OT', peso(summary.otCalc.net), C.purple], ['Income', peso(summary.totalIncome), C.blue], ['Expenses', peso(summary.totalExpenses), C.red], ['Saved', peso(summary.netSavings), summary.netSavings >= 0 ? C.green : C.red]].map(([l, v, c]) => (
+        <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: `1px solid ${C.border}22`, fontSize: 12 }}>
+          <span style={{ color: C.muted }}>{l}</span><span style={{ color: c, fontWeight: ['Income', 'Saved'].includes(l) ? 700 : 400 }}>{v}</span>
+        </div>))}
     </div>
   );
 }
 
-function HistoryTab({budgetData,sm}) {
-  const [expanded,setExpanded]=useState(null);
-  const [filterYear,setFilterYear]=useState('all');
+function HistoryTab({ budgetData, sm }) {
+  const [expanded, setExpanded] = useState(null);
+  const [filterYear, setFilterYear] = useState('all');
 
-  const allRows=Object.keys(budgetData).filter(k=>/^\d{4}-\d{2}$/.test(k)).map(key=>{
-    const mt=calcMonth(budgetData[key]);
-    return{key,label:displayKey(key),year:parseKey(key).year,...mt};
-  }).sort((a,b)=>b.key.localeCompare(a.key));
+  const allRows = Object.keys(budgetData).filter(k => /^\d{4}-\d{2}$/.test(k)).map(key => {
+    const mt = calcMonth(budgetData[key]);
+    return { key, label: displayKey(key), year: parseKey(key).year, ...mt };
+  }).sort((a, b) => b.key.localeCompare(a.key));
 
-  const years=['all',...[...new Set(allRows.map(r=>r.year))].sort((a,b)=>b-a)];
-  const filtered=filterYear==='all'?allRows:allRows.filter(r=>r.year===filterYear);
-  const totI=filtered.reduce((s,r)=>s+r.income,0);
-  const totE=filtered.reduce((s,r)=>s+r.expenses,0);
-  const totS=filtered.reduce((s,r)=>s+r.savings,0);
-  const totOT=filtered.reduce((s,r)=>s+r.otIncome,0);
-  const byYear=filtered.reduce((g,r)=>{(g[r.year]=g[r.year]||[]).push(r);return g;},{});
-  const rc=r=>r.savingsRate>=25?C.green:r.savingsRate>=10?C.amber:C.red;
+  const years = ['all', ...[...new Set(allRows.map(r => r.year))].sort((a, b) => b - a)];
+  const filtered = filterYear === 'all' ? allRows : allRows.filter(r => r.year === filterYear);
+  const totI = filtered.reduce((s, r) => s + r.income, 0);
+  const totE = filtered.reduce((s, r) => s + r.expenses, 0);
+  const totS = filtered.reduce((s, r) => s + r.savings, 0);
+  const totOT = filtered.reduce((s, r) => s + r.otIncome, 0);
+  const byYear = filtered.reduce((g, r) => { (g[r.year] = g[r.year] || []).push(r); return g; }, {});
+  const rc = r => r.savingsRate >= 25 ? C.green : r.savingsRate >= 10 ? C.amber : C.red;
 
-  return(
+  return (
     <div>
-      <div style={{display:'grid',gridTemplateColumns:sm?'1fr 1fr':'repeat(4,1fr)',gap:sm?8:12,marginBottom:14}}>
-        <MetricCard label="Income" value={fmtK(totI)} color={C.blue} sm={sm}/>
-        <MetricCard label="Expenses" value={fmtK(totE)} color={C.red} sm={sm}/>
-        <MetricCard label="Savings" value={fmtK(totS)} color={totS>=0?C.green:C.red} sm={sm}/>
-        <MetricCard label="OT Income" value={fmtK(totOT)} color={C.purple} sm={sm}/>
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: sm ? 8 : 12, marginBottom: 14 }}>
+        <MetricCard label="Income" value={fmtK(totI)} color={C.blue} sm={sm} />
+        <MetricCard label="Expenses" value={fmtK(totE)} color={C.red} sm={sm} />
+        <MetricCard label="Savings" value={fmtK(totS)} color={totS >= 0 ? C.green : C.red} sm={sm} />
+        <MetricCard label="OT Income" value={fmtK(totOT)} color={C.purple} sm={sm} />
       </div>
 
-      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14,alignItems:'center'}}>
-        <span style={{fontSize:12,color:C.muted}}>Year:</span>
-        {years.map(y=>(
-          <button key={y} onClick={()=>setFilterYear(y)} style={{padding:'5px 12px',borderRadius:14,border:`1px solid ${filterYear===y?C.green:C.border}`,background:filterYear===y?'rgba(63,185,80,0.15)':'transparent',color:filterYear===y?C.green:C.muted,cursor:'pointer',fontSize:12,fontWeight:filterYear===y?600:400}}>
-            {y==='all'?'All Years':y}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
+        <span style={{ fontSize: 12, color: C.muted }}>Year:</span>
+        {years.map(y => (
+          <button key={y} onClick={() => setFilterYear(y)} style={{ padding: '5px 12px', borderRadius: 14, border: `1px solid ${filterYear === y ? C.green : C.border}`, background: filterYear === y ? 'rgba(63,185,80,0.15)' : 'transparent', color: filterYear === y ? C.green : C.muted, cursor: 'pointer', fontSize: 12, fontWeight: filterYear === y ? 600 : 400 }}>
+            {y === 'all' ? 'All Years' : y}
           </button>
         ))}
       </div>
 
-      {allRows.length===0&&<Card><div style={{color:C.muted,textAlign:'center',padding:'24px 0',fontSize:14}}>No entries yet. Add data in the Monthly Budget tab.</div></Card>}
+      {allRows.length === 0 && <Card><div style={{ color: C.muted, textAlign: 'center', padding: '24px 0', fontSize: 14 }}>No entries yet. Add data in the Monthly Budget tab.</div></Card>}
 
-      {Object.entries(byYear).sort((a,b)=>b[0]-a[0]).map(([year,rows])=>(
-        <div key={year} style={{marginBottom:20}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-            <span style={{width:6,height:6,borderRadius:'50%',background:C.green,display:'inline-block'}}/>
-            <span style={{fontSize:14,fontWeight:700,color:C.muted}}>{year}</span>
-            <span style={{flex:1,height:1,background:C.border}}/>
-            <span style={{fontSize:12,color:C.muted}}>
-              {fmtK(rows.reduce((s,r)=>s+r.income,0))} in · {fmtK(rows.reduce((s,r)=>s+r.expenses,0))} out · <span style={{color:C.green,fontWeight:600}}>{fmtK(rows.reduce((s,r)=>s+r.savings,0))} saved</span>
+      {Object.entries(byYear).sort((a, b) => b[0] - a[0]).map(([year, rows]) => (
+        <div key={year} style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: C.muted }}>{year}</span>
+            <span style={{ flex: 1, height: 1, background: C.border }} />
+            <span style={{ fontSize: 12, color: C.muted }}>
+              {fmtK(rows.reduce((s, r) => s + r.income, 0))} in · {fmtK(rows.reduce((s, r) => s + r.expenses, 0))} out · <span style={{ color: C.green, fontWeight: 600 }}>{fmtK(rows.reduce((s, r) => s + r.savings, 0))} saved</span>
             </span>
           </div>
 
-          {sm?(
-            rows.map(r=>{
-              const isE=expanded===r.key;
-              return(
-                <div key={r.key} style={{background:C.card,borderRadius:10,border:`1px solid ${isE?C.green+'55':C.border}`,marginBottom:10,overflow:'hidden'}}>
-                  <div onClick={()=>setExpanded(isE?null:r.key)} style={{padding:'14px 16px',cursor:'pointer'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                      <span style={{fontWeight:700,fontSize:15}}>{r.label}</span>
-                      <div style={{display:'flex',gap:6,alignItems:'center'}}><Tag color={rc(r)}>{Math.round(r.savingsRate)}%</Tag><span style={{color:C.muted}}>{isE?'▲':'▼'}</span></div>
+          {sm ? (
+            rows.map(r => {
+              const isE = expanded === r.key;
+              return (
+                <div key={r.key} style={{ background: C.card, borderRadius: 10, border: `1px solid ${isE ? C.green + '55' : C.border}`, marginBottom: 10, overflow: 'hidden' }}>
+                  <div onClick={() => setExpanded(isE ? null : r.key)} style={{ padding: '14px 16px', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <span style={{ fontWeight: 700, fontSize: 15 }}>{r.label}</span>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}><Tag color={rc(r)}>{Math.round(r.savingsRate)}%</Tag><span style={{ color: C.muted }}>{isE ? '▲' : '▼'}</span></div>
                     </div>
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
-                      {[['Income',fmtK(r.income),C.blue],['Expenses',fmtK(r.expenses),C.red],['Saved',fmtK(r.savings),r.savings>=0?C.green:C.red]].map(([l,v,c])=>(
-                        <div key={l}><div style={{fontSize:10,color:C.muted,marginBottom:2}}>{l}</div><div style={{fontSize:13,fontWeight:700,color:c}}>{v}</div></div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                      {[['Income', fmtK(r.income), C.blue], ['Expenses', fmtK(r.expenses), C.red], ['Saved', fmtK(r.savings), r.savings >= 0 ? C.green : C.red]].map(([l, v, c]) => (
+                        <div key={l}><div style={{ fontSize: 10, color: C.muted, marginBottom: 2 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 700, color: c }}>{v}</div></div>
                       ))}
                     </div>
-                    {r.otHours>0&&<div style={{marginTop:8,fontSize:11,color:C.purple}}>⏱ {r.otHours} OT hrs · {fmtK(r.otIncome)}</div>}
+                    {r.otHours > 0 && <div style={{ marginTop: 8, fontSize: 11, color: C.purple }}>⏱ {r.otHours} OT hrs · {fmtK(r.otIncome)}</div>}
                   </div>
-                  {isE&&(
-                    <div style={{padding:'0 16px 16px',borderTop:`1px solid ${C.border}`}}>
-                      <div style={{paddingTop:12,marginBottom:10}}><div style={{fontSize:11,fontWeight:600,color:C.muted,textTransform:'uppercase',marginBottom:6}}>5th Period</div><PeriodDetail data={budgetData[r.key]['5th']} summary={r.s5}/></div>
-                      <div><div style={{fontSize:11,fontWeight:600,color:C.muted,textTransform:'uppercase',marginBottom:6}}>20th Period</div><PeriodDetail data={budgetData[r.key]['20th']} summary={r.s20}/></div>
+                  {isE && (
+                    <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ paddingTop: 12, marginBottom: 10 }}><div style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>5th Period</div><PeriodDetail data={budgetData[r.key]['5th']} summary={r.s5} /></div>
+                      <div><div style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>20th Period</div><PeriodDetail data={budgetData[r.key]['20th']} summary={r.s20} /></div>
                     </div>
                   )}
                 </div>
               );
             })
-          ):(
-            <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,overflow:'hidden',marginBottom:6}}>
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
+          ) : (
+            <div style={{ background: C.card, borderRadius: 10, border: `1px solid ${C.border}`, overflow: 'hidden', marginBottom: 6 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{background:'#0d1117',borderBottom:`1px solid ${C.border}`}}>
-                    {['Month','Income','OT Income','OT Hrs','Expenses','Net Savings','Rate',''].map((l,i)=>(
-                      <th key={i} style={{padding:'9px 12px',textAlign:i===0?'left':'right',color:C.muted,fontSize:11,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',whiteSpace:'nowrap'}}>{l}</th>
+                  <tr style={{ background: '#0d1117', borderBottom: `1px solid ${C.border}` }}>
+                    {['Month', 'Income', 'OT Income', 'OT Hrs', 'Expenses', 'Net Savings', 'Rate', ''].map((l, i) => (
+                      <th key={i} style={{ padding: '9px 12px', textAlign: i === 0 ? 'left' : 'right', color: C.muted, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{l}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(r=>{
-                    const isE=expanded===r.key;
-                    return[
-                      <tr key={r.key} onClick={()=>setExpanded(isE?null:r.key)} style={{borderBottom:`1px solid ${C.border}22`,cursor:'pointer',background:isE?`${C.green}0a`:'transparent'}}>
-                        <td style={{padding:'11px 12px',fontWeight:600,fontSize:14}}>{r.label}</td>
-                        <td style={{padding:'11px 12px',textAlign:'right',color:C.blue,fontSize:13}}>{fmtK(r.income)}</td>
-                        <td style={{padding:'11px 12px',textAlign:'right',color:r.otIncome>0?C.purple:C.muted,fontSize:13}}>{r.otIncome>0?fmtK(r.otIncome):'—'}</td>
-                        <td style={{padding:'11px 12px',textAlign:'right',color:r.otHours>0?C.teal:C.muted,fontSize:13}}>{r.otHours>0?r.otHours+' hrs':'—'}</td>
-                        <td style={{padding:'11px 12px',textAlign:'right',color:C.red,fontSize:13}}>{fmtK(r.expenses)}</td>
-                        <td style={{padding:'11px 12px',textAlign:'right',fontWeight:700,color:r.savings>=0?C.green:C.red,fontSize:13}}>{fmtK(r.savings)}</td>
-                        <td style={{padding:'11px 12px',textAlign:'right'}}><Tag color={rc(r)}>{Math.round(r.savingsRate)}%</Tag></td>
-                        <td style={{padding:'11px 8px',color:C.muted,textAlign:'center'}}>{isE?'▲':'▼'}</td>
+                  {rows.map(r => {
+                    const isE = expanded === r.key;
+                    return [
+                      <tr key={r.key} onClick={() => setExpanded(isE ? null : r.key)} style={{ borderBottom: `1px solid ${C.border}22`, cursor: 'pointer', background: isE ? `${C.green}0a` : 'transparent' }}>
+                        <td style={{ padding: '11px 12px', fontWeight: 600, fontSize: 14 }}>{r.label}</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', color: C.blue, fontSize: 13 }}>{fmtK(r.income)}</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', color: r.otIncome > 0 ? C.purple : C.muted, fontSize: 13 }}>{r.otIncome > 0 ? fmtK(r.otIncome) : '—'}</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', color: r.otHours > 0 ? C.teal : C.muted, fontSize: 13 }}>{r.otHours > 0 ? r.otHours + ' hrs' : '—'}</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', color: C.red, fontSize: 13 }}>{fmtK(r.expenses)}</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right', fontWeight: 700, color: r.savings >= 0 ? C.green : C.red, fontSize: 13 }}>{fmtK(r.savings)}</td>
+                        <td style={{ padding: '11px 12px', textAlign: 'right' }}><Tag color={rc(r)}>{Math.round(r.savingsRate)}%</Tag></td>
+                        <td style={{ padding: '11px 8px', color: C.muted, textAlign: 'center' }}>{isE ? '▲' : '▼'}</td>
                       </tr>,
-                      isE&&(
-                        <tr key={r.key+'-d'} style={{background:'#0d1117'}}>
-                          <td colSpan={8} style={{padding:'0 16px 16px'}}>
-                            <div style={{paddingTop:14,display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-                              <div><SecTitle>5th Period</SecTitle><PeriodDetail data={budgetData[r.key]['5th']} summary={r.s5}/></div>
-                              <div><SecTitle>20th Period</SecTitle><PeriodDetail data={budgetData[r.key]['20th']} summary={r.s20}/></div>
+                      isE && (
+                        <tr key={r.key + '-d'} style={{ background: '#0d1117' }}>
+                          <td colSpan={8} style={{ padding: '0 16px 16px' }}>
+                            <div style={{ paddingTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                              <div><SecTitle>5th Period</SecTitle><PeriodDetail data={budgetData[r.key]['5th']} summary={r.s5} /></div>
+                              <div><SecTitle>20th Period</SecTitle><PeriodDetail data={budgetData[r.key]['20th']} summary={r.s20} /></div>
                             </div>
                           </td>
                         </tr>
                       )
                     ];
                   })}
-                  <tr style={{background:'#0d1117',borderTop:`1px solid ${C.border}`}}>
-                    <td style={{padding:'9px 12px',fontWeight:700,color:C.muted,fontSize:12}}>Subtotal {year}</td>
-                    <td style={{padding:'9px 12px',textAlign:'right',color:C.blue,fontWeight:700,fontSize:12}}>{fmtK(rows.reduce((s,r)=>s+r.income,0))}</td>
-                    <td style={{padding:'9px 12px',textAlign:'right',color:C.purple,fontWeight:700,fontSize:12}}>{fmtK(rows.reduce((s,r)=>s+r.otIncome,0))}</td>
-                    <td style={{padding:'9px 12px',textAlign:'right',color:C.muted,fontSize:12}}>{rows.reduce((s,r)=>s+r.otHours,0)} hrs</td>
-                    <td style={{padding:'9px 12px',textAlign:'right',color:C.red,fontWeight:700,fontSize:12}}>{fmtK(rows.reduce((s,r)=>s+r.expenses,0))}</td>
-                    <td style={{padding:'9px 12px',textAlign:'right',color:C.green,fontWeight:700,fontSize:12}}>{fmtK(rows.reduce((s,r)=>s+r.savings,0))}</td>
-                    <td colSpan={2}/>
+                  <tr style={{ background: '#0d1117', borderTop: `1px solid ${C.border}` }}>
+                    <td style={{ padding: '9px 12px', fontWeight: 700, color: C.muted, fontSize: 12 }}>Subtotal {year}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', color: C.blue, fontWeight: 700, fontSize: 12 }}>{fmtK(rows.reduce((s, r) => s + r.income, 0))}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', color: C.purple, fontWeight: 700, fontSize: 12 }}>{fmtK(rows.reduce((s, r) => s + r.otIncome, 0))}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', color: C.muted, fontSize: 12 }}>{rows.reduce((s, r) => s + r.otHours, 0)} hrs</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', color: C.red, fontWeight: 700, fontSize: 12 }}>{fmtK(rows.reduce((s, r) => s + r.expenses, 0))}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', color: C.green, fontWeight: 700, fontSize: 12 }}>{fmtK(rows.reduce((s, r) => s + r.savings, 0))}</td>
+                    <td colSpan={2} />
                   </tr>
                 </tbody>
               </table>
@@ -2006,10 +2010,10 @@ function HistoryTab({budgetData,sm}) {
         </div>
       ))}
 
-      {filtered.length>0&&(
-        <div style={{background:'#0d1117',borderRadius:10,border:`1px solid ${C.border}`,padding:'12px 16px',display:'grid',gridTemplateColumns:sm?'1fr 1fr':'repeat(4,1fr)',gap:12}}>
-          {[['Total Income',fmtK(totI),C.blue],['Total Expenses',fmtK(totE),C.red],['Total Savings',fmtK(totS),totS>=0?C.green:C.red],['OT Income',fmtK(totOT),C.purple]].map(([l,v,c])=>(
-            <div key={l}><div style={{fontSize:11,color:C.muted,marginBottom:3}}>{l}</div><div style={{fontSize:14,fontWeight:700,color:c}}>{v}</div></div>
+      {filtered.length > 0 && (
+        <div style={{ background: '#0d1117', borderRadius: 10, border: `1px solid ${C.border}`, padding: '12px 16px', display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: 12 }}>
+          {[['Total Income', fmtK(totI), C.blue], ['Total Expenses', fmtK(totE), C.red], ['Total Savings', fmtK(totS), totS >= 0 ? C.green : C.red], ['OT Income', fmtK(totOT), C.purple]].map(([l, v, c]) => (
+            <div key={l}><div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>{l}</div><div style={{ fontSize: 14, fontWeight: 700, color: c }}>{v}</div></div>
           ))}
         </div>
       )}
@@ -2018,90 +2022,90 @@ function HistoryTab({budgetData,sm}) {
 }
 
 // ─── BUDGET ───────────────────────────────────────────────────────────────────
-function BudgetTab({budgetData,setBudgetData,sm,readOnly,canWrite,canUpdate}) {
-  const [selYear,setSelYear]=useState(CUR_YEAR);
-  const [selMI,setSelMI]=useState(CUR_MONTH);
-  const [period,setPeriod]=useState('5th');
-  const key=makeKey(selYear,selMI);
-  const md=getOrMake(budgetData,key);
-  const pData=md[period];
-  const summ=calcSummary(pData);
-  const otCalc=summ.otCalc;
-  const paid=pData.expenses.filter(e=>e.done).length;
-  const hasData=!!budgetData[key];
+function BudgetTab({ budgetData, setBudgetData, sm, readOnly, canWrite, canUpdate }) {
+  const [selYear, setSelYear] = useState(CUR_YEAR);
+  const [selMI, setSelMI] = useState(CUR_MONTH);
+  const [period, setPeriod] = useState('5th');
+  const key = makeKey(selYear, selMI);
+  const md = getOrMake(budgetData, key);
+  const pData = md[period];
+  const summ = calcSummary(pData);
+  const otCalc = summ.otCalc;
+  const paid = pData.expenses.filter(e => e.done).length;
+  const hasData = !!budgetData[key];
 
   function upd(changes) {
     if (readOnly) return;
-    setBudgetData(prev=>({...prev,[key]:{...(prev[key]||makeMonthData()),[period]:{...(prev[key]?.[period]||makePeriod()),...changes}}}));
+    setBudgetData(prev => ({ ...prev, [key]: { ...(prev[key] || makeMonthData()), [period]: { ...(prev[key]?.[period] || makePeriod()), ...changes } } }));
   }
-  function updOT(f,v){
+  function updOT(f, v) {
     if (readOnly) return;
-    upd({ot:{...pData.ot,[f]:Number(v)||0}});
+    upd({ ot: { ...pData.ot, [f]: Number(v) || 0 } });
   }
-  function updExp(i,f,v){
+  function updExp(i, f, v) {
     if (readOnly) return;
-    const exp=[...pData.expenses];
-    exp[i]={...exp[i],[f]:(f==='amount'||f==='budget')?(Number(v)||0):v};
-    upd({expenses:exp});
+    const exp = [...pData.expenses];
+    exp[i] = { ...exp[i], [f]: (f === 'amount' || f === 'budget') ? (Number(v) || 0) : v };
+    upd({ expenses: exp });
   }
 
-  return(
+  return (
     <div>
-      <YMPicker year={selYear} monthIdx={selMI} onYear={setSelYear} onMonth={setSelMI} sm={sm}/>
-      <div style={{display:'flex',gap:8,marginBottom:14}}>
-        {['5th','20th'].map(p=>(
-          <button key={p} onClick={()=>setPeriod(p)} style={{flex:1,padding:'10px',borderRadius:8,border:`1px solid ${period===p?C.green:C.border}`,background:period===p?'rgba(63,185,80,0.2)':'transparent',color:period===p?C.green:C.muted,cursor:'pointer',fontSize:14,fontWeight:period===p?700:400}}>
+      <YMPicker year={selYear} monthIdx={selMI} onYear={setSelYear} onMonth={setSelMI} sm={sm} />
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {['5th', '20th'].map(p => (
+          <button key={p} onClick={() => setPeriod(p)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1px solid ${period === p ? C.green : C.border}`, background: period === p ? 'rgba(63,185,80,0.2)' : 'transparent', color: period === p ? C.green : C.muted, cursor: 'pointer', fontSize: 14, fontWeight: period === p ? 700 : 400 }}>
             Payroll {p}
           </button>
         ))}
       </div>
-      {!hasData&&<div style={{background:`${C.amber}11`,border:`1px solid ${C.amber}44`,borderRadius:10,padding:'12px 16px',marginBottom:14,fontSize:13,color:C.amber}}>📝 No data for {MONTH_NAMES[selMI]} {selYear} — template loaded. Edit to save.</div>}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
-        <MetricCard label="Total Income" value={peso(summ.totalIncome)} color={C.blue} sm={sm}/>
-        <MetricCard label="OT (Net)" value={peso(otCalc.net)} color={C.purple} sm={sm}/>
-        <MetricCard label="Expenses" value={peso(summ.totalExpenses)} color={C.red} sm={sm}/>
-        <MetricCard label="Net Savings" value={peso(summ.netSavings)} color={summ.netSavings>=0?C.green:C.red} sm={sm}/>
+      {!hasData && <div style={{ background: `${C.amber}11`, border: `1px solid ${C.amber}44`, borderRadius: 10, padding: '12px 16px', marginBottom: 14, fontSize: 13, color: C.amber }}>📝 No data for {MONTH_NAMES[selMI]} {selYear} — template loaded. Edit to save.</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+        <MetricCard label="Total Income" value={peso(summ.totalIncome)} color={C.blue} sm={sm} />
+        <MetricCard label="OT (Net)" value={peso(otCalc.net)} color={C.purple} sm={sm} />
+        <MetricCard label="Expenses" value={peso(summ.totalExpenses)} color={C.red} sm={sm} />
+        <MetricCard label="Net Savings" value={peso(summ.netSavings)} color={summ.netSavings >= 0 ? C.green : C.red} sm={sm} />
       </div>
 
       <Card>
         <SecTitle>Income</SecTitle>
-        <div style={{marginBottom:12}}><div style={{fontSize:12,color:C.muted,marginBottom:5}}>Base Salary</div><Inp type="number" value={pData.salary} onChange={e=>upd({salary:Number(e.target.value)||0})} disabled={readOnly}/></div>
-        <Divider/>
+        <div style={{ marginBottom: 12 }}><div style={{ fontSize: 12, color: C.muted, marginBottom: 5 }}>Base Salary</div><Inp type="number" value={pData.salary} onChange={e => upd({ salary: Number(e.target.value) || 0 })} disabled={readOnly} /></div>
+        <Divider />
         <SecTitle>Overtime Hours</SecTitle>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-          <div><div style={{fontSize:12,color:C.muted,marginBottom:5}}>Weekday (₱750/hr)</div><Inp type="number" value={pData.ot.weekday} onChange={e=>updOT('weekday',e.target.value)} disabled={readOnly}/></div>
-          <div><div style={{fontSize:12,color:C.muted,marginBottom:5}}>Weekend (₱680/hr)</div><Inp type="number" value={pData.ot.weekend} onChange={e=>updOT('weekend',e.target.value)} disabled={readOnly}/></div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div><div style={{ fontSize: 12, color: C.muted, marginBottom: 5 }}>Weekday (₱750/hr)</div><Inp type="number" value={pData.ot.weekday} onChange={e => updOT('weekday', e.target.value)} disabled={readOnly} /></div>
+          <div><div style={{ fontSize: 12, color: C.muted, marginBottom: 5 }}>Weekend (₱680/hr)</div><Inp type="number" value={pData.ot.weekend} onChange={e => updOT('weekend', e.target.value)} disabled={readOnly} /></div>
         </div>
-        {otCalc.gross>0&&(<>
-          <Divider/>
+        {otCalc.gross > 0 && (<>
+          <Divider />
           <SecTitle>Overtime Breakdown</SecTitle>
-          {[['Weekday',peso(otCalc.weekdayEarned),C.text],['Weekend',peso(otCalc.weekendEarned),C.text],['Gross OT',peso(otCalc.gross),C.blue],['Tax 20%',`(${peso(otCalc.tax)})`,C.red],['Net OT',peso(otCalc.net),C.green]].map(([l,v,c])=>(
-            <div key={l} style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:`1px solid ${C.border}22`,fontSize:13}}>
-              <span style={{color:C.muted}}>{l}</span><span style={{color:c,fontWeight:['Net OT','Gross OT'].includes(l)?600:400}}>{v}</span>
+          {[['Weekday', peso(otCalc.weekdayEarned), C.text], ['Weekend', peso(otCalc.weekendEarned), C.text], ['Gross OT', peso(otCalc.gross), C.blue], ['Tax 20%', `(${peso(otCalc.tax)})`, C.red], ['Net OT', peso(otCalc.net), C.green]].map(([l, v, c]) => (
+            <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: `1px solid ${C.border}22`, fontSize: 13 }}>
+              <span style={{ color: C.muted }}>{l}</span><span style={{ color: c, fontWeight: ['Net OT', 'Gross OT'].includes(l) ? 600 : 400 }}>{v}</span>
             </div>
           ))}
         </>)}
-        <Divider/>
-        <div style={{display:'flex',justifyContent:'space-between',fontSize:14,fontWeight:700}}>
-          <span style={{color:C.muted}}>Net Savings</span>
-          <span style={{color:summ.netSavings>=0?C.green:C.red}}>{peso(summ.netSavings)}</span>
+        <Divider />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700 }}>
+          <span style={{ color: C.muted }}>Net Savings</span>
+          <span style={{ color: summ.netSavings >= 0 ? C.green : C.red }}>{peso(summ.netSavings)}</span>
         </div>
       </Card>
 
       <Card>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <SecTitle>Expenses — {paid}/{pData.expenses.length} paid</SecTitle>
           {canWrite && (
-            <BtnG style={{padding:'6px 12px',fontSize:12}} onClick={()=>upd({expenses:[...pData.expenses,{name:'',budget:0,amount:0,done:false}]})}>+ Add</BtnG>
+            <BtnG style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => upd({ expenses: [...pData.expenses, { name: '', budget: 0, amount: 0, done: false }] })}>+ Add</BtnG>
           )}
         </div>
-        {pData.expenses.map((exp,i)=>(
-          <div key={i} style={{padding:'8px 0',borderBottom:`1px solid ${C.border}22`}}>
-            <div style={{display:'flex',gap:8,marginBottom:sm?6:0}}>
-              <Inp value={exp.name} onChange={e=>updExp(i,'name',e.target.value)} placeholder="Item name" style={{flex:1,opacity:exp.done?0.5:1}} disabled={readOnly}/>
-              {!sm&&<div style={{display:'flex',gap:4}}>
-                <Inp type="number" value={exp.budget ?? exp.amount ?? ''} onChange={e=>updExp(i,'budget',e.target.value)} placeholder="Budget" style={{width:90,textAlign:'right',opacity:exp.done?0.5:1}} disabled={readOnly}/>
-                <Inp type="number" value={exp.amount ?? ''} onChange={e=>updExp(i,'amount',e.target.value)} placeholder="Actual" style={{width:90,textAlign:'right',opacity:exp.done?0.5:1}} disabled={readOnly}/>
+        {pData.expenses.map((exp, i) => (
+          <div key={i} style={{ padding: '8px 0', borderBottom: `1px solid ${C.border}22` }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: sm ? 6 : 0 }}>
+              <Inp value={exp.name} onChange={e => updExp(i, 'name', e.target.value)} placeholder="Item name" style={{ flex: 1, opacity: exp.done ? 0.5 : 1 }} disabled={readOnly} />
+              {!sm && <div style={{ display: 'flex', gap: 4 }}>
+                <Inp type="number" value={exp.budget ?? exp.amount ?? ''} onChange={e => updExp(i, 'budget', e.target.value)} placeholder="Budget" style={{ width: 90, textAlign: 'right', opacity: exp.done ? 0.5 : 1 }} disabled={readOnly} />
+                <Inp type="number" value={exp.amount ?? ''} onChange={e => updExp(i, 'amount', e.target.value)} placeholder="Actual" style={{ width: 90, textAlign: 'right', opacity: exp.done ? 0.5 : 1 }} disabled={readOnly} />
               </div>}
               {canUpdate && (
                 <button onClick={() => updExp(i, 'done', !exp.done)} style={{ minWidth: 40, background: 'none', border: `1px solid ${exp.done ? C.green : C.border}`, borderRadius: 6, cursor: 'pointer', color: exp.done ? C.green : C.muted, fontSize: 14, padding: '0 8px' }}>
@@ -2112,9 +2116,9 @@ function BudgetTab({budgetData,setBudgetData,sm,readOnly,canWrite,canUpdate}) {
                 <button onClick={() => upd({ expenses: pData.expenses.filter((_, j) => j !== i) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18, padding: '0 4px' }}>×</button>
               )}
             </div>
-            {sm && <div style={{display:'flex',gap:4,marginTop:4}}>
-              <Inp type="number" value={exp.budget ?? exp.amount ?? ''} onChange={e => updExp(i, 'budget', e.target.value)} placeholder="Budget (₱)" style={{ opacity: exp.done ? 0.5 : 1 }} disabled={readOnly}/>
-              <Inp type="number" value={exp.amount ?? ''} onChange={e => updExp(i, 'amount', e.target.value)} placeholder="Actual (₱)" style={{ opacity: exp.done ? 0.5 : 1 }} disabled={readOnly}/>
+            {sm && <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+              <Inp type="number" value={exp.budget ?? exp.amount ?? ''} onChange={e => updExp(i, 'budget', e.target.value)} placeholder="Budget (₱)" style={{ opacity: exp.done ? 0.5 : 1 }} disabled={readOnly} />
+              <Inp type="number" value={exp.amount ?? ''} onChange={e => updExp(i, 'amount', e.target.value)} placeholder="Actual (₱)" style={{ opacity: exp.done ? 0.5 : 1 }} disabled={readOnly} />
             </div>}
           </div>
         ))}
@@ -3032,7 +3036,7 @@ function AccountDashboardTab({
     setMoneyMasked(next);
     try {
       localStorage.setItem('dashboardMoneyMasked', String(next));
-    } catch {}
+    } catch { }
   };
   const confidentialValue = (val) => (moneyMasked ? '*****' : val);
 
@@ -5021,7 +5025,7 @@ function CreditCardStatementModal({ account, budgetData, onClose }) {
   // 1. Calculate Active Installments for this card
   const instPlans = budgetData?.installmentPlans || [];
   const cardInsts = instPlans.filter(p => (p.accountId === account.id || p.account === account.name) && (p.paidMonths || 0) < (Number(p.months) || 12));
-  
+
   const instRemainingTotal = cardInsts.reduce((s, p) => {
     const total = Number(p.total) || 0;
     const months = Number(p.months) || 12;
@@ -5067,8 +5071,8 @@ function CreditCardStatementModal({ account, budgetData, onClose }) {
 
   const healthGrade = creditHealthScore >= 85 ? { label: 'Excellent Health', emoji: '🟢', color: C.green }
     : creditHealthScore >= 70 ? { label: 'Healthy & Good', emoji: '🟡', color: C.amber }
-    : creditHealthScore >= 50 ? { label: 'Moderate Risk', emoji: '🟠', color: C.purple }
-    : { label: 'High Utilization Warning', emoji: '🔴', color: C.red };
+      : creditHealthScore >= 50 ? { label: 'Moderate Risk', emoji: '🟠', color: C.purple }
+        : { label: 'High Utilization Warning', emoji: '🔴', color: C.red };
 
   const formatDate = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -5251,21 +5255,21 @@ function CreditCardStatementModal({ account, budgetData, onClose }) {
 
 // ─── ACCOUNTS TAB ────────────────────────────────────────────────────────────
 function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate, setTab, budgetData }) {
-  const [editing, setEditing]       = useState(null);
-  const [editData, setEditData]     = useState({ name: '', type: '', balance: '', creditLimit: '', statementCutoffDay: '' });
-  const [showAdd, setShowAdd]       = useState(false);
-  const [newAcc, setNewAcc]         = useState({ name: '', type: 'Checking', balance: '', creditLimit: '', statementCutoffDay: '15' });
-  const [search, setSearch]         = useState('');
+  const [editing, setEditing] = useState(null);
+  const [editData, setEditData] = useState({ name: '', type: '', balance: '', creditLimit: '', statementCutoffDay: '' });
+  const [showAdd, setShowAdd] = useState(false);
+  const [newAcc, setNewAcc] = useState({ name: '', type: 'Checking', balance: '', creditLimit: '', statementCutoffDay: '15' });
+  const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [statementAcc, setStatementAcc] = useState(null);
   const [customizingAcc, setCustomizingAcc] = useState(null);
 
   const typeColors = {
     Investment: C.purple,
-    Savings:    C.green,
-    Checking:   C.blue,
-    Digital:    C.teal,
-    Cash:       C.amber,
+    Savings: C.green,
+    Checking: C.blue,
+    Digital: C.teal,
+    Cash: C.amber,
     'Credit Card': C.pink,
   };
 
@@ -5316,13 +5320,13 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
   const cats = [...new Set(accounts.map(a => a.type))];
   const filtered = accounts.filter(a => {
     const matchSearch = a.name.toLowerCase().includes(search.toLowerCase());
-    const matchType   = filterType === 'all' || a.type === filterType;
+    const matchType = filterType === 'all' || a.type === filterType;
     return matchSearch && matchType;
   });
 
-  const sorted  = [...accounts].sort((a, b) => b.balance - a.balance);
+  const sorted = [...accounts].sort((a, b) => b.balance - a.balance);
   const highest = sorted[0];
-  const lowest  = sorted[sorted.length - 1];
+  const lowest = sorted[sorted.length - 1];
 
   return (
     <div>
@@ -5344,10 +5348,10 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
 
       {/* ── 4 Metric Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: sm ? 8 : 12, marginBottom: sm ? 14 : 22 }}>
-        <MetricCard icon="💰" label="Net Worth"  value={peso(total)}                       color={C.green}  sm={sm} />
-        <MetricCard icon="🏦" label="Accounts"   value={accounts.length.toString()}        color={C.blue}   sm={sm} sub={`${cats.length} types`} />
-        <MetricCard icon="📈" label="Highest"  value={highest ? peso(highest.balance) : '—'} color={C.purple} sm={sm} sub={highest?.name || '—'} />
-        <MetricCard icon="📉" label="Lowest"   value={lowest ? peso(lowest.balance) : '—'}  color={C.red}    sm={sm} sub={lowest?.name || '—'} />
+        <MetricCard icon="💰" label="Net Worth" value={peso(total)} color={C.green} sm={sm} />
+        <MetricCard icon="🏦" label="Accounts" value={accounts.length.toString()} color={C.blue} sm={sm} sub={`${cats.length} types`} />
+        <MetricCard icon="📈" label="Highest" value={highest ? peso(highest.balance) : '—'} color={C.purple} sm={sm} sub={highest?.name || '—'} />
+        <MetricCard icon="📉" label="Lowest" value={lowest ? peso(lowest.balance) : '—'} color={C.red} sm={sm} sub={lowest?.name || '—'} />
       </div>
 
       {/* ── Add New Account Panel ── */}
@@ -5370,7 +5374,7 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
                 <label style={{ fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>Account Type</label>
                 <select value={newAcc.type} onChange={e => setNewAcc(p => ({ ...p, type: e.target.value }))}
                   style={{ padding: '8px 10px', borderRadius: 7, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: sm ? 12 : 13, outline: 'none', width: '100%' }}>
-                  {['Investment','Savings','Checking','Digital','Cash','Credit Card'].map(t => <option key={t} value={t}>{t}</option>)}
+                  {['Investment', 'Savings', 'Checking', 'Digital', 'Cash', 'Credit Card'].map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div>
@@ -5410,8 +5414,8 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: `${C.card2}`, borderBottom: `1px solid ${C.border}` }}>
-                <th style={{ textAlign: 'left',  padding: sm ? '10px 12px' : '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACCOUNT NAME</th>
-                <th style={{ textAlign: 'left',  padding: sm ? '10px 12px' : '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>TYPE</th>
+                <th style={{ textAlign: 'left', padding: sm ? '10px 12px' : '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACCOUNT NAME</th>
+                <th style={{ textAlign: 'left', padding: sm ? '10px 12px' : '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>TYPE</th>
                 <th style={{ textAlign: 'right', padding: sm ? '10px 12px' : '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>BALANCE</th>
                 {!sm && <th style={{ textAlign: 'right', padding: '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>CREDIT LIMIT</th>}
                 {canUpdate && <th style={{ textAlign: 'center', padding: sm ? '10px 8px' : '12px 16px', color: C.muted, fontWeight: 700, fontSize: 11 }}>ACTIONS</th>}
@@ -5423,10 +5427,10 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
               )}
               {filtered.map(acc => {
                 const color = typeColors[acc.type] || C.muted;
-                const pct   = total > 0 ? (acc.balance / total * 100) : 0;
-                const isCC  = acc.type === 'Credit Card' || Number(acc.creditLimit) > 0;
+                const pct = total > 0 ? (acc.balance / total * 100) : 0;
+                const isCC = acc.type === 'Credit Card' || Number(acc.creditLimit) > 0;
                 const creditLimit = Number(acc.creditLimit) || 0;
-                
+
                 const instPlans = budgetData?.installmentPlans || [];
                 const cardInsts = instPlans.filter(p => (p.accountId === acc.id || p.account === acc.name) && (p.paidMonths || 0) < (Number(p.months) || 12));
                 const instRem = cardInsts.reduce((s, p) => {
@@ -5452,7 +5456,7 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
                             <div style={{ fontWeight: 700, color: C.text }}>{acc.name}</div>
                             {isCC && creditLimit > 0 ? (
                               <div style={{ fontSize: 10, color: trueAvailCredit > 0 ? C.green : C.red, marginTop: 2 }}>
-                                True Avail: {peso(trueAvailCredit)} {instRem > 0 ? `(₱${(instRem/1000).toFixed(1)}k in inst)` : ''}
+                                True Avail: {peso(trueAvailCredit)} {instRem > 0 ? `(₱${(instRem / 1000).toFixed(1)}k in inst)` : ''}
                               </div>
                             ) : (
                               <div style={{ fontSize: 10, color: C.muted }}>{getPhBankBrand(acc).fullName}</div>
@@ -5465,7 +5469,7 @@ function AccountsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpdate,
                       {editing === acc.id ? (
                         <select value={editData.type} onChange={e => setEditData(p => ({ ...p, type: e.target.value }))}
                           style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12 }}>
-                          {['Investment','Savings','Checking','Digital','Cash','Credit Card'].map(t => <option key={t} value={t}>{t}</option>)}
+                          {['Investment', 'Savings', 'Checking', 'Digital', 'Cash', 'Credit Card'].map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       ) : (
                         <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, background: `${color}22`, color }}>{acc.type}</span>
@@ -5592,31 +5596,31 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
   };
 
   // ── Unified outflow sources ──
-  const manualDebits   = (budgetData.debitHistory       || []).map(d => ({ 
-    ...d, 
-    source: 'manual',      
-    sourceLabel: d.isCredit ? 'Manual Credit' : 'Manual Debit' 
+  const manualDebits = (budgetData.debitHistory || []).map(d => ({
+    ...d,
+    source: 'manual',
+    sourceLabel: d.isCredit ? 'Manual Credit' : 'Manual Debit'
   }));
-  const ccCharges      = (budgetData.ccHistory          || []).map(d => ({ ...d, source: 'cc',          sourceLabel: 'CC Charge'    }));
-  const installments   = (budgetData.installmentHistory || []).map(d => ({ ...d, source: 'installment', sourceLabel: 'Installment'  }));
+  const ccCharges = (budgetData.ccHistory || []).map(d => ({ ...d, source: 'cc', sourceLabel: 'CC Charge' }));
+  const installments = (budgetData.installmentHistory || []).map(d => ({ ...d, source: 'installment', sourceLabel: 'Installment' }));
   const allTx = [...manualDebits, ...ccCharges, ...installments]
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
   // ── Metrics (Only for spending outflows) ──
   const now = new Date();
   const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const last7Date    = new Date(now - 7 * 86400000).toISOString().slice(0, 10);
-  const outflows     = allTx.filter(t => !t.isCredit);
+  const last7Date = new Date(now - 7 * 86400000).toISOString().slice(0, 10);
+  const outflows = allTx.filter(t => !t.isCredit);
   const thisMonthAmt = outflows.filter(t => (t.date || '').slice(0, 7) === thisMonthKey).reduce((s, t) => s + (t.amount || 0), 0);
-  const last7Amt     = outflows.filter(t => (t.date || '') >= last7Date).reduce((s, t) => s + (t.amount || 0), 0);
-  const biggestTx    = outflows.reduce((mx, t) => (t.amount || 0) > (mx?.amount || 0) ? t : mx, null);
+  const last7Amt = outflows.filter(t => (t.date || '') >= last7Date).reduce((s, t) => s + (t.amount || 0), 0);
+  const biggestTx = outflows.reduce((mx, t) => (t.amount || 0) > (mx?.amount || 0) ? t : mx, null);
 
   // ── Filtered ──
   const filtered = allTx.filter(t => {
     if (filterSource !== 'all' && t.source !== filterSource) return false;
     if (filterSearch && !`${t.description || ''}${t.accountName || ''}`.toLowerCase().includes(filterSearch.toLowerCase())) return false;
     if (filterDateFrom && (t.date || '') < filterDateFrom) return false;
-    if (filterDateTo   && (t.date || '') > filterDateTo)   return false;
+    if (filterDateTo && (t.date || '') > filterDateTo) return false;
     if (filterAccount !== 'all' && t.accountId !== filterAccount) return false;
     return true;
   });
@@ -5628,10 +5632,10 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
     if (!debitDesc.trim()) return alert('Please enter a description');
     const account = accounts.find(a => a.id === accId);
     if (!account) return;
-    const amount  = Number(debitAmount);
+    const amount = Number(debitAmount);
     const dateStr = debitDate;
-    const period  = debitPeriod;
-    const key     = dateStr.slice(0, 7);
+    const period = debitPeriod;
+    const key = dateStr.slice(0, 7);
     const isCredit = txType === 'credit';
 
     // If editing an existing ledger transaction, first revert its original balance and budget expense
@@ -5689,8 +5693,8 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
 
       if (!isCredit && !excludeFromBudget) {
         // Budgeted debit: add as expense line item
-        const monthData  = prev[key]         || makeMonthData();
-        const periodData = monthData[period]  || makePeriod();
+        const monthData = prev[key] || makeMonthData();
+        const periodData = monthData[period] || makePeriod();
         const newExpense = { name: `${debitDesc.trim()} (${account.name})`, budget: amount, amount, done: true };
         return {
           ...prev,
@@ -5765,17 +5769,17 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
     });
   };
 
-  const SRC_CLR  = { manual: C.blue, cc: C.purple, installment: C.amber };
+  const SRC_CLR = { manual: C.blue, cc: C.purple, installment: C.amber };
   const SRC_PILL = { manual: '💸', cc: '💳', installment: '📦' };
 
   return (
     <div>
       {/* ── Metric Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
-        <MetricCard icon="💸" label="This Month Total"     value={peso(thisMonthAmt)}                              color={C.red}    sm={sm} />
-        <MetricCard icon="📅" label="Last 7 Days"          value={peso(last7Amt)}                                  color={C.amber}  sm={sm} />
-        <MetricCard icon="🔢" label="Total Entries"         value={String(allTx.length)}                            color={C.blue}   sm={sm} />
-        <MetricCard icon="🏆" label="Largest Transaction"   value={biggestTx ? peso(biggestTx.amount) : '₱0'}      sub={biggestTx?.description || '—'} color={C.purple} sm={sm} />
+        <MetricCard icon="💸" label="This Month Total" value={peso(thisMonthAmt)} color={C.red} sm={sm} />
+        <MetricCard icon="📅" label="Last 7 Days" value={peso(last7Amt)} color={C.amber} sm={sm} />
+        <MetricCard icon="🔢" label="Total Entries" value={String(allTx.length)} color={C.blue} sm={sm} />
+        <MetricCard icon="🏆" label="Largest Transaction" value={biggestTx ? peso(biggestTx.amount) : '₱0'} sub={biggestTx?.description || '—'} color={C.purple} sm={sm} />
       </div>
 
       {/* ── New Transaction Form ── */}
@@ -5945,9 +5949,9 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
       <Card style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
           <span style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>Source:</span>
-          {[['all','🔀 All'],['manual','💸 Manual'],['cc','💳 CC Charge'],['installment','📦 Installment']].map(([v,l]) => (
+          {[['all', '🔀 All'], ['manual', '💸 Manual'], ['cc', '💳 CC Charge'], ['installment', '📦 Installment']].map(([v, l]) => (
             <button key={v} onClick={() => setFilterSource(v)}
-              style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${filterSource===v ? C.blue : C.border}`, background: filterSource===v ? `${C.blue}22` : 'transparent', color: filterSource===v ? C.blue : C.muted, cursor: 'pointer', fontSize: 12, fontWeight: filterSource===v ? 700 : 400, transition: 'all 0.15s' }}>
+              style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${filterSource === v ? C.blue : C.border}`, background: filterSource === v ? `${C.blue}22` : 'transparent', color: filterSource === v ? C.blue : C.muted, cursor: 'pointer', fontSize: 12, fontWeight: filterSource === v ? 700 : 400, transition: 'all 0.15s' }}>
               {l}
             </button>
           ))}
@@ -5958,7 +5962,7 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
           </div>
           <Inp type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} style={{ width: 'auto', padding: '7px 8px', fontSize: 12 }} />
           <span style={{ fontSize: 11, color: C.muted }}>→</span>
-          <Inp type="date" value={filterDateTo}   onChange={e => setFilterDateTo(e.target.value)}   style={{ width: 'auto', padding: '7px 8px', fontSize: 12 }} />
+          <Inp type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} style={{ width: 'auto', padding: '7px 8px', fontSize: 12 }} />
           <select value={filterAccount} onChange={e => setFilterAccount(e.target.value)}
             style={{ padding: '7px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, outline: 'none' }}>
             <option value="all">All Accounts</option>
@@ -6003,12 +6007,12 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ color: C.muted, borderBottom: `1px solid ${C.border}` }}>
-                  <th style={{ textAlign: 'left',   padding: '8px 8px' }}>Date</th>
-                  <th style={{ textAlign: 'left',   padding: '8px 8px' }}>Description</th>
-                  <th style={{ textAlign: 'left',   padding: '8px 8px' }}>Account</th>
-                  <th style={{ textAlign: 'left',   padding: '8px 8px' }}>Type</th>
+                  <th style={{ textAlign: 'left', padding: '8px 8px' }}>Date</th>
+                  <th style={{ textAlign: 'left', padding: '8px 8px' }}>Description</th>
+                  <th style={{ textAlign: 'left', padding: '8px 8px' }}>Account</th>
+                  <th style={{ textAlign: 'left', padding: '8px 8px' }}>Type</th>
                   <th style={{ textAlign: 'center', padding: '8px 8px' }}>Period</th>
-                  <th style={{ textAlign: 'right',  padding: '8px 8px' }}>Amount</th>
+                  <th style={{ textAlign: 'right', padding: '8px 8px' }}>Amount</th>
                   <th style={{ textAlign: 'center', padding: '8px 8px' }}></th>
                 </tr>
               </thead>
@@ -6031,7 +6035,7 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
                     </td>
                     <td style={{ padding: '9px 8px', color: C.muted }}>{tx.accountName}</td>
                     <td style={{ padding: '9px 8px' }}>
-                      <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, fontWeight: 700, background: `${tx.isCredit ? C.green : (SRC_CLR[tx.source]||C.muted)}22`, color: tx.isCredit ? C.green : (SRC_CLR[tx.source]||C.muted) }}>
+                      <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, fontWeight: 700, background: `${tx.isCredit ? C.green : (SRC_CLR[tx.source] || C.muted)}22`, color: tx.isCredit ? C.green : (SRC_CLR[tx.source] || C.muted) }}>
                         {tx.isCredit ? '💰' : SRC_PILL[tx.source]} {tx.sourceLabel}
                       </span>
                     </td>
@@ -6062,10 +6066,10 @@ function TransactionsTab({ accounts, setAccounts, budgetData, setBudgetData, sm,
 
 // ─── BALANCE LOG TAB ─────────────────────────────────────────────────────────
 function BalanceLogTab({ accounts, setAccounts, balanceHistory, setBalanceHistory, sm, canWrite, canUpdate }) {
-  const [logDate,      setLogDate]      = useState(new Date().toISOString().slice(0, 10));
-  const [logBalances,  setLogBalances]  = useState({});
-  const [updateCurr,   setUpdateCurr]   = useState(true);
-  const [successMsg,   setSuccessMsg]   = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10));
+  const [logBalances, setLogBalances] = useState({});
+  const [updateCurr, setUpdateCurr] = useState(true);
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     const existing = balanceHistory.find(h => h.date === logDate);
@@ -6099,19 +6103,19 @@ function BalanceLogTab({ accounts, setAccounts, balanceHistory, setBalanceHistor
     .map(h => ({ date: h.date.slice(5), total: Math.round(Object.values(h.balances).reduce((s, v) => s + (Number(v) || 0), 0) / 1000) }));
 
   // ── Metrics ──
-  const sorted   = [...balanceHistory].sort((a, b) => b.date.localeCompare(a.date));
-  const lastLog  = sorted[0];
-  const prevLog  = sorted[1];
-  const lastTot  = lastLog ? Object.values(lastLog.balances).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
-  const prevTot  = prevLog ? Object.values(prevLog.balances).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
-  const diff     = lastTot - prevTot;
+  const sorted = [...balanceHistory].sort((a, b) => b.date.localeCompare(a.date));
+  const lastLog = sorted[0];
+  const prevLog = sorted[1];
+  const lastTot = lastLog ? Object.values(lastLog.balances).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+  const prevTot = prevLog ? Object.values(prevLog.balances).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+  const diff = lastTot - prevTot;
 
   return (
     <div>
       {/* ── Metric Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(3,1fr)', gap: 12, marginBottom: 18 }}>
-        <MetricCard icon="📅" label="Last Snapshot Date"      value={lastLog?.date || '—'}                               color={C.blue}  sm={sm} />
-        <MetricCard icon="💰" label="Net Worth at Last Log"   value={lastTot ? peso(lastTot) : '₱0'}                     color={C.green} sm={sm} />
+        <MetricCard icon="📅" label="Last Snapshot Date" value={lastLog?.date || '—'} color={C.blue} sm={sm} />
+        <MetricCard icon="💰" label="Net Worth at Last Log" value={lastTot ? peso(lastTot) : '₱0'} color={C.green} sm={sm} />
         <MetricCard icon={diff >= 0 ? '📈' : '📉'} label="Change vs Previous" value={(diff >= 0 ? '+' : '') + peso(diff)} color={diff >= 0 ? C.green : C.red} sm={sm} />
       </div>
 
@@ -6158,23 +6162,23 @@ function BalanceLogTab({ accounts, setAccounts, balanceHistory, setBalanceHistor
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.muted }}>
-                      <th style={{ textAlign: 'left',  padding: '6px 6px' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '6px 6px' }}>Date</th>
                       <th style={{ textAlign: 'right', padding: '6px 6px' }}>Net Worth</th>
-                      <th style={{ textAlign: 'center',padding: '6px 6px' }}>Actions</th>
+                      <th style={{ textAlign: 'center', padding: '6px 6px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {[...balanceHistory].sort((a,b) => b.date.localeCompare(a.date)).slice(0,10).map(log => {
-                      const tot = Object.values(log.balances).reduce((s,v) => s+(Number(v)||0), 0);
+                    {[...balanceHistory].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10).map(log => {
+                      const tot = Object.values(log.balances).reduce((s, v) => s + (Number(v) || 0), 0);
                       return (
                         <tr key={log.date} style={{ borderBottom: `1px solid ${C.border}18` }}>
                           <td style={{ padding: '8px 6px' }}>{log.date}</td>
                           <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 700, color: C.green }}>{peso(tot)}</td>
                           <td style={{ padding: '8px 6px', textAlign: 'center' }}>
-                            <button onClick={() => { setLogDate(log.date); setLogBalances({...log.balances}); }}
+                            <button onClick={() => { setLogDate(log.date); setLogBalances({ ...log.balances }); }}
                               style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, color: C.muted, padding: '2px 7px', cursor: 'pointer', fontSize: 10, marginRight: 4 }}>Load</button>
                             {canUpdate && (
-                              <button onClick={() => { if(confirm(`Delete snapshot for ${log.date}?`)) setBalanceHistory(p => p.filter(h => h.date !== log.date)); }}
+                              <button onClick={() => { if (confirm(`Delete snapshot for ${log.date}?`)) setBalanceHistory(p => p.filter(h => h.date !== log.date)); }}
                                 style={{ background: 'none', border: `1px solid ${C.red}44`, borderRadius: 4, color: C.red, padding: '2px 7px', cursor: 'pointer', fontSize: 10 }}>Del</button>
                             )}
                           </td>
@@ -6193,21 +6197,21 @@ function BalanceLogTab({ accounts, setAccounts, balanceHistory, setBalanceHistor
           <SecTitle>📈 Net Worth Over Time (₱k)</SecTitle>
           {chartData.length < 2 ? (
             <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '60px 0', lineHeight: 1.7 }}>
-              Log at least 2 snapshots<br/>to see your net worth chart.
+              Log at least 2 snapshots<br />to see your net worth chart.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
                 <defs>
                   <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor={C.green} stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor={C.green} stopOpacity={0}/>
+                    <stop offset="5%" stopColor={C.green} stopOpacity={0.4} />
+                    <stop offset="95%" stopColor={C.green} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={`${C.border}55`} />
                 <XAxis dataKey="date" tick={{ fill: C.muted, fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: C.muted, fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={ttip} formatter={v => [`₱${(v*1000).toLocaleString()}`,'Net Worth']} />
+                <Tooltip contentStyle={ttip} formatter={v => [`₱${(v * 1000).toLocaleString()}`, 'Net Worth']} />
                 <Area type="monotone" dataKey="total" stroke={C.green} strokeWidth={2.5} fill="url(#balGrad)" dot={{ fill: C.green, r: 4 }} activeDot={{ r: 6 }} />
               </AreaChart>
             </ResponsiveContainer>
@@ -6221,10 +6225,10 @@ function BalanceLogTab({ accounts, setAccounts, balanceHistory, setBalanceHistor
 
 // ─── RECONCILE & AUDIT TAB ───────────────────────────────────────────────────
 function ReconcileTab({ accounts, setAccounts, balanceHistory, setBalanceHistory, sm, canWrite, canUpdate }) {
-  const [logDate,     setLogDate]     = useState(new Date().toISOString().slice(0, 10));
+  const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10));
   const [logBalances, setLogBalances] = useState({});
-  const [updateCurr,  setUpdateCurr]  = useState(true);
-  const [successMsg,  setSuccessMsg]  = useState('');
+  const [updateCurr, setUpdateCurr] = useState(true);
+  const [successMsg, setSuccessMsg] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
 
   useEffect(() => {
@@ -6254,14 +6258,14 @@ function ReconcileTab({ accounts, setAccounts, balanceHistory, setBalanceHistory
   };
 
   // Metrics
-  const sorted     = [...balanceHistory].sort((a, b) => b.date.localeCompare(a.date));
-  const lastLog    = sorted[0];
-  const prevLog    = sorted[1];
+  const sorted = [...balanceHistory].sort((a, b) => b.date.localeCompare(a.date));
+  const lastLog = sorted[0];
+  const prevLog = sorted[1];
   const auditedNet = lastLog ? Object.values(lastLog.balances).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
-  const prevNet    = prevLog ? Object.values(prevLog.balances).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
-  const liveTotal  = accounts.reduce((s, a) => s + a.balance, 0);
-  const variance   = liveTotal - auditedNet;
-  const diff       = auditedNet - prevNet;
+  const prevNet = prevLog ? Object.values(prevLog.balances).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+  const liveTotal = accounts.reduce((s, a) => s + a.balance, 0);
+  const variance = liveTotal - auditedNet;
+  const diff = auditedNet - prevNet;
 
   // Chart data
   const chartData = [...balanceHistory]
@@ -6280,10 +6284,10 @@ function ReconcileTab({ accounts, setAccounts, balanceHistory, setBalanceHistory
 
       {/* ── 4 Metric Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 22 }}>
-        <MetricCard icon="📅" label="Last Audit Date"      value={lastLog?.date || '—'}                                        color={C.blue}                        sm={sm} />
-        <MetricCard icon="💰" label="Audited Net Assets"   value={auditedNet ? peso(auditedNet) : '₱0'}                        color={C.green}                       sm={sm} sub={diff !== 0 ? (diff > 0 ? '+' : '') + peso(diff) + ' vs prev' : 'First snapshot'} />
-        <MetricCard icon="📊" label="Live Ledger Total"    value={peso(liveTotal)}                                              color={C.purple}                      sm={sm} sub={`${accounts.length} accounts`} />
-        <MetricCard icon="⚖️"  label="Reconciliation Variance" value={(variance > 0 ? '+' : '') + peso(variance)}              color={Math.abs(variance) < 100 ? C.green : C.red} sm={sm} sub={Math.abs(variance) < 100 ? 'Balanced ✓' : 'Review needed'} />
+        <MetricCard icon="📅" label="Last Audit Date" value={lastLog?.date || '—'} color={C.blue} sm={sm} />
+        <MetricCard icon="💰" label="Audited Net Assets" value={auditedNet ? peso(auditedNet) : '₱0'} color={C.green} sm={sm} sub={diff !== 0 ? (diff > 0 ? '+' : '') + peso(diff) + ' vs prev' : 'First snapshot'} />
+        <MetricCard icon="📊" label="Live Ledger Total" value={peso(liveTotal)} color={C.purple} sm={sm} sub={`${accounts.length} accounts`} />
+        <MetricCard icon="⚖️" label="Reconciliation Variance" value={(variance > 0 ? '+' : '') + peso(variance)} color={Math.abs(variance) < 100 ? C.green : C.red} sm={sm} sub={Math.abs(variance) < 100 ? 'Balanced ✓' : 'Review needed'} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 16 }}>
@@ -6342,10 +6346,10 @@ function ReconcileTab({ accounts, setAccounts, balanceHistory, setBalanceHistory
                   </thead>
                   <tbody>
                     {filteredHistory.slice(0, 15).map((log, i) => {
-                      const tot  = Object.values(log.balances).reduce((s, v) => s + (Number(v) || 0), 0);
+                      const tot = Object.values(log.balances).reduce((s, v) => s + (Number(v) || 0), 0);
                       const prev = filteredHistory[i + 1];
                       const prevTot = prev ? Object.values(prev.balances).reduce((s, v) => s + (Number(v) || 0), 0) : null;
-                      const chg   = prevTot !== null ? tot - prevTot : null;
+                      const chg = prevTot !== null ? tot - prevTot : null;
                       return (
                         <tr key={log.date} style={{ borderBottom: `1px solid ${C.border}18` }}>
                           <td style={{ padding: '9px 8px', fontWeight: 600 }}>{log.date}</td>
@@ -6381,15 +6385,15 @@ function ReconcileTab({ accounts, setAccounts, balanceHistory, setBalanceHistory
           </div>
           {chartData.length < 2 ? (
             <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '80px 0', lineHeight: 1.7 }}>
-              📊 Log at least 2 snapshots<br/>to see your net worth trend chart.
+              📊 Log at least 2 snapshots<br />to see your net worth trend chart.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={340}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
                 <defs>
                   <linearGradient id="recGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor={C.green} stopOpacity={0.45}/>
-                    <stop offset="95%" stopColor={C.green} stopOpacity={0}/>
+                    <stop offset="5%" stopColor={C.green} stopOpacity={0.45} />
+                    <stop offset="95%" stopColor={C.green} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={`${C.border}44`} />
@@ -6407,22 +6411,22 @@ function ReconcileTab({ accounts, setAccounts, balanceHistory, setBalanceHistory
 }
 
 // ─── MAJOR EXPENSES / GOALS ────────────────────────────────────────────
-function MajorTab({majorExpenses,setMajorExpenses,sm,readOnly,canWrite,canUpdate}) {
+function MajorTab({ majorExpenses, setMajorExpenses, sm, readOnly, canWrite, canUpdate }) {
   const [activeView, setActiveView] = useState('active');
-  const [histYear,   setHistYear]   = useState('all');
+  const [histYear, setHistYear] = useState('all');
 
-  const active  = majorExpenses.filter(e => !e.done);
+  const active = majorExpenses.filter(e => !e.done);
   const history = majorExpenses.filter(e => e.done);
   const histFiltered = histYear === 'all' ? history : history.filter(e => (e.doneDate || '').startsWith(histYear));
 
-  const totBudget  = active.reduce((s, e) => s + (e.budget || 0), 0);
-  const onTrack    = active.filter(e => e.budget > 0 && e.actual <= e.budget).length;
+  const totBudget = active.reduce((s, e) => s + (e.budget || 0), 0);
+  const onTrack = active.filter(e => e.budget > 0 && e.actual <= e.budget).length;
   const onTrackPct = active.length > 0 ? Math.round(onTrack / active.length * 100) : 100;
-  const histYears  = [...new Set(history.map(e => (e.doneDate || '').slice(0, 4)).filter(Boolean))].sort().reverse();
+  const histYears = [...new Set(history.map(e => (e.doneDate || '').slice(0, 4)).filter(Boolean))].sort().reverse();
 
   function upd(id, f, v) {
     if (readOnly) return;
-    setMajorExpenses(p => p.map(e => e.id === id ? { ...e, [f]: ['budget','actual'].includes(f) ? (Number(v) || 0) : v } : e));
+    setMajorExpenses(p => p.map(e => e.id === id ? { ...e, [f]: ['budget', 'actual'].includes(f) ? (Number(v) || 0) : v } : e));
   }
   function markDone(id) {
     setMajorExpenses(p => p.map(e => e.id === id ? { ...e, done: true, doneDate: new Date().toISOString().slice(0, 10) } : e));
@@ -6449,20 +6453,22 @@ function MajorTab({majorExpenses,setMajorExpenses,sm,readOnly,canWrite,canUpdate
 
       {/* ── 4 Metric Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
-        <MetricCard icon="🎯" label="Active Goals"    value={active.length.toString()}  color={C.amber} sm={sm} sub={active.length === 0 ? 'All done! 🎉' : `${active.length} pending`} />
-        <MetricCard icon="💰" label="Total Budgeted"  value={peso(totBudget)}            color={C.blue}  sm={sm} />
-        <MetricCard icon="✅" label="Completed Goals" value={history.length.toString()}  color={C.green} sm={sm} sub="all time" />
-        <MetricCard icon="📊" label="Goals On-Track"  value={`${onTrackPct}%`}           color={onTrackPct >= 80 ? C.green : C.red} sm={sm} sub={`${onTrack} of ${active.length} active`} />
+        <MetricCard icon="🎯" label="Active Goals" value={active.length.toString()} color={C.amber} sm={sm} sub={active.length === 0 ? 'All done! 🎉' : `${active.length} pending`} />
+        <MetricCard icon="💰" label="Total Budgeted" value={peso(totBudget)} color={C.blue} sm={sm} />
+        <MetricCard icon="✅" label="Completed Goals" value={history.length.toString()} color={C.green} sm={sm} sub="all time" />
+        <MetricCard icon="📊" label="Goals On-Track" value={`${onTrackPct}%`} color={onTrackPct >= 80 ? C.green : C.red} sm={sm} sub={`${onTrack} of ${active.length} active`} />
       </div>
 
       {/* ── View Toggle ── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
         {[['active', `🎯 Active Goals (${active.length})`], ['history', `✅ Completed / History (${history.length})`]].map(([v, label]) => (
           <button key={v} onClick={() => setActiveView(v)}
-            style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            style={{
+              padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
               border: `1px solid ${activeView === v ? C.amber : C.border}`,
               background: activeView === v ? `${C.amber}22` : 'transparent',
-              color: activeView === v ? C.amber : C.muted, transition: 'all 0.15s' }}>
+              color: activeView === v ? C.amber : C.muted, transition: 'all 0.15s'
+            }}>
             {label}
           </button>
         ))}
@@ -6578,9 +6584,9 @@ function MajorTab({majorExpenses,setMajorExpenses,sm,readOnly,canWrite,canUpdate
 // ─── CREDITS ──────────────────────────────────────────────────────────────────
 function CreditsTab({ credits, setCredits, sm, readOnly, canWrite, canUpdate }) {
   const [showArchive, setShowArchive] = useState(false);
-  const activeCredits   = credits.filter(c => !c.done);
+  const activeCredits = credits.filter(c => !c.done);
   const archivedCredits = credits.filter(c => c.done);
-  const tot       = activeCredits.reduce((s, c) => s + c.amount, 0);
+  const tot = activeCredits.reduce((s, c) => s + c.amount, 0);
   const collected = archivedCredits.reduce((s, c) => s + c.amount, 0);
 
   function upd(id, f, v) {
@@ -6592,7 +6598,7 @@ function CreditsTab({ credits, setCredits, sm, readOnly, canWrite, canUpdate }) 
     <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${C.border}22`, opacity: archived ? 0.65 : 1 }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
         <Inp value={c.name} onChange={ev => upd(c.id, 'name', ev.target.value)}
-          style={{ flex: 1, opacity: archived ? 0.8 : 1 }} placeholder="Who owes you?" disabled={readOnly || archived}/>
+          style={{ flex: 1, opacity: archived ? 0.8 : 1 }} placeholder="Who owes you?" disabled={readOnly || archived} />
         {canUpdate && (
           <button onClick={() => upd(c.id, 'done', !c.done)}
             style={{ minWidth: 80, background: 'none', border: `1px solid ${c.done ? C.green : C.border}`, borderRadius: 6, padding: '8px 6px', cursor: 'pointer', color: c.done ? C.green : C.muted, fontSize: 11, whiteSpace: 'nowrap' }}>
@@ -6607,7 +6613,7 @@ function CreditsTab({ credits, setCredits, sm, readOnly, canWrite, canUpdate }) 
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>Amount</div>
-          <Inp type="number" value={c.amount || ''} onChange={ev => upd(c.id, 'amount', ev.target.value)} placeholder="0" disabled={readOnly || archived}/>
+          <Inp type="number" value={c.amount || ''} onChange={ev => upd(c.id, 'amount', ev.target.value)} placeholder="0" disabled={readOnly || archived} />
         </div>
       </div>
     </div>
@@ -6616,8 +6622,8 @@ function CreditsTab({ credits, setCredits, sm, readOnly, canWrite, canUpdate }) 
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: sm ? 8 : 12, marginBottom: 14 }}>
-        <MetricCard label="Outstanding" value={fmtK(tot)} color={C.amber} sm={sm} sub={`${activeCredits.length} pending`}/>
-        <MetricCard label="Collected" value={fmtK(collected)} color={C.green} sm={sm} sub={`${archivedCredits.length} paid`}/>
+        <MetricCard label="Outstanding" value={fmtK(tot)} color={C.amber} sm={sm} sub={`${activeCredits.length} pending`} />
+        <MetricCard label="Collected" value={fmtK(collected)} color={C.green} sm={sm} sub={`${archivedCredits.length} paid`} />
       </div>
 
       <Card>
@@ -6748,8 +6754,8 @@ function InvestmentsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpda
               <tr key={inv.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
                 {editing === inv.id ? (
                   <>
-                    <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly}/></td>
-                    <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                    <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly} /></td>
+                    <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly} /></td>
                     <td style={{ padding: '6px', textAlign: 'center' }}>
                       <button onClick={saveEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.green, marginRight: 8, fontSize: 16 }}>✓</button>
                       <button onClick={() => setEditing(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 16 }}>×</button>
@@ -6775,7 +6781,7 @@ function InvestmentsTab({ accounts, setAccounts, sm, readOnly, canWrite, canUpda
 }
 
 // ─── DEBT MANAGER ─────────────────────────────────────────────────────────────
-function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budgetData, setBudgetData, sm, readOnly, canWrite, canUpdate, ownerName = '' }) {
+function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => { }, budgetData, setBudgetData, sm, readOnly, canWrite, canUpdate, ownerName = '' }) {
   const [editing, setEditing] = useState(null);
   const [editData, setEditData] = useState(null);
   const [statementAcc, setStatementAcc] = useState(null);
@@ -6803,10 +6809,10 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
   const totalEffectiveUsed = totalOwed + totalInstallmentsRemaining;
   const totalAvailableCredit = totalLimit > 0 ? Math.max(0, totalLimit - totalEffectiveUsed) : 0;
   const avgUtilization = totalLimit > 0 ? (totalEffectiveUsed / totalLimit) * 100 : 0;
-  const [showInstForm, setShowInstForm]     = useState(false);
-  const [editingPlanId, setEditingPlanId]   = useState(null);
-  const [newInst, setNewInst]               = useState({
-    cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7),
+  const [showInstForm, setShowInstForm] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState(null);
+  const [newInst, setNewInst] = useState({
+    cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0, 7),
     interestRate: '', customMonthly: ''
   });
   const [instSuccessMsg, setInstSuccessMsg] = useState('');
@@ -6890,12 +6896,12 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
         paidMonths: 0,
         interestRate: newInst.interestRate ? Number(newInst.interestRate) : 0,
         customMonthly: newInst.customMonthly ? Number(newInst.customMonthly) : 0,
-        createdAt: new Date().toISOString().slice(0,10)
+        createdAt: new Date().toISOString().slice(0, 10)
       };
       saveInstPlans([...instPlans, plan]);
       setInstSuccessMsg('Plan added!');
     }
-    setNewInst({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7), interestRate: '', customMonthly: '' });
+    setNewInst({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0, 7), interestRate: '', customMonthly: '' });
     setShowInstForm(false);
     setTimeout(() => setInstSuccessMsg(''), 3000);
   };
@@ -7013,13 +7019,13 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
     });
   };
   const deleteInstPlan = (id) => { if (window.confirm('Delete this installment plan?')) saveInstPlans(instPlans.filter(p => p.id !== id)); };
-  const activeInstPlans    = instPlans.filter(p => p.paidMonths < p.months);
+  const activeInstPlans = instPlans.filter(p => p.paidMonths < p.months);
   const completedInstPlans = instPlans.filter(p => p.paidMonths >= p.months);
-  const totalMonthlyInst   = activeInstPlans.reduce((s, p) => {
+  const totalMonthlyInst = activeInstPlans.reduce((s, p) => {
     const bd = getInstallmentBreakdown(p.total, p.months, p.interestRate, p.customMonthly);
     return s + bd.monthly;
   }, 0);
-  const totalPaidInInst    = instPlans.reduce((s, p) => {
+  const totalPaidInInst = instPlans.reduce((s, p) => {
     const bd = getInstallmentBreakdown(p.total, p.months, p.interestRate, p.customMonthly);
     return s + (p.paidMonths * bd.monthly);
   }, 0);
@@ -7266,7 +7272,7 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
       <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
         <MetricCard label="Total Outstanding Debt" value={peso(totalOwed)} color={C.red} sm={sm} />
         <MetricCard label="Total Credit Limit" value={peso(totalLimit)} color={C.blue} sm={sm} />
-        <MetricCard label="Available Credit Limit" value={peso(totalAvailableCredit)} color={totalAvailableCredit > 0 ? C.green : C.red} sub={totalInstallmentsRemaining > 0 ? `Less ₱${(totalInstallmentsRemaining/1000).toFixed(1)}k inst` : 'Full Limit Free'} sm={sm} />
+        <MetricCard label="Available Credit Limit" value={peso(totalAvailableCredit)} color={totalAvailableCredit > 0 ? C.green : C.red} sub={totalInstallmentsRemaining > 0 ? `Less ₱${(totalInstallmentsRemaining / 1000).toFixed(1)}k inst` : 'Full Limit Free'} sm={sm} />
         <MetricCard label="Avg Card Utilization" value={avgUtilization.toFixed(1) + '%'} color={avgUtilization >= 50 ? C.red : avgUtilization >= 30 ? C.amber : C.green} sub="Inc. Installments" sm={sm} />
       </div>
 
@@ -7291,26 +7297,26 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div>
                         <label style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>Account Name</label>
-                        <Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly}/>
+                        <Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly} />
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         <div>
                           <label style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>Balance (₱)</label>
-                          <Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} disabled={readOnly}/>
+                          <Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} disabled={readOnly} />
                         </div>
                         <div>
                           <label style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>Limit (₱)</label>
-                          <Inp type="number" value={editData.limit} onChange={e => setEditData({ ...editData, limit: Number(e.target.value) || 0 })} disabled={readOnly}/>
+                          <Inp type="number" value={editData.limit} onChange={e => setEditData({ ...editData, limit: Number(e.target.value) || 0 })} disabled={readOnly} />
                         </div>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         <div>
                           <label style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>APR (%)</label>
-                          <Inp type="number" value={editData.apr} onChange={e => setEditData({ ...editData, apr: Number(e.target.value) || 0 })} disabled={readOnly}/>
+                          <Inp type="number" value={editData.apr} onChange={e => setEditData({ ...editData, apr: Number(e.target.value) || 0 })} disabled={readOnly} />
                         </div>
                         <div>
                           <label style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>Min Pay (₱)</label>
-                          <Inp type="number" value={editData.minPayment} onChange={e => setEditData({ ...editData, minPayment: Number(e.target.value) || 0 })} disabled={readOnly}/>
+                          <Inp type="number" value={editData.minPayment} onChange={e => setEditData({ ...editData, minPayment: Number(e.target.value) || 0 })} disabled={readOnly} />
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
@@ -7381,13 +7387,13 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                     <tr key={d.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
                       {editing === d.id ? (
                         <>
-                          <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly}/></td>
-                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                          <td style={{ padding: '6px' }}><Inp value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} disabled={readOnly} /></td>
+                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.balance} onChange={e => setEditData({ ...editData, balance: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly} /></td>
                           <td style={{ padding: '6px', textAlign: 'right', color: C.amber }}>{peso(instRem)}</td>
-                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.limit} onChange={e => setEditData({ ...editData, limit: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.limit} onChange={e => setEditData({ ...editData, limit: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly} /></td>
                           <td style={{ padding: '6px', textAlign: 'right', color: C.green, fontWeight: 700 }}>{peso(availCredit)}</td>
-                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.apr} onChange={e => setEditData({ ...editData, apr: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
-                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.minPayment} onChange={e => setEditData({ ...editData, minPayment: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly}/></td>
+                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.apr} onChange={e => setEditData({ ...editData, apr: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly} /></td>
+                          <td style={{ padding: '6px' }}><Inp type="number" value={editData.minPayment} onChange={e => setEditData({ ...editData, minPayment: Number(e.target.value) || 0 })} style={{ textAlign: 'right' }} disabled={readOnly} /></td>
                           <td style={{ padding: '6px', textAlign: 'center' }}>
                             <button onClick={saveEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.green, marginRight: 8, fontSize: 16 }}>✓</button>
                             <button onClick={() => setEditing(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 16 }}>×</button>
@@ -7415,7 +7421,7 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
           </div>
         )}
       </Card>
-      
+
       <Card>
         <SecTitle>Payoff Projection Calculator</SecTitle>
         <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 16 }}>
@@ -7454,7 +7460,7 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
             <button onClick={() => {
               if (showInstForm && editingPlanId) {
                 setEditingPlanId(null);
-                setNewInst({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0,7), interestRate: '', customMonthly: '' });
+                setNewInst({ cardId: '', item: '', total: '', months: 12, startMonth: new Date().toISOString().slice(0, 7), interestRate: '', customMonthly: '' });
               }
               setShowInstForm(p => !p);
             }}
@@ -7559,13 +7565,13 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: activeInstPlans.length > 0 ? 14 : 0 }}>
           {activeInstPlans.map(plan => {
-            const bd        = getInstallmentBreakdown(plan.total, plan.months, plan.interestRate, plan.customMonthly);
-            const monthly   = bd.monthly;
+            const bd = getInstallmentBreakdown(plan.total, plan.months, plan.interestRate, plan.customMonthly);
+            const monthly = bd.monthly;
             const remaining = plan.months - plan.paidMonths;
-            const paidAmt   = plan.paidMonths * monthly;
+            const paidAmt = plan.paidMonths * monthly;
             const totalRepay = bd.totalCost;
-            const remAmt    = totalRepay - paidAmt;
-            const pct       = Math.round(plan.paidMonths / plan.months * 100);
+            const remAmt = totalRepay - paidAmt;
+            const pct = Math.round(plan.paidMonths / plan.months * 100);
             const planHistory = (budgetData.installmentHistory || []).filter(h => h.planId === plan.id);
             return (
               <div key={plan.id} style={{ background: `${C.card2}`, borderRadius: 10, padding: '12px 14px', border: `1px solid ${C.amber}33` }}>
@@ -7776,9 +7782,9 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Credit Card / Debt Account</label>
-                <select 
-                  value={selectedCardId} 
-                  onChange={e => setSelectedCardId(e.target.value)} 
+                <select
+                  value={selectedCardId}
+                  onChange={e => setSelectedCardId(e.target.value)}
                   disabled={readOnly}
                   style={{
                     padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
@@ -7798,9 +7804,9 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Category</label>
-                  <select 
-                    value={ccCategory} 
-                    onChange={e => setCcCategory(e.target.value)} 
+                  <select
+                    value={ccCategory}
+                    onChange={e => setCcCategory(e.target.value)}
                     disabled={readOnly}
                     style={{
                       padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
@@ -7816,11 +7822,11 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
 
                 <div>
                   <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Amount (₱)</label>
-                  <Inp 
-                    type="number" 
-                    value={ccAmount} 
-                    onChange={e => setCcAmount(e.target.value)} 
-                    placeholder="0" 
+                  <Inp
+                    type="number"
+                    value={ccAmount}
+                    onChange={e => setCcAmount(e.target.value)}
+                    placeholder="0"
                     style={{ textAlign: 'right' }}
                   />
                 </div>
@@ -7828,28 +7834,28 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
 
               <div>
                 <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Description</label>
-                <Inp 
-                  type="text" 
-                  value={ccDesc} 
-                  onChange={e => setCcDesc(e.target.value)} 
-                  placeholder="e.g. Starbucks, Grocery shopping" 
+                <Inp
+                  type="text"
+                  value={ccDesc}
+                  onChange={e => setCcDesc(e.target.value)}
+                  placeholder="e.g. Starbucks, Grocery shopping"
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Date</label>
-                  <Inp 
-                    type="date" 
-                    value={ccDate} 
-                    onChange={e => handleCcDateChange(e.target.value)} 
+                  <Inp
+                    type="date"
+                    value={ccDate}
+                    onChange={e => handleCcDateChange(e.target.value)}
                   />
                 </div>
                 <div>
                   <label style={{ fontSize: 11, color: C.muted, fontWeight: 600, display: 'block', marginBottom: 4 }}>Payroll Period</label>
-                  <select 
-                    value={ccPeriod} 
-                    onChange={e => setCcPeriod(e.target.value)} 
+                  <select
+                    value={ccPeriod}
+                    onChange={e => setCcPeriod(e.target.value)}
                     disabled={readOnly}
                     style={{
                       padding: '8px 12px', borderRadius: 6, border: `1px solid ${C.border}`,
@@ -7880,10 +7886,10 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
               <SecTitle style={{ margin: 0 }}>CC Transactions Ledger</SecTitle>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 11, color: C.muted }}>Filter:</span>
-                <input 
-                  type="date" 
-                  value={ccFilterDate} 
-                  onChange={e => setCcFilterDate(e.target.value)} 
+                <input
+                  type="date"
+                  value={ccFilterDate}
+                  onChange={e => setCcFilterDate(e.target.value)}
                   style={{
                     padding: '4px 8px', borderRadius: 4, border: `1px solid ${C.border}`,
                     background: C.bg, color: C.text, fontSize: 11, outline: 'none',
@@ -7891,7 +7897,7 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                   }}
                 />
                 {ccFilterDate && (
-                  <button 
+                  <button
                     onClick={() => setCcFilterDate('')}
                     style={{
                       background: 'none', border: `1px solid ${C.border}`, borderRadius: 4,
@@ -7907,7 +7913,7 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
             {(!budgetData.ccHistory || budgetData.ccHistory.length === 0) ? (
               <div style={{ color: C.muted, fontSize: 12, padding: '10px 0', textAlign: 'center' }}>No card transactions logged yet.</div>
             ) : (() => {
-              const filteredTxs = ccFilterDate 
+              const filteredTxs = ccFilterDate
                 ? budgetData.ccHistory.filter(t => t.date === ccFilterDate)
                 : budgetData.ccHistory;
 
@@ -7923,7 +7929,7 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                 <div style={{ overflowX: 'auto' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
                     {canUpdate && (
-                      <button 
+                      <button
                         onClick={() => handleBulkClearTransactions(filteredTxs)}
                         style={{
                           background: 'none', border: `1px solid ${C.red}66`, borderRadius: 6,
@@ -7952,18 +7958,18 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                           {editingTxId === tx.id ? (
                             <>
                               <td style={{ padding: '4px' }}>
-                                <Inp 
-                                  type="date" 
-                                  value={editTxData.date} 
-                                  onChange={e => handleEditTxDateChange(e.target.value)} 
+                                <Inp
+                                  type="date"
+                                  value={editTxData.date}
+                                  onChange={e => handleEditTxDateChange(e.target.value)}
                                   disabled={readOnly}
                                   style={{ padding: '4px 6px', fontSize: 11 }}
                                 />
                               </td>
                               <td style={{ padding: '4px' }}>
-                                <select 
-                                  value={editTxData.category} 
-                                  onChange={e => setEditTxData({ ...editTxData, category: e.target.value })} 
+                                <select
+                                  value={editTxData.category}
+                                  onChange={e => setEditTxData({ ...editTxData, category: e.target.value })}
                                   disabled={readOnly}
                                   style={{
                                     padding: '4px 6px', borderRadius: 4, border: `1px solid ${C.border}`,
@@ -7977,17 +7983,17 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                                 </select>
                               </td>
                               <td style={{ padding: '4px' }}>
-                                <Inp 
-                                  value={editTxData.description} 
-                                  onChange={e => setEditTxData({ ...editTxData, description: e.target.value })} 
+                                <Inp
+                                  value={editTxData.description}
+                                  onChange={e => setEditTxData({ ...editTxData, description: e.target.value })}
                                   disabled={readOnly}
                                   style={{ padding: '4px 6px', fontSize: 11 }}
                                 />
                               </td>
                               <td style={{ padding: '4px' }}>
-                                <select 
-                                  value={editTxData.cardId} 
-                                  onChange={e => setEditTxData({ ...editTxData, cardId: e.target.value })} 
+                                <select
+                                  value={editTxData.cardId}
+                                  onChange={e => setEditTxData({ ...editTxData, cardId: e.target.value })}
                                   disabled={readOnly}
                                   style={{
                                     padding: '4px 6px', borderRadius: 4, border: `1px solid ${C.border}`,
@@ -8001,10 +8007,10 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                                 </select>
                               </td>
                               <td style={{ padding: '4px' }}>
-                                <Inp 
-                                  type="number" 
-                                  value={editTxData.amount} 
-                                  onChange={e => setEditTxData({ ...editTxData, amount: Number(e.target.value) || 0 })} 
+                                <Inp
+                                  type="number"
+                                  value={editTxData.amount}
+                                  onChange={e => setEditTxData({ ...editTxData, amount: Number(e.target.value) || 0 })}
                                   disabled={readOnly}
                                   style={{ textAlign: 'right', padding: '4px 6px', fontSize: 11 }}
                                 />
@@ -8018,9 +8024,9 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                             <>
                               <td style={{ padding: '8px 6px', whiteSpace: 'nowrap' }}>{tx.date}</td>
                               <td style={{ padding: '8px 6px' }}>
-                                <span style={{ 
-                                  padding: '2px 6px', borderRadius: 4, 
-                                  fontSize: 10, fontWeight: 700, 
+                                <span style={{
+                                  padding: '2px 6px', borderRadius: 4,
+                                  fontSize: 10, fontWeight: 700,
                                   color: '#fff', background: CAT_COLORS[tx.category || 'Others'] || '#7d8590'
                                 }}>
                                   {tx.category || 'Others'}
@@ -8031,10 +8037,10 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                               <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 600, color: C.red }}>{peso(tx.amount)}</td>
                               <td style={{ padding: '8px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                                 {canUpdate && (
-                                  <button 
+                                  <button
                                     onClick={() => startEditTx(tx)}
-                                    style={{ 
-                                      background: 'none', border: `1px solid ${C.border}`, borderRadius: 4, 
+                                    style={{
+                                      background: 'none', border: `1px solid ${C.border}`, borderRadius: 4,
                                       color: C.muted, padding: '2px 6px', cursor: 'pointer', fontSize: 10, marginRight: 4
                                     }}
                                   >
@@ -8042,10 +8048,10 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
                                   </button>
                                 )}
                                 {canUpdate && (
-                                  <button 
+                                  <button
                                     onClick={() => handleDeleteCCTransaction(tx)}
-                                    style={{ 
-                                      background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4, 
+                                    style={{
+                                      background: 'none', border: `1px solid ${C.red}33`, borderRadius: 4,
                                       color: C.red, padding: '2px 6px', cursor: 'pointer', fontSize: 10
                                     }}
                                     title="Delete & Deduct balance"
@@ -8067,10 +8073,10 @@ function DebtsTab({ debts, setDebts, accounts = [], setAccounts = () => {}, budg
         </div>
       )}
       {statementAcc && (
-        <CreditCardStatementModal 
-          account={statementAcc} 
-          budgetData={budgetData} 
-          onClose={() => setStatementAcc(null)} 
+        <CreditCardStatementModal
+          account={statementAcc}
+          budgetData={budgetData}
+          onClose={() => setStatementAcc(null)}
         />
       )}
     </div>
@@ -8957,9 +8963,9 @@ function ReportTab({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
 
   const reportDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const rangeLabel = reportRange === 'current' ? `${displayKey(curKey)}` :
-                     reportRange === '3m' ? `${displayKey(keys[0])} – ${displayKey(keys[keys.length - 1])}` :
-                     reportRange === 'ytd' ? `Jan ${CUR_YEAR} – ${displayKey(curKey)}` :
-                     `${displayKey(keys[0])} – ${displayKey(keys[keys.length - 1])}`;
+    reportRange === '3m' ? `${displayKey(keys[0])} – ${displayKey(keys[keys.length - 1])}` :
+      reportRange === 'ytd' ? `Jan ${CUR_YEAR} – ${displayKey(curKey)}` :
+        `${displayKey(keys[0])} – ${displayKey(keys[keys.length - 1])}`;
 
   // ── Generate HTML email ──
   const generateEmailHTML = () => {
@@ -9522,7 +9528,7 @@ function ReportTab({ budgetData, accounts, majorExpenses, credits, debts = DEF_D
 
         {/* Goals Progress */}
         {majorExpenses.length > 0 && (
-        <Section id="goals" title="Goals Progress" icon="🎯">
+          <Section id="goals" title="Goals Progress" icon="🎯">
             <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '1fr 1fr', gap: 10 }}>
               {majorExpenses.map(e => {
                 const pct = e.budget > 0 ? (e.actual / e.budget) * 100 : 0;
@@ -10020,7 +10026,7 @@ async function computeSha256Hex(inputStr) {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
-  } catch (_) {}
+  } catch (_) { }
   // Deterministic fallback hash if Web Crypto is unavailable
   let h1 = 0xdeadbeef ^ text.length;
   let h2 = 0x41c6ce57 ^ text.length;
@@ -10616,10 +10622,10 @@ function SecurityCenterTab({
   const scoreGrade = securityScore >= 85
     ? { label: 'FORTRESS LEVEL', color: C.green, bg: '#063729', border: C.green }
     : securityScore >= 65
-    ? { label: 'WELL PROTECTED', color: C.teal, bg: '#0b2545', border: C.teal }
-    : securityScore >= 45
-    ? { label: 'MODERATE RISK', color: C.amber, bg: '#422006', border: C.amber }
-    : { label: 'VULNERABLE — ACTION NEEDED', color: C.red, bg: '#450a0a', border: C.red };
+      ? { label: 'WELL PROTECTED', color: C.teal, bg: '#0b2545', border: C.teal }
+      : securityScore >= 45
+        ? { label: 'MODERATE RISK', color: C.amber, bg: '#422006', border: C.amber }
+        : { label: 'VULNERABLE — ACTION NEEDED', color: C.red, bg: '#450a0a', border: C.red };
 
   // Save new PIN
   const handleSavePin = async (e) => {
@@ -10678,7 +10684,7 @@ function SecurityCenterTab({
           lsBytes += (k.length + (localStorage.getItem(k) || '').length) * 2;
         }
       }
-    } catch (_) {}
+    } catch (_) { }
 
     setTimeout(() => {
       const scanTime = new Date().toISOString();
@@ -10825,7 +10831,7 @@ function SecurityCenterTab({
     setBalancesHidden(next);
     try {
       localStorage.setItem('dashboardMoneyMasked', String(next));
-    } catch (_) {}
+    } catch (_) { }
     updateSecurityConfig(
       { hideBalancesDefault: next },
       `Global Balance Masking (*****) turned ${next ? 'ON' : 'OFF'}.`,
@@ -11027,19 +11033,19 @@ function SecurityCenterTab({
     const eventLines = eventsList.length === 0
       ? '  [No intrusion events currently selected — trigger a Honeypot simulation or select an event row]'
       : eventsList.map((ev, idx) => (
-          `  Incident #${idx + 1} [${ev.id || 'N/A'}]\n` +
-          `  • Timestamp (UTC)   : ${ev.timestamp}\n` +
-          `  • Severity          : ${ev.severity}\n` +
-          `  • Intruder IP       : ${ev.ip || 'Unknown'}\n` +
-          `  • Geo-Location      : ${ev.location || 'Unknown'}\n` +
-          `  • Device / Agent    : ${ev.userAgent || 'Unknown'}\n` +
-          `  • Honeypot Trap Hit : ${ev.trapName || ev.trapType}\n` +
-          `  • Attempted Action  : ${ev.attemptedAction}\n` +
-          `  • System Response   : ${ev.responseAction}`
-        )).join('\n\n');
+        `  Incident #${idx + 1} [${ev.id || 'N/A'}]\n` +
+        `  • Timestamp (UTC)   : ${ev.timestamp}\n` +
+        `  • Severity          : ${ev.severity}\n` +
+        `  • Intruder IP       : ${ev.ip || 'Unknown'}\n` +
+        `  • Geo-Location      : ${ev.location || 'Unknown'}\n` +
+        `  • Device / Agent    : ${ev.userAgent || 'Unknown'}\n` +
+        `  • Honeypot Trap Hit : ${ev.trapName || ev.trapType}\n` +
+        `  • Attempted Action  : ${ev.attemptedAction}\n` +
+        `  • System Response   : ${ev.responseAction}`
+      )).join('\n\n');
 
     return (
-`================================================================================
+      `================================================================================
 OFFICIAL CYBERSECURITY INTRUSION & UNAUTHORIZED ACCESS INCIDENT REPORT
 ================================================================================
 CASE REFERENCE ID   : ${caseId}
@@ -11114,7 +11120,7 @@ System Owner — BudgetApp2025 Cyber Security & Honeynet Defense Center
       await navigator.clipboard.writeText(text);
       setCopiedComplaint(true);
       setTimeout(() => setCopiedComplaint(false), 3000);
-    } catch (_) {}
+    } catch (_) { }
   };
 
   // Combine stored audit logs with automatic anomaly events (high-value outflows)
@@ -12209,8 +12215,8 @@ System Owner — BudgetApp2025 Cyber Security & Honeynet Defense Center
               {integrityMatchesSeal
                 ? '✓ VERIFIED — MATCHES SEALED HASH'
                 : secCfg.sealedIntegrityHash
-                ? '⚠️ MODIFIED SINCE LAST SEAL'
-                : 'UNSEALED — CLICK SEAL ABOVE'}
+                  ? '⚠️ MODIFIED SINCE LAST SEAL'
+                  : 'UNSEALED — CLICK SEAL ABOVE'}
             </span>
           </div>
         </div>
@@ -14239,8 +14245,8 @@ function UxUiAdvisorTab({
       summary = `Computed W3C relative luminance across ${accounts.length} account cards against WCAG 2.2 thresholds (AA: 4.5:1, AAA: 7.0:1).`;
       bullets = accountAudits.length > 0
         ? accountAudits.slice(0, 6).map(a =>
-            `${a.name} (${a.code}): Solid ${a.solidBg} + Text ${a.textColor} -> ${a.contrast}:1 [${a.wcagGrade}]`
-          )
+          `${a.name} (${a.code}): Solid ${a.solidBg} + Text ${a.textColor} -> ${a.contrast}:1 [${a.wcagGrade}]`
+        )
         : ['No accounts added yet. Use the Contrast Lab tab to test any solid background + foreground pair against AA & AAA thresholds.'];
     } else if (ql.includes('token') || ql.includes('dtcg') || ql.includes('component') || ql.includes('state')) {
       title = '🧩 DTCG Design Tokens & 6-State Component Architecture';
@@ -14884,7 +14890,7 @@ function SystemResourcesTab({
         }
       }
       lsBreakdown.sort((a, b) => b.kb - a.kb);
-    } catch (_) {}
+    } catch (_) { }
 
     return {
       cpuThreads: typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 1) : 1,
@@ -14980,7 +14986,7 @@ function SystemResourcesTab({
         if (!error) {
           sbClientMs = Math.round(performance.now() - sbStart);
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     setClientSupabaseRttMs(sbClientMs);
 
@@ -15376,6 +15382,1751 @@ function SystemResourcesTab({
 
 
 
+// ─── AI SECOND BRAIN HUB (FOUR C'S: CONTEXT · CONNECTIONS · CAPABILITIES · CADENCE) ──
+const PARA_BUCKETS = [
+  { id: '0_Context', label: '0_Context', sub: 'Owner Identity & Core Rules', color: '#f2a71b' },
+  { id: '1_Projects', label: '1_Projects', sub: 'Active Goals & Spec Initiatives', color: '#4b8dff' },
+  { id: '2_Areas', label: '2_Areas', sub: 'Ongoing Banking, Payroll & Security', color: '#24d17e' },
+  { id: '3_Resources', label: '3_Resources', sub: 'Reference Guides, Tokens & Laws', color: '#30d6b0' },
+  { id: '4_Archive', label: '4_Archive', sub: 'Lessons Learned & Shipped Notes', color: '#bc8cff' }
+];
+
+const DEFAULT_SB_NOTES = [
+  {
+    id: 'sb_n_context',
+    para: '0_Context',
+    title: 'OWNER_PROFILE.md — Identity, Payroll & Senior UX Rules',
+    tags: ['#context', '#manila', '#senior-parent'],
+    linkedModule: 'account-dashboard',
+    updatedAt: '2026-11-11T14:00:00.000Z',
+    content: '# Owner Context (Asia/Manila)\n- Currency: Philippine Peso (₱ PHP)\n- Payroll Cadence: 5th & 20th bi-monthly cycles\n- Stakeholders: System Owner & Senior Parents\n- Key Invariants: [[SPEC-01]] Solid-color PH bank cards with modal Libreta Passbooks; [[SPEC-02]] Honeynet & App Vault Security.'
+  },
+  {
+    id: 'sb_n_projects',
+    para: '1_Projects',
+    title: 'ACTIVE_PROJECTS.md — BudgetApp2025 Second Brain Roadmap',
+    tags: ['#projects', '#pullboard', '#roadmap'],
+    linkedModule: 'pullboard',
+    updatedAt: '2026-11-11T14:30:00.000Z',
+    content: '# Active Second Brain Projects\n- Track ongoing feature specs in [[Pullboard]] (SPEC-01..SPEC-04)\n- Keep monthly 5th/20th debt payoff targets and Major Goals funded on schedule\n- Run Quality Gate before every Vercel deployment.'
+  },
+  {
+    id: 'sb_n_areas',
+    para: '2_Areas',
+    title: 'FINANCE_AREAS.md — PH Banking, Security & Cloud Operations',
+    tags: ['#banking', '#security', '#honeynet'],
+    linkedModule: 'security',
+    updatedAt: '2026-11-11T14:15:00.000Z',
+    content: '# Ongoing Financial Areas\n- Monitor BDO, BPI, Security Bank, LandBank, Maya & GCash inflows/outflows\n- Review [[Honeynet]] intruder logs & seal SHA-256 financial integrity monthly\n- Export encrypted AES-256-GCM (.bvault.json) offsite backup.'
+  },
+  {
+    id: 'sb_n_resources',
+    para: '3_Resources',
+    title: 'RESOURCES_INDEX.md — Tokens, PH Banks & CERT-PH Reporting',
+    tags: ['#resources', '#wcag', '#cert-ph'],
+    linkedModule: 'ux-advisor',
+    updatedAt: '2026-11-11T14:20:00.000Z',
+    content: '# Reusable Reference Vault\n- Design Tokens: src/config/dtcgTokens.json (WCAG 2.2 AA/AAA)\n- Cybercrime Authorities: DICT CERT-PH (cert-ph@dict.gov.ph), NPC (complaints@privacy.gov.ph), PNP-ACG\n- Cloud Limits: Vercel 12 Serverless Functions / 10s Timeout; Supabase 500 MB Free Tier.'
+  },
+  {
+    id: 'sb_n_archive',
+    para: '4_Archive',
+    title: 'LESSONS_LEARNED.md — Compounding Engineering Memory',
+    tags: ['#lessons', '#vercel', '#supabase'],
+    linkedModule: 'resources',
+    updatedAt: '2026-11-11T14:40:00.000Z',
+    content: '# Lessons Learned (Never Repeat Mistakes)\n- Keep api/ at <= 12 serverless files by extending /api/health.js?telemetry=1\n- Keep custom bank logos compact (<= 240px PNG) outside JWT user_metadata\n- Always maintain solid-color high-contrast UI cards for senior parents.'
+  }
+];
+
+const DEFAULT_SB_RULES = [
+  { id: 'sb_r1', rule: 'Prioritize keeping liquid Philippine bank emergency buffer healthy before approving discretionary Major Goals.', active: true, createdAt: '2026-11-11T14:00:00.000Z' },
+  { id: 'sb_r2', rule: 'Flag any single Money Out withdrawal >= ₱50,000 in Security Audit Logs and Morning Executive Briefs.', active: true, createdAt: '2026-11-11T14:00:00.000Z' },
+  { id: 'sb_r3', rule: 'Maintain WCAG 2.2 AA-AAA contrast and solid colors across every Senior Parent banking view.', active: true, createdAt: '2026-11-11T14:00:00.000Z' }
+];
+
+const DEFAULT_SB_ROUTINES = [
+  { id: 'rt_morning', name: 'Daily Morning Executive & Cash-Flow Brief', cadence: 'Every Day · 08:00 AM PHT', skill: 'morning_brief', lastRunAt: null },
+  { id: 'rt_payroll', name: 'Bi-Monthly 5th / 20th Payroll & Reconcile Audit', cadence: '5th & 20th Monthly', skill: 'cross_module_audit', lastRunAt: null },
+  { id: 'rt_security', name: 'Weekly Honeynet Intrusion & Integrity Sweep', cadence: 'Every Monday · 09:00 AM PHT', skill: 'security_sweep', lastRunAt: null },
+  { id: 'rt_pullboard', name: 'Sunday Pullboard Spec & Escalation Grooming', cadence: 'Every Sunday · 07:00 PM PHT', skill: 'pullboard_groom', lastRunAt: null }
+];
+
+function classifyBrainDumpToPara(rawText) {
+  const lower = (rawText || '').toLowerCase();
+  if (lower.includes('done') || lower.includes('lesson') || lower.includes('mistake') || lower.includes('learned') || lower.includes('archive')) {
+    return '4_Archive';
+  }
+  if (lower.includes('guide') || lower.includes('link') || lower.includes('reference') || lower.includes('contact') || lower.includes('template') || lower.includes('token')) {
+    return '3_Resources';
+  }
+  if (lower.includes('goal') || lower.includes('deadline') || lower.includes('build') || lower.includes('launch') || lower.includes('spec-') || lower.includes('trip') || lower.includes('wedding')) {
+    return '1_Projects';
+  }
+  if (lower.includes('bank') || lower.includes('bdo') || lower.includes('bpi') || lower.includes('gcash') || lower.includes('maya') || lower.includes('payroll') || lower.includes('debt') || lower.includes('security') || lower.includes('honeypot') || lower.includes('parent')) {
+    return '2_Areas';
+  }
+  return '0_Context';
+}
+
+function SecondBrainTab({
+  accounts = [],
+  budgetData = {},
+  setBudgetData,
+  debts = [],
+  credits = [],
+  majorExpenses = [],
+  balanceHistory = [],
+  session,
+  sm,
+  canWrite,
+  canUpdate,
+  setTab
+}) {
+  const userEmail = session?.user?.email || 'System Owner';
+  const sb = budgetData?.secondBrain || {};
+  const notes = Array.isArray(sb.notes) && sb.notes.length > 0 ? sb.notes : DEFAULT_SB_NOTES;
+  const rules = Array.isArray(sb.rules) && sb.rules.length > 0 ? sb.rules : DEFAULT_SB_RULES;
+  const routines = Array.isArray(sb.routines) && sb.routines.length > 0 ? sb.routines : DEFAULT_SB_ROUTINES;
+  const lastMorningBrief = sb.lastMorningBrief || null;
+
+  const [activeC, setActiveC] = useState('CONTEXT'); // 'CONTEXT' | 'CONNECTIONS' | 'CAPABILITIES' | 'CADENCE'
+  const [paraFilter, setParaFilter] = useState('ALL');
+  const [searchNotes, setSearchNotes] = useState('');
+  const [selectedNoteId, setSelectedNoteId] = useState(notes[0]?.id || DEFAULT_SB_NOTES[0].id);
+  const [editingNoteContent, setEditingNoteContent] = useState('');
+  const [editingNoteTitle, setEditingNoteTitle] = useState('');
+
+  // Quick Brain-Dump Auto-Classifier state
+  const [brainDumpTitle, setBrainDumpTitle] = useState('');
+  const [brainDumpBody, setBrainDumpBody] = useState('');
+  const [brainDumpParaOverride, setBrainDumpParaOverride] = useState('AUTO');
+
+  // Teach the Brain ("Compounding Rule") state
+  const [newRuleText, setNewRuleText] = useState('');
+  const [briefCopied, setBriefCopied] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+
+  const showSbToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3500);
+  };
+
+  const updateSecondBrain = (updates) => {
+    setBudgetData(prev => {
+      const curr = prev?.secondBrain || {
+        notes: DEFAULT_SB_NOTES,
+        rules: DEFAULT_SB_RULES,
+        routines: DEFAULT_SB_ROUTINES,
+        lastMorningBrief: null
+      };
+      return {
+        ...prev,
+        secondBrain: {
+          ...curr,
+          ...updates
+        }
+      };
+    });
+  };
+
+  const selectedNote = notes.find(n => n.id === selectedNoteId) || notes[0] || null;
+  useEffect(() => {
+    if (selectedNote) {
+      setEditingNoteTitle(selectedNote.title || '');
+      setEditingNoteContent(selectedNote.content || '');
+    }
+  }, [selectedNote?.id]);
+
+  const filteredNotes = useMemo(() => {
+    return notes.filter(n => {
+      if (paraFilter !== 'ALL' && n.para !== paraFilter) return false;
+      if (searchNotes.trim()) {
+        const q = searchNotes.toLowerCase();
+        const hay = `${n.title || ''} ${n.content || ''} ${(n.tags || []).join(' ')} ${n.para || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [notes, paraFilter, searchNotes]);
+
+  // Capture & Auto-Classify Note into PARA
+  const handleCaptureBrainDump = (e) => {
+    e.preventDefault();
+    if (!brainDumpBody.trim() && !brainDumpTitle.trim()) return;
+    const rawCombined = `${brainDumpTitle} ${brainDumpBody}`.trim();
+    const detectedPara = brainDumpParaOverride === 'AUTO'
+      ? classifyBrainDumpToPara(rawCombined)
+      : brainDumpParaOverride;
+
+    const extractedTags = Array.from(new Set(
+      (rawCombined.match(/#[a-zA-Z0-9_-]+/g) || []).concat([`#${detectedPara.split('_')[1]?.toLowerCase() || 'note'}`])
+    ));
+
+    const created = {
+      id: `sb_n_${Date.now()}`,
+      para: detectedPara,
+      title: brainDumpTitle.trim() || `${rawCombined.slice(0, 42)}…`,
+      tags: extractedTags,
+      linkedModule: detectedPara === '1_Projects' ? 'pullboard' : detectedPara === '2_Areas' ? 'account-dashboard' : 'second-brain',
+      updatedAt: new Date().toISOString(),
+      content: brainDumpBody.trim() || brainDumpTitle.trim()
+    };
+
+    updateSecondBrain({ notes: [created, ...notes] });
+    setSelectedNoteId(created.id);
+    setBrainDumpTitle('');
+    setBrainDumpBody('');
+    showSbToast(`✓ Captured & auto-filed note into [${detectedPara}]!`);
+  };
+
+  const handleSaveSelectedNote = () => {
+    if (!selectedNote) return;
+    const updated = notes.map(n => n.id === selectedNote.id ? {
+      ...n,
+      title: editingNoteTitle.trim() || n.title,
+      content: editingNoteContent,
+      updatedAt: new Date().toISOString()
+    } : n);
+    updateSecondBrain({ notes: updated });
+    showSbToast('✓ Markdown note saved to Second Brain Memory Vault!');
+  };
+
+  const handleMoveNotePara = (noteId, newPara) => {
+    const updated = notes.map(n => n.id === noteId ? { ...n, para: newPara, updatedAt: new Date().toISOString() } : n);
+    updateSecondBrain({ notes: updated });
+    showSbToast(`✓ Moved note to ${newPara}`);
+  };
+
+  const handleDeleteNote = (noteId) => {
+    if (notes.length <= 1) return;
+    const nextNotes = notes.filter(n => n.id !== noteId);
+    updateSecondBrain({ notes: nextNotes });
+    setSelectedNoteId(nextNotes[0]?.id || '');
+    showSbToast('Note deleted.');
+  };
+
+  // Export single .md or Full Obsidian PARA Bundle
+  const handleExportMarkdownVault = (singleNote = null) => {
+    const nowDate = new Date().toISOString().slice(0, 10);
+    let mdText = '';
+    let filename = '';
+
+    if (singleNote) {
+      mdText = `---\npara: ${singleNote.para}\ntags: [${(singleNote.tags || []).join(', ')}]\nupdated: ${singleNote.updatedAt}\n---\n\n# ${singleNote.title}\n\n${singleNote.content}\n`;
+      filename = `${(singleNote.title || 'second-brain-note').replace(/[^a-zA-Z0-9._-]+/g, '_')}.md`;
+    } else {
+      const rulesBlock = rules.filter(r => r.active !== false).map(r => `- ${r.rule}`).join('\n');
+      const notesBlock = notes.map(n => `## [${n.para}] ${n.title}\n*Tags: ${(n.tags || []).join(' ')} | Updated: ${n.updatedAt}*\n\n${n.content}\n\n---`).join('\n\n');
+      mdText = `# BudgetApp2025 — AI Second Brain Vault (${nowDate})\n\n## Permanent Brain Rules (Compounding Memory)\n${rulesBlock}\n\n## PARA Memory Notes\n\n${notesBlock}\n`;
+      filename = `BudgetApp_SecondBrain_PARA_Vault_${nowDate}.md`;
+    }
+
+    const blob = new Blob([mdText], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showSbToast(`✓ Exported Obsidian-ready ${filename}!`);
+  };
+
+  // Live Cross-Module Data Synthesis for Executive Morning Brief Capability
+  const synthesizeMorningBrief = (routineName = 'Morning Executive & Cash-Flow Brief') => {
+    const totalCash = accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+    const totalDebt = debts.reduce((s, d) => s + (Number(d.balance) || 0), 0);
+    const totalCreditsOwed = credits.filter(c => !c.done).reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const netWorth = totalCash + totalCreditsOwed - totalDebt;
+    const pendingGoals = majorExpenses.filter(m => !m.done);
+    const hpEvents = Array.isArray(budgetData?.honeypotEvents) ? budgetData.honeypotEvents : [];
+    const criticalHp = hpEvents.filter(e => e.severity === 'CRITICAL').length;
+    const pbTasks = Array.isArray(budgetData?.pullboardData?.tasks) ? budgetData.pullboardData.tasks : [];
+    const pbShouts = Array.isArray(budgetData?.pullboardData?.shouts) ? budgetData.pullboardData.shouts : [];
+    const openEsc = pbShouts.filter(s => s.type === 'ESCALATION' && s.status !== 'RESOLVED').length;
+    const topAccount = [...accounts].sort((a, b) => (Number(b.balance) || 0) - (Number(a.balance) || 0))[0];
+    const activeRules = rules.filter(r => r.active !== false);
+    const secPinActive = Boolean(budgetData?.securityConfig?.pinHash);
+    const seniorModeOn = Boolean(budgetData?.uxAdvisorConfig?.seniorUxMode);
+
+    const nowPht = new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
+    const content = [
+      `# ☀️ ${routineName}`,
+      `Generated: ${nowPht} (Asia/Manila) · Owner: ${userEmail}`,
+      ``,
+      `## 1. Financial Position Snapshot`,
+      `- **Net Worth**: ₱${Math.round(netWorth).toLocaleString()} (Liquid/Invested: ₱${Math.round(totalCash).toLocaleString()} across ${accounts.length} accounts)`,
+      `- **Debts & Credit Cards**: ₱${Math.round(totalDebt).toLocaleString()} | **Pending Receivable Credits**: ₱${Math.round(totalCreditsOwed).toLocaleString()}`,
+      topAccount ? `- **Largest Reserve**: ${topAccount.name} holding ₱${Math.round(Number(topAccount.balance) || 0).toLocaleString()} (${totalCash > 0 ? Math.round(((Number(topAccount.balance) || 0) / totalCash) * 100) : 0}% concentration)` : '- **Largest Reserve**: No accounts configured yet',
+      `- **Upcoming Major Goals (${pendingGoals.length} active)**: ${pendingGoals.slice(0, 3).map(g => `${g.name} (₱${Math.round(Number(g.budget) || 0).toLocaleString()})`).join(', ') || 'None'}`,
+      ``,
+      `## 2. Cyber Security, Pullboard & Senior UX Posture`,
+      `- **Honeynet & App Vault**: Vault PIN is ${secPinActive ? 'ACTIVE' : 'NOT SET'} · ${hpEvents.length} Honeynet events captured (${criticalHp} CRITICAL).`,
+      `- **Pullboard Specs**: ${pbTasks.filter(t => t.lane === 'VERIFICATION').length} task(s) awaiting 2nd-agent verification · ${openEsc} open escalation(s).`,
+      `- **Senior Parent UX**: High-Clarity Mode is ${seniorModeOn ? 'ENABLED' : 'STANDARD'}.`,
+      ``,
+      `## 3. Active Compounding Rules Enforced`,
+      ...activeRules.map(r => `- ✓ ${r.rule}`),
+      ``,
+      `## 4. Recommended Focus Today`,
+      `1. Review your Philippine bank cards & Passbooks in [[Account Dashboard]].`,
+      criticalHp > 0 ? `2. Inspect ${criticalHp} CRITICAL Honeynet trigger(s) and export incident report if unrecognized.` : `2. Maintain weekly encrypted (.bvault.json) vault backup.`,
+      !secPinActive ? `3. Arm a 4–6 digit App Vault Security PIN & Duress Honey-PIN.` : `3. Review upcoming 5th/20th payroll expenses & Major Goals.`
+    ].join('\n');
+
+    const briefObj = {
+      generatedAt: new Date().toISOString(),
+      title: routineName,
+      markdown: content
+    };
+    return briefObj;
+  };
+
+  const handleRunMorningBriefSkill = () => {
+    const brief = synthesizeMorningBrief('Morning Executive & Cash-Flow Brief');
+    updateSecondBrain({ lastMorningBrief: brief });
+    setActiveC('CAPABILITIES');
+    showSbToast('✓ Live Morning Executive Brief synthesized from all modules!');
+  };
+
+  const handleSaveBriefToVault = () => {
+    if (!lastMorningBrief) return;
+    const created = {
+      id: `sb_brief_${Date.now()}`,
+      para: '0_Context',
+      title: `Brief_${new Date().toISOString().slice(0, 10)}.md — Daily Executive Brief`,
+      tags: ['#brief', '#morning', '#executive'],
+      linkedModule: 'dashboard',
+      updatedAt: new Date().toISOString(),
+      content: lastMorningBrief.markdown
+    };
+    updateSecondBrain({ notes: [created, ...notes] });
+    setSelectedNoteId(created.id);
+    showSbToast('✓ Saved Morning Brief into PARA [0_Context] Vault!');
+  };
+
+  const handleAddPermanentRule = (e) => {
+    e.preventDefault();
+    if (!newRuleText.trim()) return;
+    const created = {
+      id: `sb_r_${Date.now()}`,
+      rule: newRuleText.trim(),
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+    updateSecondBrain({ rules: [created, ...rules] });
+    setNewRuleText('');
+    showSbToast('✓ Permanent rule compounded into Second Brain memory!');
+  };
+
+  const handleToggleRule = (ruleId) => {
+    updateSecondBrain({
+      rules: rules.map(r => r.id === ruleId ? { ...r, active: r.active === false } : r)
+    });
+  };
+
+  const handleDeleteRule = (ruleId) => {
+    updateSecondBrain({ rules: rules.filter(r => r.id !== ruleId) });
+  };
+
+  const handleRunRoutine = (rt) => {
+    const brief = synthesizeMorningBrief(rt.name);
+    const nowIso = new Date().toISOString();
+    updateSecondBrain({
+      lastMorningBrief: brief,
+      routines: routines.map(item => item.id === rt.id ? { ...item, lastRunAt: nowIso } : item)
+    });
+    showSbToast(`✓ Executed routine "${rt.name}"!`);
+  };
+
+  const connectionBridges = [
+    { name: 'Supabase PostgreSQL Cloud', status: isSupabaseConfigured ? 'CONNECTED' : 'LOCAL DEMO', detail: 'Multi-user user_data cloud sync & auth JWT isolation', color: C.green, actionTab: 'resources' },
+    { name: 'MCP Server (20 Tools)', status: 'ONLINE', detail: 'Reads accounts, budgets, security, pullboard, ux-advisor & second-brain', color: C.blue, actionTab: 'admin' },
+    { name: 'Account Dashboard & Passbook', status: `${accounts.length} ACCOUNTS`, detail: 'Solid-color PH bank cards & instant Libreta modals', color: C.teal, actionTab: 'account-dashboard' },
+    { name: 'Cyber Security & Honeynet', status: '5 TRAPS ARMED', detail: `${(budgetData?.honeypotEvents || []).length} intruder telemetry log(s) captured`, color: C.red, actionTab: 'security' },
+    { name: 'Pullboard Spec Harness', status: `${(budgetData?.pullboardData?.tasks || []).length} SPECS`, detail: 'Adversarial 2nd-agent verification & SPEC.md/DOCTRINE.md', color: C.amber, actionTab: 'pullboard' },
+    { name: 'UX/UI Design Architect', status: budgetData?.uxAdvisorConfig?.seniorUxMode ? 'SENIOR CLARITY' : 'AUDITING', detail: 'WCAG 2.2 AA-AAA contrast & DTCG solid tokens', color: C.purple, actionTab: 'ux-advisor' },
+    { name: 'Vercel Cloud & CPU/RAM Monitor', status: 'LIVE POLLING', detail: 'Node RSS RAM, CPU %, DB latency & quota alerts', color: C.teal, actionTab: 'resources' },
+    { name: 'Visual Knowledge Graph', status: 'CANVAS ACTIVE', detail: 'Interactive force-directed map of accounts, goals & debts', color: C.pink, actionTab: 'graph' }
+  ];
+
+  return (
+    <div>
+      {/* ── Top Four C's Second Brain Header Banner (Solid Color — Zero Gradients) ── */}
+      <Card style={{
+        marginBottom: 16,
+        background: '#0b1829',
+        border: `2px solid ${C.amber}`
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: sm ? 18 : 22, fontWeight: 900, color: '#ffffff' }}>
+                🧠 AI Second Brain — The "Four C's" Operating System
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+                background: '#050b16', color: C.amber, border: `1.5px solid ${C.amber}`
+              }}>
+                yysILVsfLFM · PARA + MCP
+              </span>
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.86)', marginTop: 4 }}>
+              Persistent <strong>PARA Markdown Memory Vault</strong>, live <strong>Data & MCP Connections</strong>, <strong>Compounding Skills</strong>, and proactive <strong>Cadence Briefings</strong> for {userEmail}.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleRunMorningBriefSkill}
+              style={{
+                padding: '10px 16px', borderRadius: 10, border: 'none',
+                background: C.amber, color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+              }}
+            >
+              ☀️ Generate Morning Brief
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExportMarkdownVault(null)}
+              style={{
+                padding: '10px 14px', borderRadius: 10,
+                border: `1.5px solid ${C.teal}`, background: '#050b16',
+                color: C.teal, fontSize: 12, fontWeight: 800, cursor: 'pointer'
+              }}
+            >
+              ⬇️ Export Obsidian PARA (.MD)
+            </button>
+          </div>
+        </div>
+
+        {toastMsg && (
+          <div style={{
+            marginTop: 12, padding: '9px 14px', borderRadius: 8,
+            background: '#051b11', border: `1.5px solid ${C.green}`,
+            color: '#d1fae5', fontSize: 12, fontWeight: 800
+          }}>
+            {toastMsg}
+          </div>
+        )}
+
+        {/* The 4 C's Overview Strip */}
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 10, marginTop: 16 }}>
+          {[
+            { id: 'CONTEXT', label: '1. CONTEXT (PARA Vault)', value: `${notes.length} MD Notes`, sub: 'Projects · Areas · Resources · Archive', color: C.amber },
+            { id: 'CONNECTIONS', label: '2. CONNECTIONS', value: `${connectionBridges.length} Bridges`, sub: 'Supabase · MCP (20) · Honeynet · Vercel', color: C.blue },
+            { id: 'CAPABILITIES', label: '3. CAPABILITIES & RULES', value: `${rules.filter(r => r.active !== false).length} Rules`, sub: 'Executive Briefs & Compounding Memory', color: C.green },
+            { id: 'CADENCE', label: '4. CADENCE (Routines)', value: `${routines.length} Loops`, sub: 'Daily Brief · 5th/20th Payroll Audit', color: C.purple }
+          ].map(item => (
+            <div
+              key={item.id}
+              onClick={() => setActiveC(item.id)}
+              style={{
+                background: activeC === item.id ? '#112238' : '#050b16',
+                border: `2px solid ${activeC === item.id ? item.color : C.border}`,
+                borderRadius: 10, padding: '10px 12px', cursor: 'pointer'
+              }}
+            >
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 800 }}>{item.label}</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: item.color, marginTop: 2 }}>{item.value}</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{item.sub}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          C1: CONTEXT — INTERACTIVE PARA MARKDOWN MEMORY VAULT & BRAIN-DUMP CAPTURE
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {activeC === 'CONTEXT' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Quick Brain-Dump Capture ("Auto-Classify into PARA") */}
+          {canWrite && (
+            <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.amber}` }}>
+              <SecTitle>⚡ Quick Brain-Dump Capture (Auto-Router into PARA Folders)</SecTitle>
+              <form onSubmit={handleCaptureBrainDump} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '2fr 1fr', gap: 10 }}>
+                  <Inp
+                    value={brainDumpTitle}
+                    onChange={e => setBrainDumpTitle(e.target.value)}
+                    placeholder="Note title (e.g. 'Japan Trip Flight Budget Note' or 'BPI Time Deposit Maturity')…"
+                  />
+                  <select
+                    value={brainDumpParaOverride}
+                    onChange={e => setBrainDumpParaOverride(e.target.value)}
+                    style={{ padding: '8px 10px', borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12, fontWeight: 700 }}
+                  >
+                    <option value="AUTO">🤖 Auto-Classify into PARA</option>
+                    {PARA_BUCKETS.map(b => <option key={b.id} value={b.id}>📁 {b.label} — {b.sub}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexDirection: sm ? 'column' : 'row' }}>
+                  <Inp
+                    value={brainDumpBody}
+                    onChange={e => setBrainDumpBody(e.target.value)}
+                    placeholder="Write anything (#tags and [[wikilinks]] supported)…"
+                  />
+                  <button
+                    type="submit"
+                    style={{
+                      padding: '9px 18px', borderRadius: 8, border: 'none',
+                      background: C.amber, color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                    }}
+                  >
+                    🧠 Capture to PARA Vault
+                  </button>
+                </div>
+              </form>
+            </Card>
+          )}
+
+          {/* Two-Pane PARA Vault Explorer + Markdown Editor */}
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '2fr 3fr', gap: 16 }}>
+            {/* Left Pane: PARA Folder Tree & Notes List */}
+            <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+              <SecTitle>📁 PARA Folder Structure</SecTitle>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setParaFilter('ALL')}
+                  style={{
+                    padding: '4px 9px', borderRadius: 8, fontSize: 10, fontWeight: 900, cursor: 'pointer',
+                    border: `1px solid ${paraFilter === 'ALL' ? C.amber : C.border}`,
+                    background: paraFilter === 'ALL' ? `${C.amber}22` : '#050b16',
+                    color: paraFilter === 'ALL' ? C.amber : C.muted
+                  }}
+                >
+                  ALL ({notes.length})
+                </button>
+                {PARA_BUCKETS.map(b => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => setParaFilter(b.id)}
+                    style={{
+                      padding: '4px 9px', borderRadius: 8, fontSize: 10, fontWeight: 900, cursor: 'pointer',
+                      border: `1px solid ${paraFilter === b.id ? b.color : C.border}`,
+                      background: paraFilter === b.id ? `${b.color}22` : '#050b16',
+                      color: paraFilter === b.id ? b.color : C.muted
+                    }}
+                  >
+                    {b.label} ({notes.filter(n => n.para === b.id).length})
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ marginBottom: 10 }}>
+                <Inp
+                  value={searchNotes}
+                  onChange={e => setSearchNotes(e.target.value)}
+                  placeholder="🔍 Search notes, #tags, or [[wikilinks]]…"
+                  style={{ padding: '7px 10px', fontSize: 12 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 390, overflowY: 'auto' }}>
+                {filteredNotes.map(n => {
+                  const bucket = PARA_BUCKETS.find(b => b.id === n.para) || PARA_BUCKETS[0];
+                  const isSel = selectedNote?.id === n.id;
+                  return (
+                    <div
+                      key={n.id}
+                      onClick={() => setSelectedNoteId(n.id)}
+                      style={{
+                        padding: 10, borderRadius: 10, cursor: 'pointer',
+                        background: isSel ? '#112238' : '#050b16',
+                        border: `1.5px solid ${isSel ? bucket.color : C.border}`
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 4, background: `${bucket.color}22`, color: bucket.color }}>
+                          {n.para}
+                        </span>
+                        <span style={{ fontSize: 10, color: C.muted }}>{(n.tags || []).slice(0, 2).join(' ')}</span>
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#ffffff', marginTop: 4 }}>{n.title}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Right Pane: Selected Markdown Note Editor */}
+            <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+              {selectedNote ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <SecTitle style={{ margin: 0 }}>📝 Markdown Note Inspector & Editor</SecTitle>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <select
+                        value={selectedNote.para}
+                        onChange={e => handleMoveNotePara(selectedNote.id, e.target.value)}
+                        style={{ padding: '5px 8px', borderRadius: 6, border: `1px solid ${C.border}`, background: '#050b16', color: C.text, fontSize: 11, fontWeight: 700 }}
+                      >
+                        {PARA_BUCKETS.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => handleExportMarkdownVault(selectedNote)}
+                        style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.teal}`, background: '#050b16', color: C.teal, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+                      >
+                        ⬇️ .MD
+                      </button>
+                      {canUpdate && notes.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteNote(selectedNote.id)}
+                          style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${C.red}66`, background: 'transparent', color: C.red, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <Inp
+                    value={editingNoteTitle}
+                    onChange={e => setEditingNoteTitle(e.target.value)}
+                    style={{ fontWeight: 800, fontSize: 13 }}
+                  />
+
+                  <textarea
+                    rows={13}
+                    value={editingNoteContent}
+                    onChange={e => setEditingNoteContent(e.target.value)}
+                    style={{
+                      width: '100%', padding: 12, borderRadius: 10, background: '#040914',
+                      border: `1px solid ${C.border}`, color: '#e2e8f0',
+                      fontFamily: 'monospace', fontSize: 12, lineHeight: 1.55
+                    }}
+                  />
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <span style={{ fontSize: 11, color: C.muted }}>
+                      Updated: {selectedNote.updatedAt ? new Date(selectedNote.updatedAt).toLocaleString() : '—'}
+                    </span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {selectedNote.linkedModule && setTab && (
+                        <button
+                          type="button"
+                          onClick={() => setTab(selectedNote.linkedModule)}
+                          style={{ padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.blue}`, background: '#050b16', color: C.blue, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+                        >
+                          ↗ Open Linked Module ({selectedNote.linkedModule})
+                        </button>
+                      )}
+                      {canWrite && (
+                        <button
+                          type="button"
+                          onClick={handleSaveSelectedNote}
+                          style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: C.green, color: '#051b11', fontSize: 12, fontWeight: 900, cursor: 'pointer' }}
+                        >
+                          💾 Save Markdown Note
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          C2: CONNECTIONS — LIVE DATA & MCP NEURAL HUB
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {activeC === 'CONNECTIONS' && (
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.blue}` }}>
+          <SecTitle>🔌 Pillar 2 — Live Second Brain Connections ({connectionBridges.length} Active Data Bridges)</SecTitle>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>
+            Your Second Brain stays connected to live financial databases, MCP tool schemas, cloud utilization monitors, and security sensors—never stale notes.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(2, 1fr)', gap: 12 }}>
+            {connectionBridges.map(conn => (
+              <div
+                key={conn.name}
+                style={{
+                  padding: 14, borderRadius: 12, background: '#050b16',
+                  border: `1.5px solid ${conn.color}88`,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 900, color: '#ffffff' }}>{conn.name}</span>
+                    <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 8, background: `${conn.color}22`, color: conn.color, border: `1px solid ${conn.color}` }}>
+                      {conn.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{conn.detail}</div>
+                </div>
+                {setTab && (
+                  <button
+                    type="button"
+                    onClick={() => setTab(conn.actionTab)}
+                    style={{ padding: '7px 12px', borderRadius: 8, border: `1px solid ${conn.color}`, background: 'transparent', color: conn.color, fontSize: 11, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    Open ↗
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          C3: CAPABILITIES — MORNING EXECUTIVE BRIEF SKILL & COMPOUNDING MEMORY RULES
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {activeC === 'CAPABILITIES' && (
+        <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '3fr 2fr', gap: 16 }}>
+          {/* Live Synthesized Morning Brief */}
+          <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.amber}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              <SecTitle style={{ margin: 0 }}>☀️ Skill 1 — Synthesized Executive Morning Brief</SecTitle>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={handleRunMorningBriefSkill}
+                  style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: C.amber, color: '#050b16', fontSize: 11, fontWeight: 900, cursor: 'pointer' }}
+                >
+                  ⚡ Refresh Brief
+                </button>
+                {lastMorningBrief && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(lastMorningBrief.markdown);
+                        setBriefCopied(true);
+                        setTimeout(() => setBriefCopied(false), 2500);
+                      }}
+                      style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${C.teal}`, background: '#050b16', color: C.teal, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+                    >
+                      {briefCopied ? '✓ Copied' : '📋 Copy MD'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveBriefToVault}
+                      style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${C.green}`, background: '#050b16', color: C.green, fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+                    >
+                      💾 Save to Vault
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {lastMorningBrief ? (
+              <pre style={{
+                margin: 0, padding: 14, borderRadius: 10, background: '#040914',
+                border: `1px solid ${C.border}`, color: '#e2e8f0',
+                fontFamily: 'monospace', fontSize: 11, whiteSpace: 'pre-wrap', lineHeight: 1.55,
+                maxHeight: 440, overflowY: 'auto'
+              }}>
+                {lastMorningBrief.markdown}
+              </pre>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '42px 16px', background: '#050b16', borderRadius: 10, border: `1px dashed ${C.border}`, color: C.muted, fontSize: 12 }}>
+                Click <strong style={{ color: C.amber }}>"⚡ Refresh Brief"</strong> to run your Second Brain synthesis skill across all bank balances, debts, major goals, Honeynet alerts, and Pullboard escalations!
+              </div>
+            )}
+          </Card>
+
+          {/* Compounding Refinement: "Teach the Brain a Permanent Rule" */}
+          <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.green}` }}>
+            <SecTitle>🧬 Skill 2 — Teach the Brain (Compounding Rules)</SecTitle>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, lineHeight: 1.45 }}>
+              Whenever you teach or correct the AI, save it here as a <strong>Permanent Rule</strong> so every future morning brief, agent workflow, and MCP session obeys it automatically.
+            </div>
+
+            {canWrite && (
+              <form onSubmit={handleAddPermanentRule} style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                <Inp
+                  value={newRuleText}
+                  onChange={e => setNewRuleText(e.target.value)}
+                  placeholder="Teach a rule (e.g. 'Alert if Maya balance drops below ₱50k')…"
+                />
+                <button
+                  type="submit"
+                  style={{ padding: '8px 12px', borderRadius: 8, border: 'none', background: C.green, color: '#051b11', fontSize: 11, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  ➕ Save Rule
+                </button>
+              </form>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}>
+              {rules.map(r => (
+                <div
+                  key={r.id}
+                  style={{
+                    padding: 10, borderRadius: 8, background: '#050b16',
+                    border: `1px solid ${r.active !== false ? C.green : C.border}88`,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8
+                  }}
+                >
+                  <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: r.active !== false ? '#ffffff' : C.muted, cursor: 'pointer', flex: 1 }}>
+                    <input
+                      type="checkbox"
+                      checked={r.active !== false}
+                      onChange={() => handleToggleRule(r.id)}
+                      style={{ accentColor: C.green, marginTop: 2 }}
+                    />
+                    <span>{r.rule}</span>
+                  </label>
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteRule(r.id)}
+                      style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 11, fontWeight: 900 }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          C4: CADENCE — PROACTIVE DAILY/WEEKLY LOOPS & EMAIL SCHEDULER
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {activeC === 'CADENCE' && (
+        <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.purple}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div>
+              <SecTitle style={{ margin: 0 }}>⏰ Pillar 4 — Proactive Cadence & Autonomous Routines</SecTitle>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                Keep your Second Brain running on a recurring heartbeat—and pair it with your cloud Email Scheduler (`api/schedules`) for unattended delivery.
+              </div>
+            </div>
+            {setTab && (
+              <button
+                type="button"
+                onClick={() => setTab('reports')}
+                style={{ padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${C.purple}`, background: '#050b16', color: '#d8b4fe', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+              >
+                📅 Configure Unattended Cloud Cron in Reports ↗
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : 'repeat(2, 1fr)', gap: 12 }}>
+            {routines.map(rt => (
+              <div
+                key={rt.id}
+                style={{
+                  padding: 14, borderRadius: 12, background: '#050b16',
+                  border: `1.5px solid ${C.purple}88`,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: '#ffffff' }}>{rt.name}</div>
+                  <div style={{ fontSize: 11, color: C.teal, fontWeight: 700, marginTop: 3 }}>🕒 Cadence: {rt.cadence}</div>
+                  <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
+                    Last Run: {rt.lastRunAt ? new Date(rt.lastRunAt).toLocaleString() : 'Never run yet'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRunRoutine(rt)}
+                  style={{
+                    padding: '8px 14px', borderRadius: 8, border: 'none',
+                    background: C.purple, color: '#ffffff', fontSize: 11, fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap'
+                  }}
+                >
+                  ▶ Run Now
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── ISOMETRIC AI AGENT VIRTUAL OFFICE HQ (AUTONOMOUS AI EMPLOYEES) ──────────
+const OFFICE_ROOMS = [
+  { id: 'ops', name: 'FINANCIAL OPS HUB', subtitle: 'Accounts · 5th/20th Payroll · Debts', gx1: 1, gy1: 1, gx2: 7, gy2: 7, floorColor: '#0e2d1f', rimColor: '#24d17e', wallColor: '#091f15', targetTab: 'account-dashboard', entry: { x: 7.2, y: 5.5 } },
+  { id: 'intel', name: 'CYBER & CLOUD INTEL LAB', subtitle: 'Honeynet · SHA-256 · Vercel CPU/RAM', gx1: 10.5, gy1: 1, gx2: 17, gy2: 6.5, floorColor: '#0a2933', rimColor: '#30d6b0', wallColor: '#071c24', targetTab: 'security', entry: { x: 10.5, y: 5.5 } },
+  { id: 'brain', name: 'THE BRAIN · COMMAND CENTER', subtitle: 'Orchestrator · Morning Brief · PARA', gx1: 7.5, gy1: 7.2, gx2: 11.8, gy2: 11.5, floorColor: '#221c0c', rimColor: '#f2a71b', wallColor: '#171206', targetTab: 'second-brain', entry: { x: 9.6, y: 11.6 } },
+  { id: 'studio', name: 'DEV STUDIO & UX LAB', subtitle: 'Pullboard Spec Verifier · WCAG 2.2', gx1: 12.6, gy1: 7.2, gx2: 17.5, gy2: 13, floorColor: '#0e2240', rimColor: '#4b8dff', wallColor: '#09162b', targetTab: 'pullboard', entry: { x: 12.4, y: 10.2 } },
+  { id: 'lounge', name: 'PANTRY & GAME LOUNGE', subtitle: 'AI Employee Break & Idle Zone', gx1: 1, gy1: 11.8, gx2: 7.5, gy2: 17.2, floorColor: '#241a0d', rimColor: '#fbbf24', wallColor: '#191107', targetTab: 'ai-office', entry: { x: 6.8, y: 12.0 } },
+  { id: 'rec', name: 'PICKLEBALL & GYM ZONE', subtitle: 'Idle Recreation & Recharge', gx1: 9.2, gy1: 13.5, gx2: 17, gy2: 17.2, floorColor: '#191233', rimColor: '#7257ff', wallColor: '#110c24', targetTab: 'ai-office', entry: { x: 9.5, y: 13.2 } }
+];
+
+const OFFICE_AGENT_ROSTER = [
+  { id: 'boss', name: 'Boss', role: 'Chief Second-Brain Orchestrator', roomId: 'brain', targetTab: 'second-brain', color: '#f2a71b', deskPos: { x: 8.6, y: 8.6 }, restPos: { x: 3.1, y: 13.8 }, missionLabel: 'Synthesize Live Morning Executive Brief' },
+  { id: 'librarian', name: 'Librarian', role: 'PARA Markdown & Rules Custodian', roomId: 'brain', targetTab: 'second-brain', color: '#fbbf24', deskPos: { x: 10.7, y: 9.2 }, restPos: { x: 4.9, y: 14.2 }, missionLabel: 'Audit PARA Notes & Permanent Brain Rules' },
+  { id: 'balanse', name: 'Balanse', role: 'Philippine Bank Treasurer Bot', roomId: 'ops', targetTab: 'account-dashboard', color: '#24d17e', deskPos: { x: 3.1, y: 3.2 }, restPos: { x: 2.3, y: 15.2 }, missionLabel: 'Audit PH Bank Card Balances & Net Flow' },
+  { id: 'kinsenas', name: 'Kinsenas', role: '5th/20th Payroll & Debt Strategist', roomId: 'ops', targetTab: 'debts', color: '#4ade80', deskPos: { x: 5.5, y: 4.5 }, restPos: { x: 4.2, y: 15.8 }, missionLabel: 'Analyze Debt Utilization & Major Goals' },
+  { id: 'bantay', name: 'Bantay', role: 'Cyber Security & Honeynet Sentinel', roomId: 'intel', targetTab: 'security', color: '#ff514f', deskPos: { x: 12.2, y: 3.1 }, restPos: { x: 11.4, y: 15.2 }, missionLabel: 'Verify SHA-256 Integrity & Honeynet Traps' },
+  { id: 'vercelbot', name: 'VercelBot', role: 'Cloud CPU, RAM & Supabase Monitor', roomId: 'intel', targetTab: 'resources', color: '#30d6b0', deskPos: { x: 15.2, y: 4.4 }, restPos: { x: 13.6, y: 15.6 }, missionLabel: 'Ping Vercel Node CPU/RAM & Supabase Latency' },
+  { id: 'vero', name: 'Vero', role: 'Pullboard Adversarial Verifier', roomId: 'studio', targetTab: 'pullboard', color: '#4b8dff', deskPos: { x: 14.3, y: 9.0 }, restPos: { x: 5.9, y: 15.2 }, missionLabel: 'Check Pullboard Spec Lanes & Escalations' },
+  { id: 'tala', name: 'Tala', role: 'Senior-Friendly UX/UI Architect', roomId: 'studio', targetTab: 'ux-advisor', color: '#bc8cff', deskPos: { x: 15.8, y: 11.3 }, restPos: { x: 14.8, y: 14.8 }, missionLabel: 'Run WCAG 2.2 AA-AAA Card Contrast Audit' }
+];
+
+function AiOfficeHqTab({
+  accounts = [],
+  budgetData = {},
+  setBudgetData,
+  debts = [],
+  credits = [],
+  majorExpenses = [],
+  sm,
+  canWrite,
+  setTab,
+  onAppendSecurityLog
+}) {
+  const canvasRef = useRef(null);
+  const [selectedAgentId, setSelectedAgentId] = useState('boss');
+  const [selectedRoomId, setSelectedRoomId] = useState('brain');
+  const [autoShiftSec, setAutoShiftSec] = useState(12); // 12 | 25 | 0 (manual)
+  const [agentStatuses, setAgentStatuses] = useState(() =>
+    OFFICE_AGENT_ROSTER.reduce((acc, a) => ({
+      ...acc,
+      [a.id]: { state: 'IDLE', bubble: '', lastSummary: 'Waiting in Lounge for next shift or dispatch.', lastRunAt: null }
+    }), {})
+  );
+
+  const aiOfficeLogs = Array.isArray(budgetData?.aiOfficeLog) ? budgetData.aiOfficeLog : [];
+
+  // Mutable animation ref for silky 60fps canvas loop without React re-render lag
+  const simRef = useRef({
+    agents: OFFICE_AGENT_ROSTER.map((a, idx) => ({
+      ...a,
+      x: a.restPos.x,
+      y: a.restPos.y,
+      waypoints: [],
+      state: 'IDLE', // 'IDLE' | 'WALKING_TO_DESK' | 'WORKING' | 'WALKING_TO_LOUNGE'
+      workTimerMs: 0,
+      bubble: '',
+      bubbleTimerMs: 0,
+      bobPhase: idx * 0.9
+    })),
+    hitBoxes: [],
+    selectedAgentId: 'boss',
+    pulsePhase: 0,
+    shiftIdx: 0
+  });
+
+  // Latest live state ref so async dispatch executes against up-to-date state
+  const liveStateRef = useRef({ accounts, budgetData, debts, credits, majorExpenses });
+  liveStateRef.current = { accounts, budgetData, debts, credits, majorExpenses };
+
+  useEffect(() => {
+    simRef.current.selectedAgentId = selectedAgentId;
+  }, [selectedAgentId]);
+
+  const recordOfficeLog = (agent, summary) => {
+    const entry = {
+      id: `ao_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toISOString(),
+      agentId: agent.id,
+      agentName: agent.name,
+      roomName: OFFICE_ROOMS.find(r => r.id === agent.roomId)?.name || 'HQ',
+      targetTab: agent.targetTab,
+      summary
+    };
+    setBudgetData(prev => {
+      const prevLog = Array.isArray(prev?.aiOfficeLog) ? prev.aiOfficeLog : [];
+      return {
+        ...prev,
+        aiOfficeLog: [entry, ...prevLog].slice(0, 30)
+      };
+    });
+  };
+
+  // Real executable mission logic for each AI Employee!
+  const executeRealAgentMission = async (agentId) => {
+    const { accounts: curAcc, budgetData: curBudget, debts: curDebts, credits: curCreds, majorExpenses: curMajor } = liveStateRef.current;
+    const def = OFFICE_AGENT_ROSTER.find(a => a.id === agentId);
+    if (!def) return 'Mission complete';
+
+    let shortBubble = 'Done ✓';
+    let fullSummary = '';
+
+    if (agentId === 'boss') {
+      const totalCash = curAcc.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+      const totalDebt = curDebts.reduce((s, d) => s + (Number(d.balance) || 0), 0);
+      const pendingCreds = curCreds.filter(c => !c.done).reduce((s, c) => s + (Number(c.amount) || 0), 0);
+      const netWorth = totalCash + pendingCreds - totalDebt;
+      const nowPht = new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
+      const briefMd = `# ☀️ Autonomous HQ Executive Brief\nGenerated by AI Boss at ${nowPht}\n- Net Worth: ₱${Math.round(netWorth).toLocaleString()}\n- Bank Cash (${curAcc.length}): ₱${Math.round(totalCash).toLocaleString()} | Debt: ₱${Math.round(totalDebt).toLocaleString()}\n- Security Events: ${(curBudget?.honeypotEvents || []).length}`;
+      setBudgetData(prev => ({
+        ...prev,
+        secondBrain: {
+          ...(prev?.secondBrain || {}),
+          lastMorningBrief: { generatedAt: new Date().toISOString(), title: 'Autonomous HQ Brief', markdown: briefMd }
+        }
+      }));
+      shortBubble = `Net Worth ${fmtK(netWorth)}`;
+      fullSummary = `Boss synthesized Executive Morning Brief (Net Worth: ${peso(netWorth)} across ${curAcc.length} accounts).`;
+    } else if (agentId === 'librarian') {
+      const notes = curBudget?.secondBrain?.notes || DEFAULT_SB_NOTES;
+      const rules = curBudget?.secondBrain?.rules || DEFAULT_SB_RULES;
+      shortBubble = `${notes.length} MD Notes · ${rules.length} Rules`;
+      fullSummary = `Librarian audited PARA Markdown Vault (${notes.length} notes across Context/Projects/Areas/Resources/Archive, ${rules.length} permanent rules).`;
+    } else if (agentId === 'balanse') {
+      const totalBal = curAcc.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+      const negCount = curAcc.filter(a => (Number(a.balance) || 0) < 0).length;
+      const txCount = (curBudget?.debitHistory || []).length;
+      shortBubble = `${curAcc.length} Banks · ${fmtK(totalBal)}`;
+      fullSummary = `Balanse audited ${curAcc.length} Philippine bank cards totaling ${peso(totalBal)} (${txCount} ledger transactions, ${negCount} negative alerts).`;
+    } else if (agentId === 'kinsenas') {
+      const totalDebt = curDebts.reduce((s, d) => s + (Number(d.balance) || 0), 0);
+      const totalLimit = curDebts.reduce((s, d) => s + (Number(d.limit) || 0), 0);
+      const utilPct = totalLimit > 0 ? Math.round((totalDebt / totalLimit) * 100) : 0;
+      const activeGoals = curMajor.filter(m => !m.done).length;
+      shortBubble = `Debt ${utilPct}% · ${activeGoals} Goals`;
+      fullSummary = `Kinsenas checked 5th/20th payroll readiness: Total Debt ${peso(totalDebt)} (${utilPct}% limit utilization) & ${activeGoals} active Major Goals.`;
+    } else if (agentId === 'bantay') {
+      const hash = await computeFinancialIntegrityFingerprint({
+        accounts: curAcc,
+        budgetData: curBudget,
+        debts: curDebts,
+        credits: curCreds,
+        majorExpenses: curMajor
+      });
+      const hpCount = (curBudget?.honeypotEvents || []).length;
+      const pinOn = Boolean(curBudget?.securityConfig?.pinHash);
+      shortBubble = `SHA ${hash.slice(0, 6)} · ${hpCount} Traps`;
+      fullSummary = `Bantay verified SHA-256 Financial Digest (${hash.slice(0, 12)}…), Vault PIN ${pinOn ? 'ACTIVE' : 'NOT SET'}, and ${hpCount} Honeynet alert(s).`;
+    } else if (agentId === 'vercelbot') {
+      try {
+        const start = performance.now();
+        const res = await fetch('/api/health?telemetry=1', { cache: 'no-store' });
+        const rtt = Math.round(performance.now() - start);
+        if (res.ok) {
+          const data = await res.json();
+          const rss = data?.memory?.rssMb ?? '?';
+          const cpu = data?.cpu?.processCpuPct ?? 0;
+          shortBubble = `${rss}MB RAM · ${rtt}ms`;
+          fullSummary = `VercelBot sampled ${data?.vercel?.region || 'node'}: CPU ${cpu}%, Node RSS ${rss} MB, API RTT ${rtt}ms.`;
+        } else {
+          shortBubble = `API HTTP ${res.status}`;
+          fullSummary = `VercelBot pinged /api/health?telemetry=1 (HTTP ${res.status}, ${rtt}ms).`;
+        }
+      } catch {
+        shortBubble = 'Local Vite Monitor';
+        fullSummary = 'VercelBot verified client memory & local browser telemetry (Vercel API reachable on deployment).';
+      }
+    } else if (agentId === 'vero') {
+      const pbTasks = curBudget?.pullboardData?.tasks || DEFAULT_PULLBOARD_TASKS;
+      const verCount = pbTasks.filter(t => t.lane === 'VERIFICATION').length;
+      const shouts = curBudget?.pullboardData?.shouts || DEFAULT_PULLBOARD_SHOUTS;
+      const openEsc = shouts.filter(s => s.type === 'ESCALATION' && s.status !== 'RESOLVED').length;
+      shortBubble = `${verCount} Verify · ${openEsc} Esc`;
+      fullSummary = `Vero inspected Pullboard: ${verCount} task(s) in Adversarial Verification, ${openEsc} open human escalation(s).`;
+    } else if (agentId === 'tala') {
+      let aaaCount = 0;
+      let failCount = 0;
+      curAcc.forEach(a => {
+        const b = getPhBankBrand(a);
+        const ratio = calcWcagContrastRatio(b.solidBg, b.textColor);
+        if (ratio >= 7.0) aaaCount++;
+        else if (ratio < 4.5) failCount++;
+      });
+      shortBubble = `${aaaCount}/${curAcc.length} AAA Cards`;
+      fullSummary = `Tala completed WCAG 2.2 audit: ${aaaCount}/${curAcc.length} PH bank cards pass AAA (>=7.0:1), ${failCount} contrast failure(s).`;
+    }
+
+    // Update Canvas Sprite Bubble & React Summary State
+    const sprite = simRef.current.agents.find(a => a.id === agentId);
+    if (sprite) {
+      sprite.bubble = shortBubble;
+      sprite.bubbleTimerMs = 5800;
+    }
+
+    setAgentStatuses(prev => ({
+      ...prev,
+      [agentId]: {
+        state: 'WORKING',
+        bubble: shortBubble,
+        lastSummary: fullSummary,
+        lastRunAt: new Date().toISOString()
+      }
+    }));
+    recordOfficeLog(def, fullSummary);
+    return fullSummary;
+  };
+
+  // Dispatch one AI employee: Lounge -> Hallway -> Room Entry -> Desk!
+  const dispatchAgent = (agentId) => {
+    const sprite = simRef.current.agents.find(a => a.id === agentId);
+    if (!sprite) return;
+    const room = OFFICE_ROOMS.find(r => r.id === sprite.roomId);
+    const hub = { x: 9.2, y: 12.2 };
+
+    sprite.waypoints = [
+      { x: 6.8, y: 12.2 }, // exit lounge corridor
+      hub,
+      room?.entry || { x: 9.5, y: 8.5 },
+      { ...sprite.deskPos }
+    ];
+    sprite.state = 'WALKING_TO_DESK';
+    sprite.bubble = 'On my way!';
+    sprite.bubbleTimerMs = 2500;
+
+    setAgentStatuses(prev => ({
+      ...prev,
+      [agentId]: { ...prev[agentId], state: 'WALKING', bubble: 'Walking to desk…' }
+    }));
+    setSelectedAgentId(agentId);
+    if (room) setSelectedRoomId(room.id);
+  };
+
+  const dispatchAllHands = () => {
+    OFFICE_AGENT_ROSTER.forEach((a, i) => {
+      setTimeout(() => dispatchAgent(a.id), i * 240);
+    });
+  };
+
+  const sendAllToLounge = () => {
+    simRef.current.agents.forEach(sprite => {
+      const room = OFFICE_ROOMS.find(r => r.id === sprite.roomId);
+      sprite.waypoints = [
+        room?.entry || { x: 9.2, y: 11.5 },
+        { x: 9.2, y: 12.2 },
+        { x: 6.8, y: 12.2 },
+        { ...sprite.restPos }
+      ];
+      sprite.state = 'WALKING_TO_LOUNGE';
+      sprite.workTimerMs = 0;
+      sprite.bubble = 'Coffee break ☕';
+      sprite.bubbleTimerMs = 2400;
+    });
+    setAgentStatuses(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(k => {
+        next[k] = { ...next[k], state: 'WALKING', bubble: 'Walking to Pantry Lounge…' };
+      });
+      return next;
+    });
+  };
+
+  // Autonomous Shift Loop — rotates employees automatically so the HQ stays alive!
+  useEffect(() => {
+    if (!autoShiftSec) return;
+    const timer = setInterval(() => {
+      const idx = simRef.current.shiftIdx % OFFICE_AGENT_ROSTER.length;
+      simRef.current.shiftIdx += 1;
+      dispatchAgent(OFFICE_AGENT_ROSTER[idx].id);
+    }, autoShiftSec * 1000);
+    return () => clearInterval(timer);
+  }, [autoShiftSec]);
+
+  // Trigger an initial demo shift when first opening the HQ so agents start moving right away!
+  useEffect(() => {
+    const t1 = setTimeout(() => dispatchAgent('boss'), 450);
+    const t2 = setTimeout(() => dispatchAgent('balanse'), 1100);
+    const t3 = setTimeout(() => dispatchAgent('bantay'), 1800);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, []);
+
+  // Main 60fps Isometric 2.5D Render & Physics Loop
+  useEffect(() => {
+    let rafId = null;
+    let lastTime = performance.now();
+
+    const stepAndRender = (now) => {
+      const dtMs = Math.min(80, now - lastTime);
+      lastTime = now;
+      const dtSec = dtMs / 1000;
+      const sim = simRef.current;
+      sim.pulsePhase += dtSec * 2.4;
+
+      // 1. Update Agent Kinematics & State Machine
+      sim.agents.forEach(ag => {
+        ag.bobPhase += dtSec * (ag.state === 'IDLE' ? 2.0 : 8.5);
+        if (ag.bubbleTimerMs > 0) {
+          ag.bubbleTimerMs = Math.max(0, ag.bubbleTimerMs - dtMs);
+          if (ag.bubbleTimerMs === 0) ag.bubble = '';
+        }
+
+        if ((ag.state === 'WALKING_TO_DESK' || ag.state === 'WALKING_TO_LOUNGE') && ag.waypoints.length > 0) {
+          const target = ag.waypoints[0];
+          const dx = target.x - ag.x;
+          const dy = target.y - ag.y;
+          const dist = Math.hypot(dx, dy);
+          const speed = 3.4; // grid tiles per sec
+          const step = speed * dtSec;
+
+          if (dist <= step || dist < 0.08) {
+            ag.x = target.x;
+            ag.y = target.y;
+            ag.waypoints.shift();
+
+            if (ag.waypoints.length === 0) {
+              if (ag.state === 'WALKING_TO_DESK') {
+                ag.state = 'WORKING';
+                ag.workTimerMs = 6500;
+                executeRealAgentMission(ag.id);
+              } else {
+                ag.state = 'IDLE';
+                setAgentStatuses(prev => ({
+                  ...prev,
+                  [ag.id]: { ...prev[ag.id], state: 'IDLE' }
+                }));
+              }
+            }
+          } else {
+            ag.x += (dx / dist) * step;
+            ag.y += (dy / dist) * step;
+          }
+        } else if (ag.state === 'WORKING') {
+          ag.workTimerMs -= dtMs;
+          if (ag.workTimerMs <= 0) {
+            const room = OFFICE_ROOMS.find(r => r.id === ag.roomId);
+            ag.waypoints = [
+              room?.entry || { x: 9.2, y: 11.5 },
+              { x: 9.2, y: 12.2 },
+              { x: 6.8, y: 12.2 },
+              { ...ag.restPos }
+            ];
+            ag.state = 'WALKING_TO_LOUNGE';
+            setAgentStatuses(prev => ({
+              ...prev,
+              [ag.id]: { ...prev[ag.id], state: 'IDLE' }
+            }));
+          }
+        }
+      });
+
+      // 2. Render Isometric HQ Canvas
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+        const rectW = canvas.clientWidth || 780;
+        const rectH = canvas.clientHeight || 520;
+        if (canvas.width !== Math.round(rectW * dpr) || canvas.height !== Math.round(rectH * dpr)) {
+          canvas.width = Math.round(rectW * dpr);
+          canvas.height = Math.round(rectH * dpr);
+        }
+
+        const ctx = canvas.getContext('2d');
+        ctx.save();
+        ctx.scale(dpr, dpr);
+
+        // Deep Obsidian HQ Void Backdrop
+        ctx.fillStyle = '#040a14';
+        ctx.fillRect(0, 0, rectW, rectH);
+
+        const tileW = Math.min(rectW / 36, rectH / 20);
+        const tileH = tileW * 0.52;
+        const originX = rectW * 0.5;
+        const originY = rectH * 0.08;
+
+        const iso = (gx, gy, elev = 0) => ({
+          x: originX + (gx - gy) * tileW,
+          y: originY + (gx + gy) * tileH - elev
+        });
+
+        const safeRoundRect = (x, y, w, h, r = 5) => {
+          const rr = Math.min(r, w / 2, h / 2);
+          ctx.beginPath();
+          ctx.moveTo(x + rr, y);
+          ctx.lineTo(x + w - rr, y);
+          ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+          ctx.lineTo(x + w, y + h - rr);
+          ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+          ctx.lineTo(x + rr, y + h);
+          ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+          ctx.lineTo(x, y + rr);
+          ctx.quadraticCurveTo(x, y, x + rr, y);
+          ctx.closePath();
+        };
+
+        const drawIsoPoly = (pts, fill, stroke, lineWidth = 1.5) => {
+          ctx.beginPath();
+          pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+          ctx.closePath();
+          if (fill) {
+            ctx.fillStyle = fill;
+            ctx.fill();
+          }
+          if (stroke) {
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+          }
+        };
+
+        // Main HQ Slab Floor (0..18 x 0..18)
+        drawIsoPoly(
+          [iso(0, 0), iso(18, 0), iso(18, 18), iso(0, 18)],
+          '#08101c',
+          '#1c2b42',
+          2
+        );
+
+        // Subtle Hallway Grid Lines
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+        ctx.lineWidth = 1;
+        for (let g = 0; g <= 18; g += 1) {
+          const a = iso(g, 0);
+          const b = iso(g, 18);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+
+          const c = iso(0, g);
+          const d = iso(18, g);
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(d.x, d.y);
+          ctx.stroke();
+        }
+
+        // Draw Corridor Highlight Strips
+        drawIsoPoly(
+          [iso(7.4, 5.0), iso(10.6, 5.0), iso(10.6, 13.5), iso(7.4, 13.5)],
+          'rgba(56, 189, 248, 0.06)',
+          null
+        );
+
+        // Draw Each Office Room (Floor + Back Walls + Glowing Neon Trim + Furniture)
+        OFFICE_ROOMS.forEach(rm => {
+          const wallH = tileH * 1.45;
+          const pTL = iso(rm.gx1, rm.gy1);
+          const pTR = iso(rm.gx2, rm.gy1);
+          const pBR = iso(rm.gx2, rm.gy2);
+          const pBL = iso(rm.gx1, rm.gy2);
+
+          // Room Floor
+          drawIsoPoly([pTL, pTR, pBR, pBL], rm.floorColor, `${rm.rimColor}55`, 1.5);
+
+          // Back Left Wall (pTL -> pBL extruded up)
+          drawIsoPoly(
+            [pTL, pBL, { x: pBL.x, y: pBL.y - wallH }, { x: pTL.x, y: pTL.y - wallH }],
+            rm.wallColor,
+            `${rm.rimColor}88`,
+            1.2
+          );
+          // Back Right Wall (pTL -> pTR extruded up)
+          drawIsoPoly(
+            [pTL, pTR, { x: pTR.x, y: pTR.y - wallH }, { x: pTL.x, y: pTL.y - wallH }],
+            rm.wallColor,
+            `${rm.rimColor}88`,
+            1.2
+          );
+
+          // Neon Top Trim Rim
+          ctx.strokeStyle = rm.rimColor;
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.moveTo(pBL.x, pBL.y - wallH);
+          ctx.lineTo(pTL.x, pTL.y - wallH);
+          ctx.lineTo(pTR.x, pTR.y - wallH);
+          ctx.stroke();
+
+          // Special Center Brain Hologram Core
+          if (rm.id === 'brain') {
+            const centerPt = iso(9.65, 9.35, 10 + Math.sin(sim.pulsePhase) * 3);
+            ctx.beginPath();
+            ctx.arc(centerPt.x, centerPt.y, tileW * 0.65, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.28)';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#38bdf8';
+            ctx.stroke();
+          }
+
+          // Room Floating Banner Sign
+          const lblPt = iso((rm.gx1 + rm.gx2) / 2, rm.gy1 + 0.35, wallH + 8);
+          ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+          const tw = ctx.measureText(rm.name).width + 12;
+          ctx.fillStyle = '#050b16';
+          ctx.strokeStyle = rm.rimColor;
+          ctx.lineWidth = 1.2;
+          safeRoundRect(lblPt.x - tw / 2, lblPt.y - 10, tw, 17, 5);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.fillText(rm.name, lblPt.x, lblPt.y + 2);
+        });
+
+        // Draw Desks for Each Agent
+        OFFICE_AGENT_ROSTER.forEach(ag => {
+          const dp = ag.deskPos;
+          const deskC = iso(dp.x + 0.35, dp.y - 0.35);
+          drawIsoPoly(
+            [
+              iso(dp.x - 0.25, dp.y - 0.65),
+              iso(dp.x + 0.75, dp.y - 0.65),
+              iso(dp.x + 0.75, dp.y + 0.15),
+              iso(dp.x - 0.25, dp.y + 0.15)
+            ],
+            '#1e293b',
+            '#475569',
+            1
+          );
+          // Glowing Monitor Screen
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(deskC.x - 7, deskC.y - 11, 14, 8);
+        });
+
+        // Sort Agents by Depth (gx + gy) so closer agents render in front
+        const sortedAgents = [...sim.agents].sort((a, b) => (a.x + a.y) - (b.x + b.y));
+        const nextHitBoxes = [];
+
+        sortedAgents.forEach(ag => {
+          const base = iso(ag.x, ag.y);
+          const isWalking = ag.state === 'WALKING_TO_DESK' || ag.state === 'WALKING_TO_LOUNGE';
+          const isWorking = ag.state === 'WORKING';
+          const bounce = isWalking ? Math.abs(Math.sin(ag.bobPhase)) * 5 : isWorking ? Math.sin(ag.bobPhase) * 1.5 : 0;
+          const isSelected = sim.selectedAgentId === ag.id;
+
+          // Shadow
+          ctx.beginPath();
+          ctx.ellipse(base.x, base.y + 2, 9, 5, 0, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          ctx.fill();
+
+          // Selection Ring
+          if (isSelected) {
+            ctx.beginPath();
+            ctx.ellipse(base.x, base.y + 2, 14, 8, 0, 0, Math.PI * 2);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+
+          // Isometric Avatar Torso
+          const torsoY = base.y - 9 - bounce;
+          safeRoundRect(base.x - 6, torsoY, 12, 11, 4);
+          ctx.fillStyle = ag.color;
+          ctx.fill();
+          ctx.strokeStyle = '#050b16';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+
+          // Avatar Head
+          ctx.beginPath();
+          ctx.arc(base.x, torsoY - 5, 5.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#fef3c7';
+          ctx.fill();
+          ctx.stroke();
+
+          // Status Dot on Corner of Nameplate
+          const statusClr = isWorking ? '#24d17e' : isWalking ? '#f2a71b' : '#94a3b8';
+
+          // Floating Nameplate Tag
+          ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+          const nameW = ctx.measureText(ag.name).width + 18;
+          const tagX = base.x - nameW / 2;
+          const tagY = torsoY - 27;
+          ctx.fillStyle = isSelected ? '#1e293b' : '#050b16';
+          ctx.strokeStyle = isSelected ? '#ffffff' : ag.color;
+          ctx.lineWidth = isSelected ? 1.8 : 1.1;
+          safeRoundRect(tagX, tagY, nameW, 15, 4);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(tagX + 6, tagY + 7.5, 2.8, 0, Math.PI * 2);
+          ctx.fillStyle = statusClr;
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'left';
+          ctx.fillText(ag.name, tagX + 12, tagY + 11);
+
+          // Live Speech / Telemetry Bubble when working or dispatched
+          if (ag.bubble) {
+            ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+            const bw = ctx.measureText(ag.bubble).width + 14;
+            const bx = base.x - bw / 2;
+            const by = tagY - 21;
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = ag.color;
+            ctx.lineWidth = 1.5;
+            safeRoundRect(bx, by, bw, 17, 6);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#050b16';
+            ctx.textAlign = 'center';
+            ctx.fillText(ag.bubble, base.x, by + 12);
+          }
+
+          nextHitBoxes.push({ id: ag.id, roomId: ag.roomId, cx: base.x, cy: base.y - 12 });
+        });
+
+        sim.hitBoxes = nextHitBoxes;
+        ctx.restore();
+      }
+
+      rafId = requestAnimationFrame(stepAndRender);
+    };
+
+    rafId = requestAnimationFrame(stepAndRender);
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  const handleCanvasClick = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Hit-test closest AI Employee within 30px
+    let best = null;
+    let bestDist = 30;
+    for (const hb of simRef.current.hitBoxes) {
+      const d = Math.hypot(hb.cx - clickX, hb.cy - clickY);
+      if (d < bestDist) {
+        best = hb;
+        bestDist = d;
+      }
+    }
+    if (best) {
+      setSelectedAgentId(best.id);
+      setSelectedRoomId(best.roomId);
+    }
+  };
+
+  const selectedAgent = OFFICE_AGENT_ROSTER.find(a => a.id === selectedAgentId) || OFFICE_AGENT_ROSTER[0];
+  const selectedAgentStatus = agentStatuses[selectedAgent.id] || {};
+  const workingCount = Object.values(agentStatuses).filter(s => s.state === 'WORKING' || s.state === 'WALKING').length;
+
+  return (
+    <div>
+      {/* ── Top Isometric AI HQ Control Banner (Solid Color — Zero Gradients) ── */}
+      <Card style={{
+        marginBottom: 16,
+        background: '#091526',
+        border: `2px solid ${C.amber}`
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: sm ? 18 : 22, fontWeight: 900, color: '#ffffff' }}>
+                🏢 AI Employee Virtual Office HQ (Live Autonomous Operations)
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+                background: '#050b16', color: autoShiftSec ? C.green : C.muted,
+                border: `1.5px solid ${autoShiftSec ? C.green : C.border}`
+              }}>
+                {autoShiftSec ? `🟢 AUTO-SHIFT EVERY ${autoShiftSec}s` : '⏸️ MANUAL DISPATCH'}
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
+                background: '#050b16', color: C.amber, border: `1px solid ${C.amber}`
+              }}>
+                {workingCount} / {OFFICE_AGENT_ROSTER.length} AGENTS ACTIVE
+              </span>
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+              Watch your 8 specialized AI employees walk from the Lounge to their HQ rooms and run real automations across Accounts, Cyber Security, Pullboard, UX/UI, Second Brain & Vercel Cloud!
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', background: '#050b16', border: `1px solid ${C.border}`, borderRadius: 8, padding: 3, gap: 3 }}>
+              {[
+                { label: '12s Auto', sec: 12 },
+                { label: '25s', sec: 25 },
+                { label: 'Pause', sec: 0 }
+              ].map(opt => (
+                <button
+                  key={opt.sec}
+                  type="button"
+                  onClick={() => setAutoShiftSec(opt.sec)}
+                  style={{
+                    padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    fontSize: 11, fontWeight: 800,
+                    background: autoShiftSec === opt.sec ? C.green : 'transparent',
+                    color: autoShiftSec === opt.sec ? '#051b11' : C.muted
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={dispatchAllHands}
+              style={{
+                padding: '9px 14px', borderRadius: 8, border: 'none',
+                background: C.amber, color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+              }}
+            >
+              🚀 All-Hands Shift (Move Everyone!)
+            </button>
+
+            <button
+              type="button"
+              onClick={sendAllToLounge}
+              style={{
+                padding: '9px 12px', borderRadius: 8, border: `1px solid ${C.border}`,
+                background: '#050b16', color: C.text, fontSize: 12, fontWeight: 800, cursor: 'pointer'
+              }}
+            >
+              ☕ Lounge Break
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Main Split: Isometric 2.5D Virtual Office Map + Agent Command Inspector ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: sm ? '1fr' : '3fr 2fr', gap: 16, marginBottom: 16 }}>
+        {/* Left: Interactive Isometric 2.5D Canvas */}
+        <Card style={{ marginBottom: 0, padding: 10, background: '#040a14', border: `2px solid ${C.border}` }}>
+          <canvas
+            ref={canvasRef}
+            onClick={handleCanvasClick}
+            style={{ width: '100%', height: sm ? 360 : 520, display: 'block', borderRadius: 10, cursor: 'pointer' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, padding: '0 6px', fontSize: 11, color: C.muted, flexWrap: 'wrap', gap: 8 }}>
+            <span>👆 Click any AI employee on the floor map to inspect their live mission and linked module.</span>
+            <span>🟢 Working at Desk · 🟡 Walking Hallway · ⚪ Resting in Pantry Lounge</span>
+          </div>
+        </Card>
+
+        {/* Right: Selected AI Employee Inspector + Roster Quick-Dispatch */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Inspector Card */}
+          <Card style={{ marginBottom: 0, background: '#081121', border: `2px solid ${selectedAgent.color}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 18, fontWeight: 900, color: '#ffffff' }}>🤖 {selectedAgent.name}</span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 8,
+                    background: `${selectedAgent.color}22`, color: selectedAgent.color, border: `1px solid ${selectedAgent.color}`
+                  }}>
+                    {selectedAgentStatus.state || 'IDLE'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{selectedAgent.role}</div>
+              </div>
+              {setTab && (
+                <button
+                  type="button"
+                  onClick={() => setTab(selectedAgent.targetTab)}
+                  style={{
+                    padding: '6px 10px', borderRadius: 7, border: `1px solid ${selectedAgent.color}`,
+                    background: '#050b16', color: selectedAgent.color, fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                  }}
+                >
+                  ↗ Open {selectedAgent.targetTab}
+                </button>
+              )}
+            </div>
+
+            <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: '#050b16', border: `1px solid ${C.border}`, fontSize: 12 }}>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Assigned Automated Task</div>
+              <div style={{ color: '#ffffff', fontWeight: 800, marginTop: 2 }}>{selectedAgent.missionLabel}</div>
+              <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase', marginTop: 8 }}>Latest Real Finding</div>
+              <div style={{ color: C.green, fontWeight: 700, marginTop: 2, lineHeight: 1.4 }}>{selectedAgentStatus.lastSummary}</div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => dispatchAgent(selectedAgent.id)}
+                style={{
+                  flex: 1, padding: '9px 14px', borderRadius: 8, border: 'none',
+                  background: selectedAgent.color, color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                }}
+              >
+                ▶ Dispatch {selectedAgent.name} to Desk Now
+              </button>
+            </div>
+          </Card>
+
+          {/* Roster Quick Switcher */}
+          <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+            <SecTitle>👥 AI Employee Roster ({OFFICE_AGENT_ROSTER.length} Agents)</SecTitle>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {OFFICE_AGENT_ROSTER.map(ag => {
+                const st = agentStatuses[ag.id] || {};
+                const isSel = selectedAgentId === ag.id;
+                return (
+                  <button
+                    key={ag.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedAgentId(ag.id);
+                      setSelectedRoomId(ag.roomId);
+                    }}
+                    style={{
+                      padding: '8px 10px', borderRadius: 8, textAlign: 'left', cursor: 'pointer',
+                      background: isSel ? '#112238' : '#050b16',
+                      border: `1.5px solid ${isSel ? ag.color : C.border}`
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: '#ffffff' }}>{ag.name}</span>
+                      <span style={{ fontSize: 9, fontWeight: 900, color: st.state === 'WORKING' ? C.green : st.state === 'WALKING' ? C.amber : C.muted }}>
+                        {st.state || 'IDLE'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 10, color: C.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {ag.targetTab}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* ── Live Autonomous Operations Activity Feed ── */}
+      <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
+        <SecTitle>📡 Live AI Employee Telemetry & Automation Feed ({aiOfficeLogs.length})</SecTitle>
+        {aiOfficeLogs.length === 0 ? (
+          <div style={{ padding: 20, textAlign: 'center', color: C.muted, fontSize: 12 }}>
+            Watch the agents walk from the Pantry Lounge to their desks — every completed shift logs its live audit finding here!
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 240, overflowY: 'auto' }}>
+            {aiOfficeLogs.map(log => (
+              <div
+                key={log.id}
+                style={{
+                  padding: '9px 12px', borderRadius: 8, background: '#050b16',
+                  border: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+                }}
+              >
+                <div>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: C.amber }}>{log.agentName}</span>{' '}
+                  <span style={{ fontSize: 10, color: C.teal, fontWeight: 700 }}>[{log.roomName}]</span>{' '}
+                  <span style={{ fontSize: 12, color: '#ffffff' }}>{log.summary}</span>
+                </div>
+                <span style={{ fontSize: 10, color: C.muted, whiteSpace: 'nowrap' }}>
+                  {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 const checkSessionAdmin = (sess) => {
   if (!sess || !sess.user) return false;
@@ -15385,9 +17136,9 @@ const checkSessionAdmin = (sess) => {
 };
 
 export default function App() {
-  const width=useWidth();
-  const sm=width<640;
-  const [tab,setTab]=useState('dashboard');
+  const width = useWidth();
+  const sm = width < 640;
+  const [tab, setTab] = useState('dashboard');
   const [fakeMode, setFakeMode] = useState(() => {
     try {
       return localStorage.getItem('budget-fake-mode') === 'true';
@@ -15405,13 +17156,13 @@ export default function App() {
     try {
       localStorage.setItem('budget-fake-mode', fakeMode);
       localStorage.removeItem('bg_installments');
-    } catch (_) {}
+    } catch (_) { }
   }, [fakeMode]);
 
-  const [loaded,setLoaded]=useState(false);
-  const [budgetData,setBudgetData]=useState({});
-  const [accounts,setAccounts]=useState(() => isSupabaseConfigured ? [] : DEF_ACCOUNTS);
-  const [majorExpenses,setMajorExpenses]=useState(() => isSupabaseConfigured ? [] : DEF_MAJOR);
+  const [loaded, setLoaded] = useState(false);
+  const [budgetData, setBudgetData] = useState({});
+  const [accounts, setAccounts] = useState(() => isSupabaseConfigured ? [] : DEF_ACCOUNTS);
+  const [majorExpenses, setMajorExpenses] = useState(() => isSupabaseConfigured ? [] : DEF_MAJOR);
   const [credits, setCredits] = useState([]);
   const [debts, setDebts] = useState(() => isSupabaseConfigured ? [] : DEF_DEBTS);
   const [balanceHistory, setBalanceHistory] = useState([]);
@@ -15492,7 +17243,7 @@ export default function App() {
       console.log("[App Client] Detected bloated base64 avatar in Supabase user_metadata. Cleaning up to shrink JWT...");
       try {
         localStorage.setItem(`bujdet-avatar-${session.user.id}`, currentAvatar);
-      } catch (_) {}
+      } catch (_) { }
       supabase.auth.updateUser({
         data: { avatar_url: null }
       }).catch(e => console.warn("Failed to clean avatar metadata:", e));
@@ -15513,7 +17264,7 @@ export default function App() {
     try {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       if (!currentSession) return;
-      
+
       const checkRes = await fetch("/api/admin/check", {
         headers: {
           "Authorization": `Bearer ${currentSession.access_token}`
@@ -15555,11 +17306,11 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to fetch user data.");
-      
+
       const userData = data.userData;
       const targetUser = users.find(u => u.id === targetUserId);
       const isTargetAdmin = targetUser && (targetUser.role === 'admin' || targetUser.email?.toLowerCase() === "rolanmolano_77@yahoo.com");
-      
+
       const fallbackAccounts = isTargetAdmin ? DEF_ACCOUNTS : [];
       const fallbackMajor = isTargetAdmin ? DEF_MAJOR : [];
       const fallbackDebts = isTargetAdmin ? DEF_DEBTS : [];
@@ -15634,7 +17385,7 @@ export default function App() {
           // WIPE TEMPLATE DATA FOR STANDARD USERS
           if (!sessIsAdmin) {
             const hasDefaultAccounts = loadedAccounts.some(a => a.id === 'sla-c' && a.balance === 507000);
-            
+
             // Also check if budget data has default templates
             let budgetUpdated = false;
             const cleanBudget = { ...loadedBudget };
@@ -15669,7 +17420,7 @@ export default function App() {
               if (budgetUpdated) {
                 loadedBudget = cleanBudget;
               }
-              
+
               // Sync the cleared state back to the database immediately to save it
               supabase.from('user_data').upsert({
                 user_id: session.user.id,
@@ -15916,7 +17667,7 @@ export default function App() {
           responseAction: 'Blocked Debug Probe & Logged Caller IP + User-Agent'
         });
       }
-    } catch (_) {}
+    } catch (_) { }
 
     const onStorageTamper = (e) => {
       if (e.key === 'bujdet_master_api_secret_canary' && e.newValue !== 'TRAP_CANARY_DO_NOT_TOUCH_v2026') {
@@ -15930,7 +17681,7 @@ export default function App() {
         });
         try {
           localStorage.setItem('bujdet_master_api_secret_canary', 'TRAP_CANARY_DO_NOT_TOUCH_v2026');
-        } catch (_) {}
+        } catch (_) { }
       }
     };
     window.addEventListener('storage', onStorageTamper);
@@ -15947,7 +17698,7 @@ export default function App() {
         }
       }
       keysToRemove.forEach(k => localStorage.removeItem(k));
-    } catch (_) {}
+    } catch (_) { }
     setIsVaultLocked(false);
     if (isSupabaseConfigured && supabase) {
       await supabase.auth.signOut();
@@ -16026,73 +17777,79 @@ export default function App() {
     if (permissions && permissions[tabId]) return permissions[tabId];
     if (role === "viewer") return "read";
     if (role === "guest") return (tabId === "dashboard" || tabId === "account-dashboard") ? "read" : "none";
-    const baselineModules = new Set(["dashboard", "account-dashboard", "history", "budget", "accounts", "reconcile", "transactions", "investments", "debts", "credits", "expenses", "calendar", "graph", "reports", "security", "pullboard", "ux-advisor", "resources"]);
+    const baselineModules = new Set(["dashboard", "account-dashboard", "history", "budget", "accounts", "reconcile", "transactions", "investments", "debts", "credits", "expenses", "calendar", "graph", "reports", "security", "pullboard", "ux-advisor", "resources", "second-brain", "ai-office"]);
     return baselineModules.has(tabId) ? "update" : "none";
   };
 
-  const TABS=[
-    {id:'dashboard',label:sm?'📊':'📊 Dashboard'},
-    {id:'account-dashboard',label:sm?'🏧':'🏧 Account Dashboard'},
-    {id:'security', label:sm?'🛡️':'🛡️ Cyber Security'},
-    {id:'pullboard',label:sm?'📋':'📋 Pullboard'},
-    {id:'ux-advisor',label:sm?'🎨':'🎨 UX/UI Agent'},
-    {id:'resources',label:sm?'⚡':'⚡ Resources'},
-    {id:'history',  label:sm?'📋':'📋 History'},
-    {id:'budget',   label:sm?'📅':'📅 Monthly'},
-    {id:'accounts', label:sm?'🏦':'🏦 Accounts'},
-    {id:'investments', label:sm?'📈':'📈 Investments'},
-    {id:'debts',    label:sm?'💳':'💳 Debt Manager'},
-    {id:'credits',  label:sm?'🤝':'🤝 Credits'},
-    {id:'expenses', label:sm?'🎯':'🎯 Major'},
-    {id:'calendar', label:sm?'📅':'📅 Calendar'},
-    {id:'reports',  label:sm?'📊':'📊 Reports'},
-    ...(isAdmin ? [{id:'admin', label:sm?'⚙️':'⚙️ Admin Panel'}] : []),
+  const TABS = [
+    { id: 'dashboard', label: sm ? '📊' : '📊 Dashboard' },
+    { id: 'account-dashboard', label: sm ? '🏧' : '🏧 Account Dashboard' },
+    { id: 'security', label: sm ? '🛡️' : '🛡️ Cyber Security' },
+    { id: 'pullboard', label: sm ? '📋' : '📋 Pullboard' },
+    { id: 'ux-advisor', label: sm ? '🎨' : '🎨 UX/UI Agent' },
+    { id: 'resources', label: sm ? '⚡' : '⚡ Resources' },
+    { id: 'second-brain', label: sm ? '🧠' : '🧠 Second Brain' },
+    { id: 'ai-office', label: sm ? '🏢' : '🏢 AI Office HQ' },
+    { id: 'history', label: sm ? '📋' : '📋 History' },
+    { id: 'budget', label: sm ? '📅' : '📅 Monthly' },
+    { id: 'accounts', label: sm ? '🏦' : '🏦 Accounts' },
+    { id: 'investments', label: sm ? '📈' : '📈 Investments' },
+    { id: 'debts', label: sm ? '💳' : '💳 Debt Manager' },
+    { id: 'credits', label: sm ? '🤝' : '🤝 Credits' },
+    { id: 'expenses', label: sm ? '🎯' : '🎯 Major' },
+    { id: 'calendar', label: sm ? '📅' : '📅 Calendar' },
+    { id: 'reports', label: sm ? '📊' : '📊 Reports' },
+    ...(isAdmin ? [{ id: 'admin', label: sm ? '⚙️' : '⚙️ Admin Panel' }] : []),
   ].filter(t => getPermission(t.id) !== 'none');
 
-  const TLBL={
-    dashboard:'Dashboard',
-    'account-dashboard':'Account Dashboard & In/Out Logs',
-    security:'Cyber Security & Data Protection',
-    pullboard:'Pullboard — Spec-Driven Workflow & Verification',
-    'ux-advisor':'UX/UI Design Architect & Advisor Agent',
-    resources:'Live CPU, RAM & Cloud Resource Utilization',
-    history:'History',
-    budget:'Monthly Budget',
-    accounts:'Accounts',
-    'account-manager':'Account Manager',
-    reconcile:'Reconcile & Audit',
-    investments:'Investments',
-    debts:'Debt Manager',
-    credits:'Credits (Money Owed)',
-    expenses:'Major Expenses',
-    calendar:'Financial Calendar',
-    graph:'Financial Knowledge Graph',
-    reports:'Financial Reports',
-    admin:'Admin Panel'
+  const TLBL = {
+    dashboard: 'Dashboard',
+    'account-dashboard': 'Account Dashboard & In/Out Logs',
+    security: 'Cyber Security & Data Protection',
+    pullboard: 'Pullboard — Spec-Driven Workflow & Verification',
+    'ux-advisor': 'UX/UI Design Architect & Advisor Agent',
+    resources: 'Live CPU, RAM & Cloud Resource Utilization',
+    'second-brain': 'AI Second Brain — Four Cs Operating System',
+    'ai-office': 'AI Employee Virtual Office HQ (Live)',
+    history: 'History',
+    budget: 'Monthly Budget',
+    accounts: 'Accounts',
+    'account-manager': 'Account Manager',
+    reconcile: 'Reconcile & Audit',
+    investments: 'Investments',
+    debts: 'Debt Manager',
+    credits: 'Credits (Money Owed)',
+    expenses: 'Major Expenses',
+    calendar: 'Financial Calendar',
+    graph: 'Financial Knowledge Graph',
+    reports: 'Financial Reports',
+    admin: 'Admin Panel'
   };
 
-  const NAV_TABS=[
-    {id:'dashboard',         label:'Dashboard',          icon:'📊',group:'main'},
-    {id:'account-dashboard', label:'Account Dashboard',  icon:'🏧',group:'main'},
-    {id:'security',          label:'Cyber Security',     icon:'🛡️',group:'main'},
-    {id:'pullboard',         label:'Pullboard (Specs)',  icon:'📋',group:'main'},
-    {id:'ux-advisor',        label:'UX/UI Agent',        icon:'🎨',group:'main'},
-    {id:'resources',         label:'CPU & RAM Monitor',  icon:'⚡',group:'main'},
-    {id:'accounts',          label:'Accounts',           icon:'🏦',group:'manage'},
+  const NAV_TABS = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊', group: 'main' },
+    { id: 'account-dashboard', label: 'Account Dashboard', icon: '🏧', group: 'main' },
+    { id: 'security', label: 'Cyber Security', icon: '🛡️', group: 'main' },
+    { id: 'pullboard', label: 'Pullboard (Specs)', icon: '📋', group: 'main' },
+    { id: 'ux-advisor', label: 'UX/UI Agent', icon: '🎨', group: 'main' },
+    { id: 'resources', label: 'CPU & RAM Monitor', icon: '⚡', group: 'main' },
+    { id: 'second-brain', label: 'AI Second Brain', icon: '🧠', group: 'main' },
+    { id: 'ai-office', label: 'AI Office HQ', icon: '🏢', group: 'main' },
+    { id: 'accounts', label: 'Accounts', icon: '🏦', group: 'manage' },
 
-    {id:'reconcile',       label:'Reconcile & Audit',     icon:'🔍',group:'manage'},
-    {id:'transactions',label:'Transactions',       icon:'💸',group:'manage'},
+    { id: 'reconcile', label: 'Reconcile & Audit', icon: '🔍', group: 'manage' },
+    { id: 'transactions', label: 'Transactions', icon: '💸', group: 'manage' },
     // Balance Log removed — superseded by Reconcile & Audit tab (data preserved)
-    {id:'debts',       label:'Debts',              icon:'💳',group:'manage'},
-    {id:'credits',     label:'Credits (Owed to You)',icon:'🤝',group:'manage'},
-    {id:'expenses',    label:'Goals',              icon:'🎯',group:'manage'},
-    {id:'budget',      label:'Monthly Budget',     icon:'📅',group:'manage'},
-    {id:'history',     label:'Budget History',     icon:'📋',group:'manage'},
-    {id:'calendar',    label:'Bills',              icon:'🗓',group:'manage'},
-    {id:'investments', label:'Investments',        icon:'📈',group:'analytics'},
-    {id:'graph',       label:'Financial Graph',    icon:'🕸',group:'analytics'},
-    {id:'reports',     label:'Reports',            icon:'📊',group:'analytics'},
-    ...(isAdmin ? [{id:'admin', label:'Admin Panel',icon:'⚙️',group:'admin'}] : []),
+    { id: 'debts', label: 'Debts', icon: '💳', group: 'manage' },
+    { id: 'credits', label: 'Credits (Owed to You)', icon: '🤝', group: 'manage' },
+    { id: 'expenses', label: 'Goals', icon: '🎯', group: 'manage' },
+    { id: 'budget', label: 'Monthly Budget', icon: '📅', group: 'manage' },
+    { id: 'history', label: 'Budget History', icon: '📋', group: 'manage' },
+    { id: 'calendar', label: 'Bills', icon: '🗓', group: 'manage' },
+    { id: 'investments', label: 'Investments', icon: '📈', group: 'analytics' },
+    { id: 'graph', label: 'Financial Graph', icon: '🕸', group: 'analytics' },
+    { id: 'reports', label: 'Reports', icon: '📊', group: 'analytics' },
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', icon: '⚙️', group: 'admin' }] : []),
   ].filter(t => getPermission(t.id) !== 'none');
 
   const navGroups = [
@@ -16130,7 +17887,7 @@ export default function App() {
   const seniorUxModeActive = Boolean(budgetData?.uxAdvisorConfig?.seniorUxMode);
 
   return (
-    <div style={{background:`radial-gradient(circle at 80% -20%, ${C.blue}18, transparent 36%), ${C.bg}`,minHeight:'100vh',fontFamily:"Inter, 'Segoe UI', system-ui, sans-serif",color:C.text, fontSize: seniorUxModeActive ? '106%' : undefined}}>
+    <div style={{ background: `radial-gradient(circle at 80% -20%, ${C.blue}18, transparent 36%), ${C.bg}`, minHeight: '100vh', fontFamily: "Inter, 'Segoe UI', system-ui, sans-serif", color: C.text, fontSize: seniorUxModeActive ? '106%' : undefined }}>
       {seniorUxModeActive && (
         <style>{`
           button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
@@ -16143,10 +17900,10 @@ export default function App() {
         `}</style>
       )}
       {!sm && (
-        <aside style={{position:'fixed',left:0,top:0,bottom:0,width:250,background:'linear-gradient(180deg,#071120,#030914)',borderRight:`1px solid ${C.border}`,display:'flex',flexDirection:'column',zIndex:20}}>
-          <div style={{height:58,display:'flex',alignItems:'center',gap:10,padding:'0 18px',borderBottom:`1px solid ${C.border}`}}>
-            <div style={{width:24,height:24,borderRadius:7,background:`linear-gradient(135deg, ${C.amber}, ${C.orange})`,display:'flex',alignItems:'center',justifyContent:'center',color:'#08111f',fontWeight:900,fontSize:13}}>B</div>
-            <div style={{fontSize:15,fontWeight:800}}>Budget App 2026</div>
+        <aside style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 250, background: 'linear-gradient(180deg,#071120,#030914)', borderRight: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', zIndex: 20 }}>
+          <div style={{ height: 58, display: 'flex', alignItems: 'center', gap: 10, padding: '0 18px', borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ width: 24, height: 24, borderRadius: 7, background: `linear-gradient(135deg, ${C.amber}, ${C.orange})`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#08111f', fontWeight: 900, fontSize: 13 }}>B</div>
+            <div style={{ fontSize: 15, fontWeight: 800 }}>Budget App 2026</div>
           </div>
           <div style={{ padding: '6px 18px', fontSize: 10, color: C.amber, background: `${C.bg}dd`, borderBottom: `1px solid ${C.border}33`, fontFamily: 'monospace' }}>
             Role: {role} | Admin: {isAdmin ? "YES" : "NO"}
@@ -16188,53 +17945,53 @@ export default function App() {
               </select>
             </div>
           )}
-          <nav style={{padding:12,display:'flex',flexDirection:'column',gap:14,flex:1,overflowY:'auto'}}>
-            {navGroups.map(([group,label]) => (
+          <nav style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 14, flex: 1, overflowY: 'auto' }}>
+            {navGroups.map(([group, label]) => (
               <div key={group}>
-                {label && <div style={{fontSize:10,textTransform:'uppercase',letterSpacing:'0.06em',color:C.muted,fontWeight:800,padding:'8px 6px 7px'}}>{label}</div>}
+                {label && <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, fontWeight: 800, padding: '8px 6px 7px' }}>{label}</div>}
                 {NAV_TABS.filter(t => t.group === group).map(t => (
-                  <button key={t.id} onClick={()=>setTab(t.id)} style={{width:'100%',height:39,border:'none',borderRadius:6,background:tab===t.id?`${C.purple}44`:'transparent',color:tab===t.id?C.text:C.muted,cursor:'pointer',display:'flex',alignItems:'center',gap:10,padding:'0 10px',fontSize:12,fontWeight:tab===t.id?700:500,textAlign:'left'}}>
-                    <span style={{width:19,height:19,borderRadius:5,border:`1px solid ${tab===t.id?C.purple:C.border}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:tab===t.id?C.text:C.muted,background:tab===t.id?`${C.purple}55`:'transparent'}}>{t.icon}</span>
+                  <button key={t.id} onClick={() => setTab(t.id)} style={{ width: '100%', height: 39, border: 'none', borderRadius: 6, background: tab === t.id ? `${C.purple}44` : 'transparent', color: tab === t.id ? C.text : C.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px', fontSize: 12, fontWeight: tab === t.id ? 700 : 500, textAlign: 'left' }}>
+                    <span style={{ width: 19, height: 19, borderRadius: 5, border: `1px solid ${tab === t.id ? C.purple : C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: tab === t.id ? C.text : C.muted, background: tab === t.id ? `${C.purple}55` : 'transparent' }}>{t.icon}</span>
                     {t.label}
                   </button>
                 ))}
               </div>
             ))}
           </nav>
-          <div 
-            onClick={() => setShowProfileModal(true)} 
-            title="Click to edit profile settings" 
-            style={{margin:12,padding:12,border:`1px solid ${C.border}`,borderRadius:8,display:'flex',alignItems:'center',gap:10,background:C.panel,cursor:'pointer'}}
+          <div
+            onClick={() => setShowProfileModal(true)}
+            title="Click to edit profile settings"
+            style={{ margin: 12, padding: 12, border: `1px solid ${C.border}`, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, background: C.panel, cursor: 'pointer' }}
           >
             <div style={{
-              width:34, height:34, borderRadius:'50%',
+              width: 34, height: 34, borderRadius: '50%',
               background: userAvatarUrl ? `url(${userAvatarUrl}) center/cover no-repeat` : `linear-gradient(135deg, ${C.amber}, ${C.orange})`,
-              display:'flex', alignItems:'center', justifyContent:'center',
-              color:'#08111f', fontWeight:900, fontSize:14, flexShrink:0
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#08111f', fontWeight: 900, fontSize: 14, flexShrink: 0
             }}>
               {!userAvatarUrl && avatarInitial}
             </div>
-            <div style={{minWidth:0,flex:1}}>
-              <div style={{fontSize:12,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{displayName}</div>
-              <div style={{fontSize:10,color:C.blue,fontWeight:600}}>⚙️ Edit Profile</div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
+              <div style={{ fontSize: 10, color: C.blue, fontWeight: 600 }}>⚙️ Edit Profile</div>
             </div>
             {isSupabaseConfigured && (
-              <button onClick={(e) => { e.stopPropagation(); supabase.auth.signOut(); }} style={{border:'none',background:'transparent',color:C.muted,fontSize:11,padding:0,cursor:'pointer'}}>Sign out</button>
+              <button onClick={(e) => { e.stopPropagation(); supabase.auth.signOut(); }} style={{ border: 'none', background: 'transparent', color: C.muted, fontSize: 11, padding: 0, cursor: 'pointer' }}>Sign out</button>
             )}
           </div>
         </aside>
       )}
-      <div style={{background:'rgba(4,10,20,0.84)',backdropFilter:'blur(12px)',borderBottom:`1px solid ${C.border}`,padding:sm?'0 16px':'0 24px',display:'flex',justifyContent:'space-between',alignItems:'center',height:sm?52:58,marginLeft:sm?0:250,position:'sticky',top:0,zIndex:15}}>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <span style={{fontSize:sm?16:20,fontWeight:700,color:sm?C.text:C.muted}}>{sm?'Budget App 2026':'Menu'}</span>
+      <div style={{ background: 'rgba(4,10,20,0.84)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${C.border}`, padding: sm ? '0 16px' : '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: sm ? 52 : 58, marginLeft: sm ? 0 : 250, position: 'sticky', top: 0, zIndex: 15 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: sm ? 16 : 20, fontWeight: 700, color: sm ? C.text : C.muted }}>{sm ? 'Budget App 2026' : 'Menu'}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 11, color: !loaded ? C.amber : syncStatus === 'saved' ? C.green : syncStatus === 'syncing' ? C.amber : C.red }}>
             {!isSupabaseConfigured ? 'Local Demo Mode' : !loaded ? 'Loading...' : syncStatus === 'saved' ? 'Saved to Cloud' : syncStatus === 'syncing' ? 'Syncing...' : 'Sync Error'}
           </span>
-          <div 
-            onClick={() => setShowProfileModal(true)} 
-            title="Click to edit profile settings" 
+          <div
+            onClick={() => setShowProfileModal(true)}
+            title="Click to edit profile settings"
             style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
           >
             <div style={{
@@ -16272,6 +18029,46 @@ export default function App() {
               🔒 Lock
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setTab('ai-office')}
+            title="Open Isometric AI Employee Virtual Office HQ"
+            style={{
+              padding: '4px 8px',
+              borderRadius: 5,
+              border: `1px solid ${tab === 'ai-office' ? C.green : C.border}`,
+              background: tab === 'ai-office' ? `${C.green}22` : 'transparent',
+              color: tab === 'ai-office' ? C.green : C.muted,
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: tab === 'ai-office' ? 800 : 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            🏢 HQ
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('second-brain')}
+            title="Open AI Second Brain — Context, Connections, Capabilities & Cadence"
+            style={{
+              padding: '4px 8px',
+              borderRadius: 5,
+              border: `1px solid ${tab === 'second-brain' ? C.amber : C.border}`,
+              background: tab === 'second-brain' ? `${C.amber}22` : 'transparent',
+              color: tab === 'second-brain' ? C.amber : C.muted,
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: tab === 'second-brain' ? 800 : 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            🧠 Brain
+          </button>
           <button
             type="button"
             onClick={() => setTab('resources')}
@@ -16352,15 +18149,15 @@ export default function App() {
           >
             🛡️ Security
           </button>
-          <button 
-            onClick={() => setFakeMode(p => !p)} 
-            style={{ 
-              padding: '4px 8px', 
-              borderRadius: 5, 
-              border: `1px solid ${fakeMode ? C.amber : C.border}`, 
-              background: fakeMode ? `${C.amber}22` : 'transparent', 
-              color: fakeMode ? C.amber : C.muted, 
-              cursor: 'pointer', 
+          <button
+            onClick={() => setFakeMode(p => !p)}
+            style={{
+              padding: '4px 8px',
+              borderRadius: 5,
+              border: `1px solid ${fakeMode ? C.amber : C.border}`,
+              background: fakeMode ? `${C.amber}22` : 'transparent',
+              color: fakeMode ? C.amber : C.muted,
+              cursor: 'pointer',
               fontSize: 11,
               fontWeight: fakeMode ? 700 : 500,
               display: 'flex',
@@ -16371,16 +18168,16 @@ export default function App() {
             {fakeMode ? '🤫 Fake Mode ON' : '🕵️‍♂️ Fake Mode'}
           </button>
           {isSupabaseConfigured && (
-            <button 
-              onClick={() => supabase.auth.signOut()} 
-              style={{ 
-                padding: '4px 8px', 
-                borderRadius: 5, 
-                border: `1px solid ${C.border}`, 
-                background: 'transparent', 
-                color: C.muted, 
-                cursor: 'pointer', 
-                fontSize: 11 
+            <button
+              onClick={() => supabase.auth.signOut()}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 5,
+                border: `1px solid ${C.border}`,
+                background: 'transparent',
+                color: C.muted,
+                cursor: 'pointer',
+                fontSize: 11
               }}
             >
               Sign Out
@@ -16389,9 +18186,9 @@ export default function App() {
         </div>
       </div>
 
-      <div style={{background:C.panel,borderBottom:`1px solid ${C.border}`,display:sm?'flex':'none',overflowX:'auto',scrollbarWidth:'none'}}>
-        {NAV_TABS.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:'none',padding:'13px 12px',border:'none',background:'none',cursor:'pointer',color:tab===t.id?C.text:C.muted,borderBottom:`2px solid ${tab===t.id?C.purple:'transparent'}`,fontSize:12,fontWeight:tab===t.id?700:500,whiteSpace:'nowrap'}}>
+      <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`, display: sm ? 'flex' : 'none', overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {NAV_TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 'none', padding: '13px 12px', border: 'none', background: 'none', cursor: 'pointer', color: tab === t.id ? C.text : C.muted, borderBottom: `2px solid ${tab === t.id ? C.purple : 'transparent'}`, fontSize: 12, fontWeight: tab === t.id ? 700 : 500, whiteSpace: 'nowrap' }}>
             {t.label}
           </button>
         ))}
@@ -16434,9 +18231,9 @@ export default function App() {
         </div>
       )}
 
-      {sm&&<div style={{padding:'8px 16px 0',fontSize:13,fontWeight:600,color:C.muted}}>{TLBL[tab]}</div>}
+      {sm && <div style={{ padding: '8px 16px 0', fontSize: 13, fontWeight: 600, color: C.muted }}>{TLBL[tab]}</div>}
 
-      <div style={{padding:sm?'14px 14px 60px':'24px 28px 40px',maxWidth:sm?'none':1580,marginLeft:sm?0:250}}>
+      <div style={{ padding: sm ? '14px 14px 60px' : '24px 28px 40px', maxWidth: sm ? 'none' : 1580, marginLeft: sm ? 0 : 250 }}>
         {viewingUserId && (
           <div style={{
             background: `rgba(242, 167, 27, 0.15)`,
@@ -16486,30 +18283,32 @@ export default function App() {
 
           return (
             <>
-              {tab==='dashboard'&&<Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} setTab={setTab}/>}
-              {tab==='account-dashboard'&&<AccountDashboardTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} balanceHistory={balanceHistory} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} session={session} ownerName={viewingUserEmail || displayName} onTriggerCanaryTrap={() => recordHoneypotIntrusion({ severity: 'CRITICAL', trapType: 'CANARY_ACCOUNT', trapName: 'Canary Bank Account Trap (BPI Executive Reserve ••9941)', attemptedAction: 'Snooper clicked decoy Canary Bank Account card to inspect passbook & Peso balance', responseAction: (secConfig.autoLockOnCanary && hasActiveVaultPin) ? 'Blocked Passbook Access + Logged Intruder IP & Device + Auto-Locked App Vault' : 'Served Decoy Hardware-Key Error 403-CANARY + Logged Intruder IP & Device', autoLock: Boolean(secConfig.autoLockOnCanary) })}/>}
-              {tab==='history'  &&<HistoryTab budgetData={budgetData} sm={sm}/>}
-              {tab==='budget'   &&<BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='accounts'       &&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} budgetData={budgetData}/>}
-              {tab==='account-manager'&&<AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} budgetData={budgetData}/>}
-              {tab==='reconcile'      &&<ReconcileTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='transactions'&&<TransactionsTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='balancelog'  &&<BalanceLogTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='investments'&&<InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='debts'     &&<DebtsTab debts={debts} setDebts={setDebts} accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} ownerName={displayName}/>}
-              {tab==='credits'  &&<CreditsTab credits={credits} setCredits={setCredits} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='expenses' &&<MajorTab majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='calendar'  &&<CalendarTab budgetData={budgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='graph'     &&<FinancialGraphTab budgetData={budgetData} accounts={accounts} debts={debts} majorExpenses={majorExpenses} credits={credits} sm={sm}/>}
-              {tab==='reports'   &&<ReportTab budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate}/>}
-              {tab==='security'  &&<SecurityCenterTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} credits={credits} setCredits={setCredits} debts={debts} setDebts={setDebts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} session={session} role={role} sm={sm} canUpdate={canUpdate} fakeMode={fakeMode} setFakeMode={setFakeMode} onLockVaultNow={() => { setIsVaultLocked(true); appendSecurityLog('Vault manually locked by user.', 'INFO'); }} onAppendSecurityLog={appendSecurityLog} onRecordHoneypotIntrusion={recordHoneypotIntrusion} onEmergencySignOutAndWipe={handleEmergencySignOutAndWipe}/>}
-              {tab==='pullboard' &&<PullboardTab accounts={accounts} budgetData={budgetData} setBudgetData={setBudgetData} debts={debts} credits={credits} majorExpenses={majorExpenses} session={session} sm={sm} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} onAppendSecurityLog={appendSecurityLog}/>}
-              {tab==='ux-advisor'&&<UxUiAdvisorTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} onAppendSecurityLog={appendSecurityLog}/>}
-              {tab==='resources' &&<SystemResourcesTab accounts={accounts} budgetData={budgetData} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} session={session} sm={sm} setTab={setTab}/>}
+              {tab === 'dashboard' && <Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} setTab={setTab} />}
+              {tab === 'account-dashboard' && <AccountDashboardTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} balanceHistory={balanceHistory} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} session={session} ownerName={viewingUserEmail || displayName} onTriggerCanaryTrap={() => recordHoneypotIntrusion({ severity: 'CRITICAL', trapType: 'CANARY_ACCOUNT', trapName: 'Canary Bank Account Trap (BPI Executive Reserve ••9941)', attemptedAction: 'Snooper clicked decoy Canary Bank Account card to inspect passbook & Peso balance', responseAction: (secConfig.autoLockOnCanary && hasActiveVaultPin) ? 'Blocked Passbook Access + Logged Intruder IP & Device + Auto-Locked App Vault' : 'Served Decoy Hardware-Key Error 403-CANARY + Logged Intruder IP & Device', autoLock: Boolean(secConfig.autoLockOnCanary) })} />}
+              {tab === 'history' && <HistoryTab budgetData={budgetData} sm={sm} />}
+              {tab === 'budget' && <BudgetTab budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
+              {tab === 'accounts' && <AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} budgetData={budgetData} />}
+              {tab === 'account-manager' && <AccountsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} budgetData={budgetData} />}
+              {tab === 'reconcile' && <ReconcileTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate} />}
+              {tab === 'transactions' && <TransactionsTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
+              {tab === 'balancelog' && <BalanceLogTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate} />}
+              {tab === 'investments' && <InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
+              {tab === 'debts' && <DebtsTab debts={debts} setDebts={setDebts} accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} ownerName={displayName} />}
+              {tab === 'credits' && <CreditsTab credits={credits} setCredits={setCredits} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
+              {tab === 'expenses' && <MajorTab majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
+              {tab === 'calendar' && <CalendarTab budgetData={budgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
+              {tab === 'graph' && <FinancialGraphTab budgetData={budgetData} accounts={accounts} debts={debts} majorExpenses={majorExpenses} credits={credits} sm={sm} />}
+              {tab === 'reports' && <ReportTab budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
+              {tab === 'security' && <SecurityCenterTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} credits={credits} setCredits={setCredits} debts={debts} setDebts={setDebts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} session={session} role={role} sm={sm} canUpdate={canUpdate} fakeMode={fakeMode} setFakeMode={setFakeMode} onLockVaultNow={() => { setIsVaultLocked(true); appendSecurityLog('Vault manually locked by user.', 'INFO'); }} onAppendSecurityLog={appendSecurityLog} onRecordHoneypotIntrusion={recordHoneypotIntrusion} onEmergencySignOutAndWipe={handleEmergencySignOutAndWipe} />}
+              {tab === 'pullboard' && <PullboardTab accounts={accounts} budgetData={budgetData} setBudgetData={setBudgetData} debts={debts} credits={credits} majorExpenses={majorExpenses} session={session} sm={sm} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} onAppendSecurityLog={appendSecurityLog} />}
+              {tab === 'ux-advisor' && <UxUiAdvisorTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} onAppendSecurityLog={appendSecurityLog} />}
+              {tab === 'resources' && <SystemResourcesTab accounts={accounts} budgetData={budgetData} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} session={session} sm={sm} setTab={setTab} />}
+              {tab === 'second-brain' && <SecondBrainTab accounts={accounts} budgetData={budgetData} setBudgetData={setBudgetData} debts={debts} credits={credits} majorExpenses={majorExpenses} balanceHistory={balanceHistory} session={session} sm={sm} canWrite={canWrite} canUpdate={canUpdate} setTab={setTab} />}
+              {tab === 'ai-office' && <AiOfficeHqTab accounts={accounts} budgetData={budgetData} setBudgetData={setBudgetData} debts={debts} credits={credits} majorExpenses={majorExpenses} sm={sm} canWrite={canWrite} setTab={setTab} onAppendSecurityLog={appendSecurityLog} />}
             </>
           );
         })()}
-        {tab==='admin'     &&<AdminTab sm={sm} users={users} setUsers={setUsers} adminConfigured={adminConfigured} fetchUsers={fetchUsers}/>}
+        {tab === 'admin' && <AdminTab sm={sm} users={users} setUsers={setUsers} adminConfigured={adminConfigured} fetchUsers={fetchUsers} />}
       </div>
       {showProfileModal && <ProfileSettingsModal session={session} onClose={() => setShowProfileModal(false)} />}
       {isWindowUnfocused && activeAutoBlurUnfocus && !isVaultLocked && (
@@ -16695,7 +18494,7 @@ function ProfileSettingsModal({ session, onClose }) {
       if (finalAvatarUrl && finalAvatarUrl.startsWith('data:image/')) {
         try {
           localStorage.setItem(`bujdet-avatar-${session.user.id}`, finalAvatarUrl);
-        } catch (_) {}
+        } catch (_) { }
         finalAvatarUrl = null; // Do NOT store heavy base64 strings in Supabase user_metadata to avoid JWT bloat!
       }
 
@@ -16758,7 +18557,7 @@ function ProfileSettingsModal({ session, onClose }) {
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Avatar Photo Picker Section */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 14px', background: `${C.panel}66`, borderRadius: 10, border: `1px solid ${C.border}44` }}>
-            <div 
+            <div
               onClick={() => fileInputRef.current?.click()}
               style={{
                 width: 64, height: 64, borderRadius: '50%',
@@ -16776,12 +18575,12 @@ function ProfileSettingsModal({ session, onClose }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Profile Picture</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  accept="image/*" 
-                  onChange={handleFileChange} 
-                  style={{ display: 'none' }} 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }}
                 />
                 <button
                   type="button"
@@ -16859,7 +18658,7 @@ function LiveSupabaseAnalytics({ sm, users = [] }) {
       const { data, error } = await supabase
         .from('user_profiles')
         .select('user_id, budget_data, accounts, credits, debts, updated_at');
-      
+
       const endTime = performance.now();
       setLatency(Math.round(endTime - startTime));
 
@@ -17037,13 +18836,13 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
   const [search, setSearch] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [actionSuccess, setActionSuccess] = useState("");
-  
+
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [targetUser, setTargetUser] = useState(null);
-  
+
   // Forms
   const [addEmail, setAddEmail] = useState("");
   const [addPassword, setAddPassword] = useState("");
@@ -17267,7 +19066,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create user");
-      
+
       setActionSuccess(`Successfully added user ${addEmail}`);
       setAddEmail("");
       setAddPassword("");
@@ -17301,7 +19100,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to reset password");
-      
+
       setActionSuccess(`Password successfully updated for ${targetUser.email}`);
       setResetPwd("");
       setTargetUser(null);
@@ -17336,7 +19135,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update user");
-      
+
       setActionSuccess(`Successfully updated user ${editEmail || targetUser.email}`);
       setShowEditModal(false);
       setTargetUser(null);
@@ -17365,7 +19164,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete user");
-      
+
       setActionSuccess(`User ${user.email} has been deleted.`);
       fetchUsers();
     } catch (err) {
@@ -17428,7 +19227,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
         <div style={{ background: "rgba(242, 167, 27, 0.1)", border: `1px solid ${C.amber}44`, borderRadius: 8, padding: 16, marginBottom: 14, color: C.amber, fontSize: 13, lineHeight: 1.5 }}>
           <strong>🛡️ Supabase Service Role Key Required:</strong>
           <div style={{ marginTop: 6 }}>
-            To enable user management, you must configure the backend with your Supabase Service Role Key. 
+            To enable user management, you must configure the backend with your Supabase Service Role Key.
             Add the following line to your local <code>.env</code> file and restart the server:
           </div>
           <pre style={{ background: "#08111f", padding: 8, borderRadius: 4, marginTop: 8, color: C.text, fontSize: 12 }}>
@@ -17454,15 +19253,15 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 12, flexDirection: sm ? "column" : "row" }}>
           <SecTitle style={{ margin: 0 }}>System User Management</SecTitle>
           <div style={{ display: "flex", gap: 8, width: sm ? "100%" : "auto" }}>
-            <Inp 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
-              placeholder="Search name or email..." 
-              style={{ width: sm ? "100%" : 240, height: 35 }} 
+            <Inp
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search name or email..."
+              style={{ width: sm ? "100%" : 240, height: 35 }}
               disabled={!adminConfigured}
             />
-            <BtnG 
-              onClick={() => { setActionSuccess(""); setError(""); setShowAddModal(true); }} 
+            <BtnG
+              onClick={() => { setActionSuccess(""); setError(""); setShowAddModal(true); }}
               style={{ height: 35, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", opacity: adminConfigured ? 1 : 0.5 }}
               disabled={!adminConfigured}
             >
@@ -17506,16 +19305,16 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                     <tr key={user.id} style={{ borderBottom: `1px solid ${C.border}22`, transition: "background 0.2s" }}>
                       <td style={{ padding: "10px 8px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <div style={{ 
-                            width: 32, 
-                            height: 32, 
-                            borderRadius: "50%", 
-                            background: userPic ? `url(${userPic}) center/cover no-repeat` : `${avClr}22`, 
-                            border: `1px solid ${avClr}44`, 
-                            color: avClr, 
-                            display: "flex", 
-                            alignItems: "center", 
-                            justifyContent: "center", 
+                          <div style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: "50%",
+                            background: userPic ? `url(${userPic}) center/cover no-repeat` : `${avClr}22`,
+                            border: `1px solid ${avClr}44`,
+                            color: avClr,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             fontWeight: 700,
                             fontSize: 12,
                             flexShrink: 0
@@ -17580,9 +19379,9 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                       </td>
                       <td style={{ padding: "10px 8px", textAlign: "center" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-                          <Btn 
+                          <Btn
                             onClick={() => {
-                              setActionSuccess(""); 
+                              setActionSuccess("");
                               setError("");
                               setTargetUser(user);
                               setEditFullName(user.user_metadata?.full_name || "");
@@ -17596,9 +19395,9 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                           >
                             Edit
                           </Btn>
-                          <Btn 
+                          <Btn
                             onClick={() => {
-                              setActionSuccess(""); 
+                              setActionSuccess("");
                               setError("");
                               setTargetUser(user);
                               setShowPwdModal(true);
@@ -17608,15 +19407,15 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                           >
                             Reset Pwd
                           </Btn>
-                          <button 
-                            onClick={() => handleDelete(user)} 
-                            style={{ 
-                              background: "none", 
-                              border: `1px solid ${C.red}33`, 
-                              borderRadius: 6, 
-                              cursor: "pointer", 
-                              color: C.red, 
-                              padding: "4px 8px", 
+                          <button
+                            onClick={() => handleDelete(user)}
+                            style={{
+                              background: "none",
+                              border: `1px solid ${C.red}33`,
+                              borderRadius: 6,
+                              cursor: "pointer",
+                              color: C.red,
+                              padding: "4px 8px",
                               fontSize: 11,
                               opacity: actionLoading ? 0.5 : 1
                             }}
@@ -17651,8 +19450,8 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
           <Card style={{ width: "100%", maxWidth: 420, marginBottom: 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <SecTitle style={{ margin: 0 }}>Manually Add User</SecTitle>
-              <button 
-                onClick={() => setShowAddModal(false)} 
+              <button
+                onClick={() => setShowAddModal(false)}
                 style={{ background: "none", border: "none", color: C.muted, fontSize: 20, cursor: "pointer" }}
               >
                 ×
@@ -17661,29 +19460,29 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
             <form onSubmit={handleAdd} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>Full Name</label>
-                <Inp 
-                  value={addFullName} 
-                  onChange={e => setAddFullName(e.target.value)} 
-                  placeholder="e.g. John Doe" 
+                <Inp
+                  value={addFullName}
+                  onChange={e => setAddFullName(e.target.value)}
+                  placeholder="e.g. John Doe"
                 />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>Email Address *</label>
-                <Inp 
+                <Inp
                   type="email"
-                  value={addEmail} 
-                  onChange={e => setAddEmail(e.target.value)} 
-                  placeholder="name@example.com" 
+                  value={addEmail}
+                  onChange={e => setAddEmail(e.target.value)}
+                  placeholder="name@example.com"
                   required
                 />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>Password * (min 6 chars)</label>
-                <Inp 
+                <Inp
                   type="password"
-                  value={addPassword} 
-                  onChange={e => setAddPassword(e.target.value)} 
-                  placeholder="••••••••" 
+                  value={addPassword}
+                  onChange={e => setAddPassword(e.target.value)}
+                  placeholder="••••••••"
                   minLength={6}
                   required
                 />
@@ -17717,8 +19516,8 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
           <Card style={{ width: "100%", maxWidth: 420, marginBottom: 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <SecTitle style={{ margin: 0 }}>Reset Password</SecTitle>
-              <button 
-                onClick={() => { setShowPwdModal(false); setTargetUser(null); }} 
+              <button
+                onClick={() => { setShowPwdModal(false); setTargetUser(null); }}
                 style={{ background: "none", border: "none", color: C.muted, fontSize: 20, cursor: "pointer" }}
               >
                 ×
@@ -17730,11 +19529,11 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
             <form onSubmit={handleResetPwd} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>New Password (min 6 chars)</label>
-                <Inp 
+                <Inp
                   type="password"
-                  value={resetPwd} 
-                  onChange={e => setResetPwd(e.target.value)} 
-                  placeholder="••••••••" 
+                  value={resetPwd}
+                  onChange={e => setResetPwd(e.target.value)}
+                  placeholder="••••••••"
                   minLength={6}
                   required
                 />
@@ -17768,8 +19567,8 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
           <Card style={{ width: "100%", maxWidth: 450, marginBottom: 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <SecTitle style={{ margin: 0 }}>Edit User Details</SecTitle>
-              <button 
-                onClick={() => { setShowEditModal(false); setTargetUser(null); }} 
+              <button
+                onClick={() => { setShowEditModal(false); setTargetUser(null); }}
                 style={{ background: "none", border: "none", color: C.muted, fontSize: 20, cursor: "pointer" }}
               >
                 ×
@@ -17778,19 +19577,19 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
             <form onSubmit={handleEditUser} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>Full Name</label>
-                <Inp 
-                  value={editFullName} 
-                  onChange={e => setEditFullName(e.target.value)} 
-                  placeholder="Full Name" 
+                <Inp
+                  value={editFullName}
+                  onChange={e => setEditFullName(e.target.value)}
+                  placeholder="Full Name"
                 />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>Email Address</label>
-                <Inp 
+                <Inp
                   type="email"
-                  value={editEmail} 
-                  onChange={e => setEditEmail(e.target.value)} 
-                  placeholder="name@example.com" 
+                  value={editEmail}
+                  onChange={e => setEditEmail(e.target.value)}
+                  placeholder="name@example.com"
                   required
                 />
               </div>
@@ -17817,11 +19616,11 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
               </div>
               <div>
                 <label style={{ fontSize: 11, color: C.muted, display: "block", marginBottom: 4 }}>New Password (leave blank to keep current)</label>
-                <Inp 
+                <Inp
                   type="password"
-                  value={editPassword} 
-                  onChange={e => setEditPassword(e.target.value)} 
-                  placeholder="••••••••" 
+                  value={editPassword}
+                  onChange={e => setEditPassword(e.target.value)}
+                  placeholder="••••••••"
                 />
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -17844,8 +19643,8 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
             <SecTitle style={{ margin: 0 }}>🛡️ System Diagnostics & Testing</SecTitle>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Verify in-memory budget calculation logic, scheduler configurations, and MCP schemas.</div>
           </div>
-          <BtnG 
-            disabled={testingModule !== null} 
+          <BtnG
+            disabled={testingModule !== null}
             onClick={() => runTest("all")}
             style={{ display: "flex", alignItems: "center", gap: 6, opacity: testingModule !== null ? 0.7 : 1, whiteSpace: "nowrap" }}
           >
@@ -17862,6 +19661,8 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
             { id: "pullboard", label: "Pullboard Harness", icon: "📋" },
             { id: "ux-advisor", label: "UX/UI Design Agent", icon: "🎨" },
             { id: "resources", label: "CPU & RAM Monitor", icon: "⚡" },
+            { id: "second-brain", label: "AI Second Brain", icon: "🧠" },
+            { id: "ai-office", label: "AI Office HQ", icon: "🏢" },
             { id: "history", label: "History Module", icon: "📋" },
             { id: "monthly", label: "Monthly Module", icon: "📅" },
             { id: "accounts", label: "Accounts Module", icon: "🏦" },
@@ -17881,7 +19682,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
             const isWorking = res?.status === "success";
             const isFailed = res?.status === "failure";
             const isTesting = testingModule === m.id;
-            
+
             return (
               <div key={m.id} style={{
                 padding: 10, borderRadius: 8, border: `1px solid ${C.border}`,
@@ -17952,6 +19753,8 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                 { id: "pullboard", label: "Pullboard (Specs)", icon: "📋" },
                 { id: "ux-advisor", label: "UX/UI Agent", icon: "🎨" },
                 { id: "resources", label: "CPU & RAM Monitor", icon: "⚡" },
+                { id: "second-brain", label: "AI Second Brain", icon: "🧠" },
+                { id: "ai-office", label: "AI Office HQ", icon: "🏢" },
                 { id: "history", label: "History Logs", icon: "📋" },
                 { id: "budget", label: "Monthly Budget", icon: "📅" },
                 { id: "accounts", label: "Accounts", icon: "🏦" },
@@ -18018,7 +19821,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {testLogs.map(log => (
               <div key={log.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <div 
+                <div
                   onClick={() => setSelectedLogId(selectedLogId === log.id ? null : log.id)}
                   style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -18055,4 +19858,3 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
     </div>
   );
 }
-
