@@ -5,6 +5,7 @@ export const ADMIN_RESTRICTED_FEATURE_MODULES = [
   "resources",
   "second-brain",
   "ai-office",
+  "code-sentinel",
 ];
 
 export const ADMIN_ONLY_MODULES = new Set([

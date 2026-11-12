@@ -101,8 +101,8 @@ const moduleNames = [
   "ux-advisor",
   "resources",
   "second-brain",
-  "second-brain",
   "ai-office",
+  "code-sentinel",
   "raw",
 ];
 
@@ -956,7 +956,7 @@ function summarizeAiOfficeModule(profile) {
   return {
     officeRoomsCount: rooms.length,
     rooms,
-    activeAgentsCount: 8,
+    activeAgentsCount: 9,
     roster: [
       "Boss",
       "Librarian",
@@ -966,9 +966,32 @@ function summarizeAiOfficeModule(profile) {
       "VercelBot",
       "Vero",
       "Tala",
+      "Sentinel",
     ],
     totalMissionsExecuted: logs.length,
     recentMissions: logs.slice(0, 15),
+  };
+}
+
+function summarizeCodeSentinelModule(profile) {
+  const cs = profile.budgetData?.codeSentinel || {};
+  const findings = Array.isArray(cs.findings) ? cs.findings : [];
+  const logs = Array.isArray(cs.logs) ? cs.logs : [];
+  const pending = findings.filter((f) => f.status !== "FIXED_VERIFIED" && f.status !== "IGNORED");
+  return {
+    agentName: "Code Sentinel (Snyk-Style Real-Time Auditor)",
+    score: cs.summary?.score ?? 100,
+    pendingReviewCount: pending.length,
+    fixedCount: findings.filter((f) => f.status === "FIXED_VERIFIED").length,
+    bySeverity: {
+      CRITICAL: pending.filter((f) => f.severity === "CRITICAL").length,
+      HIGH: pending.filter((f) => f.severity === "HIGH").length,
+      MEDIUM: pending.filter((f) => f.severity === "MEDIUM").length,
+      LOW: pending.filter((f) => f.severity === "LOW").length,
+    },
+    syncedAt: cs.syncedAt || null,
+    recentFindings: findings.slice(0, 15),
+    recentLogs: logs.slice(0, 20),
   };
 }
 
@@ -1010,10 +1033,10 @@ export function buildModulePayload(profile, moduleName, args = {}) {
       return summarizeResourcesModule(profile);
     case "second-brain":
       return summarizeSecondBrainModule(profile);
-    case "second-brain":
-      return summarizeSecondBrainModule(profile);
     case "ai-office":
       return summarizeAiOfficeModule(profile);
+    case "code-sentinel":
+      return summarizeCodeSentinelModule(profile);
     case "raw":
       return profile;
     default:
