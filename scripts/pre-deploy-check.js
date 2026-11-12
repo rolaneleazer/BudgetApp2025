@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { createBudgetMcpServer, normalizeProfile, buildModulePayload } from "../mcp/core.js";
 import { shouldFire } from "../mcp/scheduler.js";
 import { isSuperAdminEmail } from "../src/config/superAdmins.js";
+import { ADMIN_RESTRICTED_FEATURE_MODULES, getDefaultModuleAccess } from "../src/config/modulePermissions.js";
 
 const errors = [];
 
@@ -179,6 +180,21 @@ check("Super Admin Role & Permission Verification", () => {
 
   if (oldEnv) process.env.ADMIN_EMAILS = oldEnv;
   console.log(`Verified Super Admin protection for ${testEmail}!`);
+
+  // Verify admin-only defaults for system/AI modules across non-admin roles
+  for (const mod of ADMIN_RESTRICTED_FEATURE_MODULES) {
+    if (getDefaultModuleAccess("admin", mod) !== "update") {
+      throw new Error(`Admin role should default to 'update' on '${mod}'`);
+    }
+    for (const r of ["user", "viewer", "guest"]) {
+      if (getDefaultModuleAccess(r, mod) !== "none") {
+        throw new Error(`Role '${r}' should default to 'none' on admin-only module '${mod}'`);
+      }
+    }
+  }
+  if (getDefaultModuleAccess("user", "dashboard") !== "update" || getDefaultModuleAccess("viewer", "dashboard") !== "read") {
+    throw new Error("Standard dashboard default permissions regressed!");
+  }
 });
 
 console.log("\n====================================");

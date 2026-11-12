@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 import { supabaseAdmin } from "../mcp/admin.js";
 import { isSuperAdminEmail } from "../src/config/superAdmins.js";
+import { getDefaultModuleAccess } from "../src/config/modulePermissions.js";
 
 function getSupabase() {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -140,40 +141,8 @@ export default async function handler(req, res) {
       "admin"
     ];
 
-    const baselineUserModules = new Set([
-      "dashboard",
-      "account-dashboard",
-      "history",
-      "budget",
-      "accounts",
-      "reconcile",
-      "transactions",
-      "investments",
-      "debts",
-      "credits",
-      "expenses",
-      "calendar",
-      "graph",
-      "reports",
-      "security",
-      "pullboard",
-      "ux-advisor",
-      "resources",
-      "second-brain",
-      "ai-office"
-    ]);
-
     defaultModules.forEach(mod => {
-      if (role === "admin") {
-        permissionsMap[mod] = "update";
-      } else if (role === "viewer") {
-        permissionsMap[mod] = "read";
-      } else if (role === "guest") {
-        permissionsMap[mod] = (mod === "dashboard" || mod === "account-dashboard") ? "read" : "none";
-      } else {
-        // Standard user role: allow baseline user modules, hide advanced/new modules by default unless granted in DB
-        permissionsMap[mod] = baselineUserModules.has(mod) ? "update" : "none";
-      }
+      permissionsMap[mod] = getDefaultModuleAccess(role, mod);
     });
 
     if (permissions && permissions.length > 0) {

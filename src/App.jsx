@@ -6,6 +6,7 @@ import {
 import { supabase, isSupabaseConfigured } from "./supabaseClient";
 import Auth from "./Auth";
 import { isSuperAdminEmail } from "./config/superAdmins";
+import { ADMIN_ONLY_MODULES, ADMIN_RESTRICTED_FEATURE_MODULES, getDefaultModuleAccess } from "./config/modulePermissions";
 import dtcgTokens from "./config/dtcgTokens.json";
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -17775,10 +17776,7 @@ export default function App() {
   const getPermission = (tabId) => {
     if (role === "admin" || isAdmin || isSuperAdminEmail(session?.user?.email)) return "update";
     if (permissions && permissions[tabId]) return permissions[tabId];
-    if (role === "viewer") return "read";
-    if (role === "guest") return (tabId === "dashboard" || tabId === "account-dashboard") ? "read" : "none";
-    const baselineModules = new Set(["dashboard", "account-dashboard", "history", "budget", "accounts", "reconcile", "transactions", "investments", "debts", "credits", "expenses", "calendar", "graph", "reports", "security", "pullboard", "ux-advisor", "resources", "second-brain", "ai-office"]);
-    return baselineModules.has(tabId) ? "update" : "none";
+    return getDefaultModuleAccess(role, tabId);
   };
 
   const TABS = [
@@ -17829,12 +17827,6 @@ export default function App() {
   const NAV_TABS = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', group: 'main' },
     { id: 'account-dashboard', label: 'Account Dashboard', icon: '🏧', group: 'main' },
-    { id: 'security', label: 'Cyber Security', icon: '🛡️', group: 'main' },
-    { id: 'pullboard', label: 'Pullboard (Specs)', icon: '📋', group: 'main' },
-    { id: 'ux-advisor', label: 'UX/UI Agent', icon: '🎨', group: 'main' },
-    { id: 'resources', label: 'CPU & RAM Monitor', icon: '⚡', group: 'main' },
-    { id: 'second-brain', label: 'AI Second Brain', icon: '🧠', group: 'main' },
-    { id: 'ai-office', label: 'AI Office HQ', icon: '🏢', group: 'main' },
     { id: 'accounts', label: 'Accounts', icon: '🏦', group: 'manage' },
 
     { id: 'reconcile', label: 'Reconcile & Audit', icon: '🔍', group: 'manage' },
@@ -17849,6 +17841,12 @@ export default function App() {
     { id: 'investments', label: 'Investments', icon: '📈', group: 'analytics' },
     { id: 'graph', label: 'Financial Graph', icon: '🕸', group: 'analytics' },
     { id: 'reports', label: 'Reports', icon: '📊', group: 'analytics' },
+    { id: 'security', label: 'Cyber Security', icon: '🛡️', group: 'admin' },
+    { id: 'pullboard', label: 'Pullboard (Specs)', icon: '📋', group: 'admin' },
+    { id: 'ux-advisor', label: 'UX/UI Agent', icon: '🎨', group: 'admin' },
+    { id: 'resources', label: 'CPU & RAM Monitor', icon: '⚡', group: 'admin' },
+    { id: 'second-brain', label: 'AI Second Brain', icon: '🧠', group: 'admin' },
+    { id: 'ai-office', label: 'AI Office HQ', icon: '🏢', group: 'admin' },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', icon: '⚙️', group: 'admin' }] : []),
   ].filter(t => getPermission(t.id) !== 'none');
 
@@ -17856,7 +17854,7 @@ export default function App() {
     ['main', ''],
     ['manage', 'Manage'],
     ['analytics', 'Analytics'],
-    ...(isAdmin ? [['admin', 'System']] : []),
+    ...(NAV_TABS.some(t => t.group === 'admin') ? [['admin', 'Admin & System']] : []),
   ];
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [deactivatedMsg, setDeactivatedMsg] = useState(null);
@@ -18029,126 +18027,36 @@ export default function App() {
               🔒 Lock
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setTab('ai-office')}
-            title="Open Isometric AI Employee Virtual Office HQ"
-            style={{
-              padding: '4px 8px',
-              borderRadius: 5,
-              border: `1px solid ${tab === 'ai-office' ? C.green : C.border}`,
-              background: tab === 'ai-office' ? `${C.green}22` : 'transparent',
-              color: tab === 'ai-office' ? C.green : C.muted,
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: tab === 'ai-office' ? 800 : 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4
-            }}
-          >
-            🏢 HQ
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('second-brain')}
-            title="Open AI Second Brain — Context, Connections, Capabilities & Cadence"
-            style={{
-              padding: '4px 8px',
-              borderRadius: 5,
-              border: `1px solid ${tab === 'second-brain' ? C.amber : C.border}`,
-              background: tab === 'second-brain' ? `${C.amber}22` : 'transparent',
-              color: tab === 'second-brain' ? C.amber : C.muted,
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: tab === 'second-brain' ? 800 : 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4
-            }}
-          >
-            🧠 Brain
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('resources')}
-            title="Live Utilization of CPU, RAM & Cloud Resources (Vercel + Supabase)"
-            style={{
-              padding: '4px 8px',
-              borderRadius: 5,
-              border: `1px solid ${tab === 'resources' ? C.teal : C.border}`,
-              background: tab === 'resources' ? `${C.teal}22` : 'transparent',
-              color: tab === 'resources' ? C.teal : C.muted,
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: tab === 'resources' ? 800 : 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4
-            }}
-          >
-            ⚡ Resources
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('ux-advisor')}
-            title="Open UX/UI Design Architect & Advisor Agent (plugin87/ux-ui-agent-skills)"
-            style={{
-              padding: '4px 8px',
-              borderRadius: 5,
-              border: `1px solid ${tab === 'ux-advisor' ? C.purple : C.border}`,
-              background: tab === 'ux-advisor' ? `${C.purple}22` : 'transparent',
-              color: tab === 'ux-advisor' ? '#d8b4fe' : C.muted,
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: tab === 'ux-advisor' ? 800 : 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4
-            }}
-          >
-            🎨 UX Agent
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('pullboard')}
-            title="Open Pullboard — Spec-Driven Workflow & Adversarial Verification"
-            style={{
-              padding: '4px 8px',
-              borderRadius: 5,
-              border: `1px solid ${tab === 'pullboard' ? C.blue : C.border}`,
-              background: tab === 'pullboard' ? `${C.blue}22` : 'transparent',
-              color: tab === 'pullboard' ? C.blue : C.muted,
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: tab === 'pullboard' ? 800 : 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4
-            }}
-          >
-            📋 Pullboard
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('security')}
-            title="Open Cyber Security & Data Protection Center"
-            style={{
-              padding: '4px 8px',
-              borderRadius: 5,
-              border: `1px solid ${tab === 'security' ? C.teal : C.border}`,
-              background: tab === 'security' ? `${C.teal}22` : 'transparent',
-              color: tab === 'security' ? C.teal : C.muted,
-              cursor: 'pointer',
-              fontSize: 11,
-              fontWeight: tab === 'security' ? 800 : 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4
-            }}
-          >
-            🛡️ Security
-          </button>
+          {[
+            { id: 'ai-office', label: '🏢 HQ', title: 'Open Isometric AI Employee Virtual Office HQ', borderColor: C.green, textColor: C.green },
+            { id: 'second-brain', label: '🧠 Brain', title: 'Open AI Second Brain — Context, Connections, Capabilities & Cadence', borderColor: C.amber, textColor: C.amber },
+            { id: 'resources', label: '⚡ Resources', title: 'Live Utilization of CPU, RAM & Cloud Resources (Vercel + Supabase)', borderColor: C.teal, textColor: C.teal },
+            { id: 'ux-advisor', label: '🎨 UX Agent', title: 'Open UX/UI Design Architect & Advisor Agent (plugin87/ux-ui-agent-skills)', borderColor: C.purple, textColor: '#d8b4fe' },
+            { id: 'pullboard', label: '📋 Pullboard', title: 'Open Pullboard — Spec-Driven Workflow & Adversarial Verification', borderColor: C.blue, textColor: C.blue },
+            { id: 'security', label: '🛡️ Security', title: 'Open Cyber Security & Data Protection Center', borderColor: C.teal, textColor: C.teal }
+          ].filter(btn => getPermission(btn.id) !== 'none').map(btn => (
+            <button
+              key={btn.id}
+              type="button"
+              onClick={() => setTab(btn.id)}
+              title={btn.title}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 5,
+                border: `1px solid ${tab === btn.id ? btn.borderColor : C.border}`,
+                background: tab === btn.id ? `${btn.borderColor}22` : 'transparent',
+                color: tab === btn.id ? btn.textColor : C.muted,
+                cursor: 'pointer',
+                fontSize: 11,
+                fontWeight: tab === btn.id ? 800 : 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              {btn.label}
+            </button>
+          ))}
           <button
             onClick={() => setFakeMode(p => !p)}
             style={{
@@ -18281,6 +18189,19 @@ export default function App() {
             window.activePermission = activePerm;
           }
 
+          if (tab !== 'admin' && activePerm === 'none') {
+            return (
+              <Card style={{ maxWidth: 520, margin: '40px auto', textAlign: 'center', border: `2px solid ${C.red}` }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
+                <SecTitle style={{ marginBottom: 8 }}>Access Restricted (Admin Only)</SecTitle>
+                <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.5, marginBottom: 16 }}>
+                  You do not have permission to access <strong style={{ color: C.text }}>{TLBL[tab] || tab}</strong> with your current role (<strong style={{ color: C.amber }}>{role}</strong>). Ask an Administrator to grant access in the Role Permissions Manager if needed.
+                </div>
+                <BtnG onClick={() => setTab('dashboard')}>← Return to Dashboard</BtnG>
+              </Card>
+            );
+          }
+
           return (
             <>
               {tab === 'dashboard' && <Dashboard budgetData={budgetData} accounts={accounts} majorExpenses={majorExpenses} credits={credits} debts={debts} balanceHistory={balanceHistory} sm={sm} session={session} setTab={setTab} />}
@@ -18308,7 +18229,15 @@ export default function App() {
             </>
           );
         })()}
-        {tab === 'admin' && <AdminTab sm={sm} users={users} setUsers={setUsers} adminConfigured={adminConfigured} fetchUsers={fetchUsers} />}
+        {tab === 'admin' && isAdmin && <AdminTab sm={sm} users={users} setUsers={setUsers} adminConfigured={adminConfigured} fetchUsers={fetchUsers} />}
+        {tab === 'admin' && !isAdmin && (
+          <Card style={{ maxWidth: 520, margin: '40px auto', textAlign: 'center', border: `2px solid ${C.red}` }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
+            <SecTitle style={{ marginBottom: 8 }}>Admin Panel Restricted</SecTitle>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 16 }}>Only Administrator accounts can view the Admin Panel.</div>
+            <BtnG onClick={() => setTab('dashboard')}>← Return to Dashboard</BtnG>
+          </Card>
+        )}
       </div>
       {showProfileModal && <ProfileSettingsModal session={session} onClose={() => setShowProfileModal(false)} />}
       {isWindowUnfocused && activeAutoBlurUnfocus && !isVaultLocked && (
@@ -19017,13 +18946,48 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
     }
   };
 
+  const handleEnforceAdminOnlyDefaults = async () => {
+    setLoadingPermissions(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const nonAdminRoles = ["user", "viewer", "guest"];
+      const pairs = ADMIN_RESTRICTED_FEATURE_MODULES.flatMap(mod => nonAdminRoles.map(r => ({ mod, r })));
+      const updatedRows = await Promise.all(
+        pairs.map(async ({ mod, r }) => {
+          const res = await fetch("/api/admin/permissions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ role: r, moduleName: mod, accessLevel: "none" })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || `Failed to lock '${mod}' for '${r}'`);
+          return data.permission;
+        })
+      );
+      setRolePermissionsList(prev => {
+        const next = [...prev];
+        updatedRows.forEach(row => {
+          const idx = next.findIndex(p => p.role === row.role && p.module_name === row.module_name);
+          if (idx > -1) next[idx] = row;
+          else next.push(row);
+        });
+        return next;
+      });
+      setActionSuccess("Enforced Admin-Only access ('No Access' for user, viewer, guest) on all 6 system & AI modules.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+
   const getCellPermission = (roleName, moduleName) => {
     const entry = rolePermissionsList.find(p => p.role === roleName && p.module_name === moduleName);
     if (entry) return entry.access_level;
-    if (roleName === "admin") return "update";
-    if (roleName === "viewer") return "read";
-    if (roleName === "guest") return (moduleName === "dashboard" || moduleName === "account-dashboard") ? "read" : "none";
-    return moduleName === "admin" ? "none" : "update";
+    return getDefaultModuleAccess(roleName, moduleName);
   };
 
   useEffect(() => {
@@ -19727,12 +19691,22 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
 
       {/* Role Permissions Manager Card */}
       <Card style={{ marginTop: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
           <div>
             <SecTitle style={{ margin: 0 }}>🔑 Role Permissions Manager</SecTitle>
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Configure access levels for each module per role. Changes are saved automatically.</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Configure access levels for each module per role. Changes are saved automatically. System &amp; AI modules default to Admin-Only unless unlocked here.</div>
           </div>
-          {loadingPermissions && <span style={{ fontSize: 12, color: C.muted }}>⏳ Saving...</span>}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {loadingPermissions && <span style={{ fontSize: 12, color: C.muted }}>⏳ Saving...</span>}
+            <Btn
+              type="button"
+              onClick={handleEnforceAdminOnlyDefaults}
+              disabled={loadingPermissions}
+              style={{ fontSize: 11, padding: "6px 10px", borderColor: C.amber, color: C.amber }}
+            >
+              🔒 Enforce Admin-Only Defaults
+            </Btn>
+          </div>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -19772,6 +19746,21 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                 <tr key={m.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
                   <td style={{ padding: "8px", fontWeight: 600 }}>
                     {m.icon} {m.label}
+                    {ADMIN_ONLY_MODULES.has(m.id) && (
+                      <span style={{
+                        marginLeft: 6,
+                        fontSize: 9,
+                        fontWeight: 800,
+                        padding: "2px 6px",
+                        borderRadius: 4,
+                        background: "#1c1917",
+                        color: C.amber,
+                        border: `1px solid ${C.amber}66`,
+                        verticalAlign: "middle"
+                      }}>
+                        ADMIN DEFAULT
+                      </span>
+                    )}
                   </td>
                   {["admin", "user", "viewer", "guest"].map(roleName => {
                     const level = getCellPermission(roleName, m.id);

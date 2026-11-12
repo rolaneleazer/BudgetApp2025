@@ -942,23 +942,6 @@ function summarizeSecondBrainModule(profile) {
   };
 }
 
-function summarizeSecondBrainModule(profile) {
-  const sb = profile.budgetData?.secondBrain || {};
-  const notes = Array.isArray(sb.notes) ? sb.notes : [];
-  const rules = Array.isArray(sb.rules) ? sb.rules : [];
-  const routines = Array.isArray(sb.routines) ? sb.routines : [];
-  const lastBrief = sb.lastMorningBrief || null;
-
-  return {
-    architecture: "Four Cs (Context, Connections, Capabilities, Cadence) + PARA Vault",
-    totalNotes: notes.length,
-    permanentRulesCount: rules.filter((r) => r.active !== false).length,
-    cadenceRoutinesCount: routines.length,
-    lastMorningBriefAt: lastBrief?.generatedAt || null,
-    recentNotes: notes.slice(0, 10),
-  };
-}
-
 function summarizeAiOfficeModule(profile) {
   const logs = Array.isArray(profile.budgetData?.aiOfficeLog)
     ? profile.budgetData.aiOfficeLog
