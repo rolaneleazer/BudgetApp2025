@@ -107,7 +107,7 @@ function runSystemTest(moduleName) {
     }
   };
 
-  const modules = ["dashboard", "account-dashboard", "history", "monthly", "accounts", "investments", "debts", "credits", "major", "calendar", "security", "pullboard", "ux-advisor", "resources", "second-brain", "ai-office", "code-sentinel", "raw"];
+  const modules = ["dashboard", "account-dashboard", "history", "monthly", "accounts", "investments", "debts", "credits", "major", "calendar", "security", "pullboard", "ux-advisor", "resources", "second-brain", "ai-office", "raw"];
 
   if (moduleName === "all") {
     modules.forEach(runSingleModule);

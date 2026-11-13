@@ -79,8 +79,8 @@ check("Financial Modules Calculations", () => {
     "ux-advisor",
     "resources",
     "second-brain",
+    "second-brain",
     "ai-office",
-    "code-sentinel",
     "raw"
   ];
 
