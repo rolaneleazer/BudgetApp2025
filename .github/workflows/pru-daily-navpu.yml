@@ -1,0 +1,58 @@
+name: Daily Pru Life UK NAVPU Auto-Fetch
+
+on:
+  schedule:
+    # Runs at 10:30 UTC (6:30 PM Philippine Time) Monday through Friday
+    - cron: "30 10 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  sync-pru-navpu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch Daily Pru Life UK NAVPU & Sync to Cloud
+        env:
+          APP_URL: ${{ secrets.APP_URL || vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node -e '
+            import("./mcp/pruFunds.js").then(async ({ fetchPruFundPrices, mergePruPrices }) => {
+              const parsed = await fetchPruFundPrices();
+              console.log("Fetched", parsed.funds.length, "PRULink funds for dates:", parsed.dates.join(", "));
+              if (process.env.APP_URL) {
+                const headers = process.env.CRON_SECRET ? { Authorization: `Bearer ${process.env.CRON_SECRET}` } : {};
+                const res = await fetch(`${process.env.APP_URL.replace(/\/$/, "")}/api/schedules?action=pru_prices&trigger=github-actions-cron`, {
+                  method: "POST",
+                  headers
+                });
+                console.log("Triggered APP_URL /api/schedules?action=pru_prices -> HTTP", res.status);
+              }
+              if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+                const { createClient } = await import("@supabase/supabase-js");
+                const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+                const { data: rows } = await supabase.from("user_data").select("user_id, budget_data");
+                for (const r of rows || []) {
+                  const nextPru = mergePruPrices(r?.budget_data?.pruFunds || {}, parsed, "website", "github-actions-cron");
+                  await supabase.from("user_data").update({
+                    budget_data: { ...(r?.budget_data || {}), pruFunds: nextPru },
+                    updated_at: new Date().toISOString()
+                  }).eq("user_id", r.user_id);
+                }
+                console.log("Updated", (rows || []).length, "Supabase user_data row(s) directly.");
+              }
+            });
+          '
+

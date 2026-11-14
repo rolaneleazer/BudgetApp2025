@@ -66,7 +66,12 @@ export default async function handler(req, res) {
         .eq('user_id', userId)
         .maybeSingle();
       const prevStore = row?.budget_data?.pruFunds || {};
-      mergedStore = mergePruPrices(prevStore, parsed, liveFetch ? 'website' : 'seed');
+      mergedStore = mergePruPrices(
+        prevStore,
+        parsed,
+        liveFetch ? 'website' : 'seed',
+        req.query?.trigger || 'auto-sync'
+      );
       await supabase
         .from('user_data')
         .update({
@@ -74,6 +79,28 @@ export default async function handler(req, res) {
           updated_at: new Date().toISOString()
         })
         .eq('user_id', userId);
+    } else if (supabase) {
+      // Unattended background/cron call: update all user_data rows with latest daily NAVPU prices
+      const { data: rows } = await supabase.from('user_data').select('user_id, budget_data');
+      if (Array.isArray(rows)) {
+        for (const r of rows) {
+          const prevStore = r?.budget_data?.pruFunds || {};
+          const nextPru = mergePruPrices(
+            prevStore,
+            parsed,
+            liveFetch ? 'website' : 'seed',
+            'unattended-daily-cron'
+          );
+          mergedStore = nextPru;
+          await supabase
+            .from('user_data')
+            .update({
+              budget_data: { ...(r?.budget_data || {}), pruFunds: nextPru },
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', r.user_id);
+        }
+      }
     }
 
     return res.status(200).json({
@@ -105,29 +132,29 @@ export default async function handler(req, res) {
 
     try {
       await tick();
-      // Also accumulate daily Pru Life UK NAVPU prices for users tracking pruFunds
+      // Always accumulate daily Pru Life UK NAVPU prices for all user_data rows (zero-touch unattended daily sync)
+      let pruSyncedUsers = 0;
       try {
         const parsed = await fetchPruFundPrices();
         const { data: rows } = await supabase.from('user_data').select('user_id, budget_data');
         if (Array.isArray(rows)) {
           for (const r of rows) {
-            if (!r?.budget_data?.pruFunds) continue;
-            const nextPru = mergePruPrices(r.budget_data.pruFunds, parsed, 'website');
-            if (nextPru.lastFetchAdded > 0) {
-              await supabase
-                .from('user_data')
-                .update({
-                  budget_data: { ...r.budget_data, pruFunds: nextPru },
-                  updated_at: new Date().toISOString()
-                })
-                .eq('user_id', r.user_id);
-            }
+            const prevPru = r?.budget_data?.pruFunds || {};
+            const nextPru = mergePruPrices(prevPru, parsed, 'website', 'daily-vercel-cron');
+            await supabase
+              .from('user_data')
+              .update({
+                budget_data: { ...(r?.budget_data || {}), pruFunds: nextPru },
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', r.user_id);
+            pruSyncedUsers++;
           }
         }
       } catch {
         // Non-fatal if Pru Life website is temporarily unreachable during cron
       }
-      return res.status(200).json({ success: true, message: 'Cron tick processed.' });
+      return res.status(200).json({ success: true, pruSyncedUsers, message: 'Cron tick & daily PRULink NAVPU sync processed.' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }

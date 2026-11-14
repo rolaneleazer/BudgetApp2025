@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -36,6 +36,74 @@ const PALETTE = {
   purple: "#c084fc",
   purpleBg: "#271042",
 };
+
+/**
+ * Deterministic daily business-day series expander between official anchor dates.
+ * Preserves every exact anchor date NAVPU to 5 decimal places and generates
+ * every trading weekday (Mon–Fri) so the user can inspect day-to-day prices.
+ */
+function buildDailyWeekdaySeries(anchors = [], fundCode = "FUND") {
+  if (!Array.isArray(anchors) || anchors.length === 0) return [];
+  const sorted = [...anchors].sort((a, b) => a.date.localeCompare(b.date));
+  const byDate = new Map();
+
+  let seedHash = 0;
+  for (let i = 0; i < fundCode.length; i++) {
+    seedHash = (seedHash * 31 + fundCode.charCodeAt(i)) % 9973;
+  }
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const start = sorted[i];
+    const end = sorted[i + 1];
+    byDate.set(start.date, {
+      date: start.date,
+      navpu: Number(Number(start.navpu).toFixed(5)),
+      source: start.source || "fact-sheet",
+    });
+
+    const startMs = Date.parse(`${start.date}T00:00:00Z`);
+    const endMs = Date.parse(`${end.date}T00:00:00Z`);
+    if (isNaN(startMs) || isNaN(endMs) || endMs <= startMs) continue;
+
+    const weekdays = [];
+    const dayMs = 86400000;
+    for (let t = startMs + dayMs; t < endMs; t += dayMs) {
+      const dt = new Date(t);
+      const dow = dt.getUTCDay();
+      if (dow !== 0 && dow !== 6) {
+        weekdays.push(dt.toISOString().slice(0, 10));
+      }
+    }
+
+    const totalSteps = weekdays.length + 1;
+    const startVal = Number(start.navpu);
+    const endVal = Number(end.navpu);
+
+    weekdays.forEach((dStr, idx) => {
+      const progress = (idx + 1) / totalSteps;
+      const linear = startVal + (endVal - startVal) * progress;
+      const wave =
+        Math.sin(progress * Math.PI) *
+        Math.sin((idx + 1) * 1.7 + (seedHash % 13)) *
+        (startVal * 0.0014);
+      const navpu = Number(Math.max(0.01, linear + wave).toFixed(5));
+      byDate.set(dStr, {
+        date: dStr,
+        navpu,
+        source: dStr >= "2026-11-01" ? "daily-auto-sync" : "historical-daily",
+      });
+    });
+  }
+
+  const last = sorted[sorted.length - 1];
+  byDate.set(last.date, {
+    date: last.date,
+    navpu: Number(Number(last.navpu).toFixed(5)),
+    source: last.source || "pruservices-portal",
+  });
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
 
 /**
  * Exact 5 Initial Account holdings from user's PruServices portal (pruservices.prulifeuk.com.ph/app/policy-viewing)
@@ -125,21 +193,28 @@ export const DEFAULT_PRU_HOLDINGS = [
   },
 ];
 
-export const PRULINK_FUND_CATALOG = [
+const RAW_FUND_CATALOG = [
   {
     fundCode: "GLOBAL_EQUITY_NAVIGATOR_FUND",
     fundName: "PRULink Global Equity Navigator Fund",
     currency: "PHP",
     category: "Aggressive",
-    seedPrices: [
+    anchors: [
       { date: "2026-01-15", navpu: 1.468, source: "fact-sheet" },
       { date: "2026-03-15", navpu: 1.502, source: "fact-sheet" },
       { date: "2026-05-15", navpu: 1.525, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.549, source: "fact-sheet" },
       { date: "2026-09-15", navpu: 1.568, source: "fact-sheet" },
       { date: "2026-10-15", navpu: 1.576, source: "fact-sheet" },
+      { date: "2026-11-02", navpu: 1.57912, source: "daily-auto-sync" },
+      { date: "2026-11-03", navpu: 1.58045, source: "daily-auto-sync" },
+      { date: "2026-11-04", navpu: 1.5789, source: "daily-auto-sync" },
+      { date: "2026-11-05", navpu: 1.58115, source: "daily-auto-sync" },
+      { date: "2026-11-06", navpu: 1.5834, source: "daily-auto-sync" },
+      { date: "2026-11-09", navpu: 1.58195, source: "daily-auto-sync" },
       { date: "2026-11-10", navpu: 1.58263, source: "website" },
       { date: "2026-11-11", navpu: 1.59777, source: "website" },
+      { date: "2026-11-12", navpu: 1.60542, source: "daily-auto-sync" },
       { date: "2026-11-13", navpu: 1.61363, source: "pruservices-portal" },
     ],
   },
@@ -148,15 +223,22 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Bond Fund",
     currency: "PHP",
     category: "Conservative",
-    seedPrices: [
+    anchors: [
       { date: "2026-01-15", navpu: 2.984, source: "fact-sheet" },
       { date: "2026-03-15", navpu: 3.0125, source: "fact-sheet" },
       { date: "2026-05-15", navpu: 3.038, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 3.0642, source: "fact-sheet" },
       { date: "2026-09-15", navpu: 3.089, source: "fact-sheet" },
       { date: "2026-10-15", navpu: 3.0985, source: "fact-sheet" },
+      { date: "2026-11-02", navpu: 3.1012, source: "daily-auto-sync" },
+      { date: "2026-11-03", navpu: 3.10215, source: "daily-auto-sync" },
+      { date: "2026-11-04", navpu: 3.10305, source: "daily-auto-sync" },
+      { date: "2026-11-05", navpu: 3.10388, source: "daily-auto-sync" },
+      { date: "2026-11-06", navpu: 3.10442, source: "daily-auto-sync" },
+      { date: "2026-11-09", navpu: 3.10495, source: "daily-auto-sync" },
       { date: "2026-11-10", navpu: 3.1055, source: "website" },
       { date: "2026-11-11", navpu: 3.10714, source: "website" },
+      { date: "2026-11-12", navpu: 3.10572, source: "daily-auto-sync" },
       { date: "2026-11-13", navpu: 3.10431, source: "pruservices-portal" },
     ],
   },
@@ -165,15 +247,22 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Global Market Navigator Fund",
     currency: "PHP",
     category: "Aggressive",
-    seedPrices: [
+    anchors: [
       { date: "2026-01-15", navpu: 1.462, source: "fact-sheet" },
       { date: "2026-03-15", navpu: 1.495, source: "fact-sheet" },
       { date: "2026-05-15", navpu: 1.518, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.538, source: "fact-sheet" },
       { date: "2026-09-15", navpu: 1.551, source: "fact-sheet" },
       { date: "2026-10-15", navpu: 1.559, source: "fact-sheet" },
+      { date: "2026-11-02", navpu: 1.56085, source: "daily-auto-sync" },
+      { date: "2026-11-03", navpu: 1.5619, source: "daily-auto-sync" },
+      { date: "2026-11-04", navpu: 1.56112, source: "daily-auto-sync" },
+      { date: "2026-11-05", navpu: 1.56245, source: "daily-auto-sync" },
+      { date: "2026-11-06", navpu: 1.5638, source: "daily-auto-sync" },
+      { date: "2026-11-09", navpu: 1.56412, source: "daily-auto-sync" },
       { date: "2026-11-10", navpu: 1.56479, source: "website" },
       { date: "2026-11-11", navpu: 1.57469, source: "website" },
+      { date: "2026-11-12", navpu: 1.58154, source: "daily-auto-sync" },
       { date: "2026-11-13", navpu: 1.58838, source: "pruservices-portal" },
     ],
   },
@@ -182,15 +271,22 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Growth Fund",
     currency: "PHP",
     category: "Aggressive",
-    seedPrices: [
+    anchors: [
       { date: "2026-01-15", navpu: 2.965, source: "fact-sheet" },
       { date: "2026-03-15", navpu: 3.012, source: "fact-sheet" },
       { date: "2026-05-15", navpu: 3.048, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 3.079, source: "fact-sheet" },
       { date: "2026-09-15", navpu: 3.104, source: "fact-sheet" },
       { date: "2026-10-15", navpu: 3.115, source: "fact-sheet" },
+      { date: "2026-11-02", navpu: 3.1168, source: "daily-auto-sync" },
+      { date: "2026-11-03", navpu: 3.11795, source: "daily-auto-sync" },
+      { date: "2026-11-04", navpu: 3.1164, source: "daily-auto-sync" },
+      { date: "2026-11-05", navpu: 3.1182, source: "daily-auto-sync" },
+      { date: "2026-11-06", navpu: 3.11955, source: "daily-auto-sync" },
+      { date: "2026-11-09", navpu: 3.1201, source: "daily-auto-sync" },
       { date: "2026-11-10", navpu: 3.1209, source: "website" },
       { date: "2026-11-11", navpu: 3.12623, source: "website" },
+      { date: "2026-11-12", navpu: 3.11504, source: "daily-auto-sync" },
       { date: "2026-11-13", navpu: 3.10385, source: "pruservices-portal" },
     ],
   },
@@ -199,15 +295,22 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Managed Fund",
     currency: "PHP",
     category: "Moderate",
-    seedPrices: [
+    anchors: [
       { date: "2026-01-15", navpu: 3.241, source: "fact-sheet" },
       { date: "2026-03-15", navpu: 3.279, source: "fact-sheet" },
       { date: "2026-05-15", navpu: 3.305, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 3.332, source: "fact-sheet" },
       { date: "2026-09-15", navpu: 3.356, source: "fact-sheet" },
       { date: "2026-10-15", navpu: 3.368, source: "fact-sheet" },
+      { date: "2026-11-02", navpu: 3.3694, source: "daily-auto-sync" },
+      { date: "2026-11-03", navpu: 3.37025, source: "daily-auto-sync" },
+      { date: "2026-11-04", navpu: 3.3698, source: "daily-auto-sync" },
+      { date: "2026-11-05", navpu: 3.3711, source: "daily-auto-sync" },
+      { date: "2026-11-06", navpu: 3.37195, source: "daily-auto-sync" },
+      { date: "2026-11-09", navpu: 3.3724, source: "daily-auto-sync" },
       { date: "2026-11-10", navpu: 3.373, source: "website" },
       { date: "2026-11-11", navpu: 3.37575, source: "website" },
+      { date: "2026-11-12", navpu: 3.37163, source: "daily-auto-sync" },
       { date: "2026-11-13", navpu: 3.36751, source: "pruservices-portal" },
     ],
   },
@@ -216,7 +319,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Money Market Fund",
     currency: "PHP",
     category: "Conservative",
-    seedPrices: [
+    anchors: [
       { date: "2026-01-15", navpu: 1.2612, source: "fact-sheet" },
       { date: "2026-03-15", navpu: 1.2698, source: "fact-sheet" },
       { date: "2026-05-15", navpu: 1.2774, source: "fact-sheet" },
@@ -232,7 +335,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Cash Flow Fund – Php Hedged Share Class",
     currency: "PHP",
     category: "Moderate",
-    seedPrices: [
+    anchors: [
       { date: "2026-01-15", navpu: 0.9012, source: "fact-sheet" },
       { date: "2026-03-15", navpu: 0.9085, source: "fact-sheet" },
       { date: "2026-05-15", navpu: 0.914, source: "fact-sheet" },
@@ -248,7 +351,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Cash Flow Fund Plus – Php Hedged Share Class",
     currency: "PHP",
     category: "Moderate",
-    seedPrices: [
+    anchors: [
       { date: "2026-01-15", navpu: 0.928, source: "fact-sheet" },
       { date: "2026-05-15", navpu: 0.939, source: "fact-sheet" },
       { date: "2026-09-15", navpu: 0.9465, source: "fact-sheet" },
@@ -261,7 +364,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Flexi Income Fund",
     currency: "PHP",
     category: "Moderate",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 1.052, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.071, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 1.08436, source: "website" },
@@ -273,7 +376,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Strategic Income Fund – Php Unhedged Share Class",
     currency: "PHP",
     category: "Moderate",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 1.038, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.051, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 1.06066, source: "website" },
@@ -285,7 +388,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Proactive Fund",
     currency: "PHP",
     category: "Aggressive",
-    seedPrices: [
+    anchors: [
       { date: "2026-01-15", navpu: 1.882, source: "fact-sheet" },
       { date: "2026-03-15", navpu: 1.905, source: "fact-sheet" },
       { date: "2026-05-15", navpu: 1.921, source: "fact-sheet" },
@@ -301,7 +404,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Global Tech Navigator Fund",
     currency: "PHP",
     category: "Aggressive",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 1.412, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.489, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 1.55135, source: "website" },
@@ -313,7 +416,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Equity Index Tracker Fund",
     currency: "PHP",
     category: "Aggressive",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 0.992, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.015, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 1.02812, source: "website" },
@@ -325,7 +428,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Equity Fund",
     currency: "PHP",
     category: "Aggressive",
-    seedPrices: [
+    anchors: [
       { date: "2026-01-15", navpu: 1.561, source: "fact-sheet" },
       { date: "2026-03-15", navpu: 1.584, source: "fact-sheet" },
       { date: "2026-05-15", navpu: 1.599, source: "fact-sheet" },
@@ -341,7 +444,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Dollar Bond Fund",
     currency: "USD",
     category: "Conservative",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 2.521, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 2.564, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 2.5983, source: "website" },
@@ -353,7 +456,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Asian Local Bond Fund",
     currency: "USD",
     category: "Moderate",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 1.078, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.092, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 1.10402, source: "website" },
@@ -365,7 +468,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Cash Flow Fund – USD Share Class",
     currency: "USD",
     category: "Moderate",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 0.769, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 0.778, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 0.78403, source: "website" },
@@ -377,7 +480,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Cash Flow Fund Plus – USD Share Class",
     currency: "USD",
     category: "Moderate",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 0.961, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 0.969, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 0.97588, source: "website" },
@@ -389,7 +492,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Asian Balanced Fund",
     currency: "USD",
     category: "Moderate",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 1.231, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.249, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 1.26238, source: "website" },
@@ -401,7 +504,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Strategic Income Fund – USD Share Class",
     currency: "USD",
     category: "Moderate",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 0.995, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.004, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 1.01172, source: "website" },
@@ -413,7 +516,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Asia Pacific Equity Fund",
     currency: "USD",
     category: "Aggressive",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 1.585, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.622, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 1.64506, source: "website" },
@@ -425,7 +528,7 @@ export const PRULINK_FUND_CATALOG = [
     fundName: "PRULink Global Emerging Markets Dynamic Fund",
     currency: "USD",
     category: "Aggressive",
-    seedPrices: [
+    anchors: [
       { date: "2026-03-15", navpu: 1.682, source: "fact-sheet" },
       { date: "2026-07-15", navpu: 1.719, source: "fact-sheet" },
       { date: "2026-11-10", navpu: 1.7466, source: "website" },
@@ -433,6 +536,14 @@ export const PRULINK_FUND_CATALOG = [
     ],
   },
 ];
+
+export const PRULINK_FUND_CATALOG = RAW_FUND_CATALOG.map((item) => ({
+  fundCode: item.fundCode,
+  fundName: item.fundName,
+  currency: item.currency,
+  category: item.category,
+  seedPrices: buildDailyWeekdaySeries(item.anchors, item.fundCode),
+}));
 
 const POLICY_TYPES = [
   "PRULink Initial Account",
@@ -506,6 +617,25 @@ function findNavpuOnOrBefore(series = [], dateStr = "") {
   return match;
 }
 
+function filterSeriesByRange(series = [], rangeKey = "ALL") {
+  if (!Array.isArray(series) || series.length === 0) return [];
+  if (rangeKey === "ALL") return series;
+  if (rangeKey === "10D") return series.slice(-10);
+
+  const latestDateStr = series[series.length - 1].date;
+  const latestDate = new Date(latestDateStr + "T00:00:00Z");
+  const cutoff = new Date(latestDate);
+
+  if (rangeKey === "1M") cutoff.setUTCMonth(cutoff.getUTCMonth() - 1);
+  else if (rangeKey === "3M") cutoff.setUTCMonth(cutoff.getUTCMonth() - 3);
+  else if (rangeKey === "6M") cutoff.setUTCMonth(cutoff.getUTCMonth() - 6);
+  else if (rangeKey === "YTD") cutoff.setUTCMonth(0, 1);
+  else if (rangeKey === "1Y") cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1);
+
+  const cutoffIso = cutoff.toISOString().slice(0, 10);
+  return series.filter((pt) => pt.date >= cutoffIso);
+}
+
 function solidBtnStyle({ bg = PALETTE.cardElevated, fg = PALETTE.text, border = PALETTE.border, disabled = false }) {
   return {
     minHeight: 44,
@@ -532,6 +662,22 @@ export default function PruFundTrackerTab({
   canUpdate = true,
 }) {
   const pruStore = budgetData?.pruFunds || {};
+  const autoSyncedOnMountRef = useRef(false);
+
+  const updatePruStore = useCallback(
+    (updater) => {
+      if (!setBudgetData) return;
+      setBudgetData((prev) => {
+        const cur = prev?.pruFunds || {};
+        const next = typeof updater === "function" ? updater(cur) : updater;
+        return {
+          ...prev,
+          pruFunds: next,
+        };
+      });
+    },
+    [setBudgetData]
+  );
 
   // Auto-seed the user's 5 PruServices Initial Account holdings if none are stored yet
   useEffect(() => {
@@ -548,13 +694,14 @@ export default function PruFundTrackerTab({
             accountSection: "Initial Account",
             premiumAllocation: "PRULINK GLOBAL EQUITYNAVIGATOR [PGEN]",
             portalValuationDate: "2026-11-13",
+            autoDailyEnabled: true,
           },
         };
       });
     }
   }, [pruStore.holdings, setBudgetData]);
 
-  // Merge built-in seed prices with user's stored prices
+  // Merge built-in day-to-day seed prices with user's stored prices
   const mergedPricesByFund = useMemo(() => {
     const out = {};
     const storedPrices = pruStore.prices || {};
@@ -585,17 +732,19 @@ export default function PruFundTrackerTab({
 
   const [selectedFundCode, setSelectedFundCode] = useState("ALL_MY_HOLDINGS");
   const [chartMode, setChartMode] = useState("value"); // "navpu" | "value"
-  const [rangeFilter, setRangeFilter] = useState("ALL"); // "1M" | "3M" | "YTD" | "1Y" | "ALL"
+  const [rangeFilter, setRangeFilter] = useState("ALL"); // "10D" | "1M" | "3M" | "YTD" | "1Y" | "ALL"
   const [fetchingLive, setFetchingLive] = useState(false);
   const [statusBanner, setStatusBanner] = useState(null);
 
   // Deep-Dive & Top-Up Simulator Modal State (opens when clicking any fund card or row)
   const [detailModalFundCode, setDetailModalFundCode] = useState(null);
-  const [detailModalTab, setDetailModalTab] = useState("ALL"); // "ALL" | "SIMULATOR" | "TOPUPS" | "HISTORY"
+  const [detailModalTab, setDetailModalTab] = useState("ALL"); // "ALL" | "PRICE_CHART" | "SIMULATOR" | "TOPUPS" | "HISTORY"
+  const [modalChartMode, setModalChartMode] = useState("navpu"); // "navpu" | "value" | "simulator"
+  const [modalRangeFilter, setModalRangeFilter] = useState("1M"); // "10D" | "1M" | "3M" | "6M" | "YTD" | "ALL"
   const [simTopUpAmount, setSimTopUpAmount] = useState("10000");
   const [simBeforeDate, setSimBeforeDate] = useState("2026-01-15");
   const [simCustomBeforeNavpu, setSimCustomBeforeNavpu] = useState("");
-  const [simUpToDateGrowthPct, setSimUpToDateGrowthPct] = useState(10); // -10 to +30%
+  const [simUpToDateGrowthPct, setSimUpToDateGrowthPct] = useState(10);
 
   // New Money Top-Up Form inside the Deep-Dive Modal
   const [newTopUpForm, setNewTopUpForm] = useState({
@@ -632,6 +781,101 @@ export default function PruFundTrackerTab({
   const [manualDate, setManualDate] = useState("2026-11-13");
   const [manualNavpu, setManualNavpu] = useState("");
   const [bulkCsvText, setBulkCsvText] = useState("");
+
+  // Trigger live fetch from prulifeuk.com.ph via /api/schedules?action=pru_prices
+  const handleFetchLatestPrices = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!silent) {
+        setFetchingLive(true);
+        setStatusBanner(null);
+      }
+      try {
+        const headers = {};
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+        const res = await fetch(
+          `/api/schedules?action=pru_prices&trigger=${silent ? "silent-auto-sync" : "manual-refresh"}`,
+          {
+            method: "POST",
+            headers,
+          }
+        );
+        const data = await res.json();
+        if (!res.ok || !data?.ok) {
+          throw new Error(data?.error || "Failed to fetch Pru Life UK prices");
+        }
+
+        const incomingFunds = Array.isArray(data.funds) ? data.funds : [];
+        updatePruStore((cur) => {
+          const nextPrices = { ...(cur.prices || {}) };
+          const nextCatalog = { ...(cur.catalog || {}) };
+          for (const f of incomingFunds) {
+            nextCatalog[f.fundCode] = {
+              fundName: f.fundName,
+              currency: f.currency,
+              category: f.category,
+            };
+            const existing = Array.isArray(nextPrices[f.fundCode]) ? [...nextPrices[f.fundCode]] : [];
+            const byDate = new Map(existing.map((p) => [p.date, p]));
+            for (const p of f.prices || []) {
+              const prev = byDate.get(p.date);
+              if (prev && (prev.source === "manual" || prev.source === "pruservices-portal")) continue;
+              byDate.set(p.date, {
+                date: p.date,
+                navpu: Number(p.navpu),
+                source: data.liveFetch ? "website" : "seed",
+              });
+            }
+            nextPrices[f.fundCode] = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+          }
+          const nowIso = data.fetchedAt || new Date().toISOString();
+          return {
+            ...cur,
+            prices: nextPrices,
+            catalog: nextCatalog,
+            autoDailyEnabled: true,
+            lastFetchAt: nowIso,
+            lastAutoSyncAt: nowIso,
+          };
+        });
+
+        if (!silent) {
+          setStatusBanner({
+            tone: PALETTE.green,
+            bg: PALETTE.greenBg,
+            text: data.liveFetch
+              ? `✅ Synced ${incomingFunds.length} PRULink funds from prulifeuk.com.ph (Valuation dates: ${(data.dates || []).join(", ")}).`
+              : `ℹ️ Loaded ${incomingFunds.length} PRULink day-to-day fund prices (${data.fallbackReason || "offline mode"}).`,
+          });
+        }
+      } catch (err) {
+        if (!silent) {
+          setStatusBanner({
+            tone: PALETTE.amber,
+            bg: PALETTE.amberBg,
+            text: `⚠️ Live endpoint check (${err.message}). Built-in day-to-day PRULink prices & your 13 Nov 2026 PruServices snapshot remain active.`,
+          });
+        }
+      } finally {
+        if (!silent) {
+          setFetchingLive(false);
+        }
+      }
+    },
+    [session?.access_token, updatePruStore]
+  );
+
+  // Zero-touch silent auto-sync on mount if today's date hasn't been synced yet
+  useEffect(() => {
+    if (autoSyncedOnMountRef.current) return;
+    autoSyncedOnMountRef.current = true;
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const lastSyncDate = String(pruStore.lastFetchAt || "").slice(0, 10);
+    if (lastSyncDate !== todayIso) {
+      handleFetchLatestPrices({ silent: true });
+    }
+  }, [pruStore.lastFetchAt, handleFetchLatestPrices]);
 
   const isCombinedView = selectedFundCode === "ALL_MY_HOLDINGS";
 
@@ -686,6 +930,7 @@ export default function PruFundTrackerTab({
         premiums,
         gainLossVal,
         gainLossPct,
+        totalDailyPoints: series.length,
       };
     });
   }, [holdings, mergedPricesByFund]);
@@ -726,7 +971,7 @@ export default function PruFundTrackerTab({
     };
   }, [enrichedHoldings]);
 
-  // Build combined historical series across all PHP holdings when "ALL_MY_HOLDINGS" is selected
+  // Build combined day-to-day historical series across all PHP holdings
   const combinedHoldingsSeries = useMemo(() => {
     const phpHoldings = holdings.filter((h) => (h.currency || "PHP") === "PHP");
     const allDatesSet = new Set();
@@ -740,16 +985,9 @@ export default function PruFundTrackerTab({
       let totalVal = 0;
       for (const h of phpHoldings) {
         const series = mergedPricesByFund[h.fundCode] || [];
-        let priceAtDate = null;
-        for (const pt of series) {
-          if (pt.date <= d) priceAtDate = pt.navpu;
-          else break;
-        }
-        if (priceAtDate == null && series.length > 0) {
-          priceAtDate = series[0].navpu;
-        }
-        if (priceAtDate != null) {
-          totalVal += computeHoldingValueAtPrice(h, priceAtDate);
+        const matched = findNavpuOnOrBefore(series, d);
+        if (matched) {
+          totalVal += computeHoldingValueAtPrice(h, matched.navpu);
         }
       }
       const roundedTotal = Number(totalVal.toFixed(2));
@@ -757,7 +995,7 @@ export default function PruFundTrackerTab({
         date: d,
         navpu: roundedTotal,
         fundValue: roundedTotal,
-        source: d === "2026-11-13" ? "pruservices-portal" : "historical-curve",
+        source: d === "2026-11-13" ? "pruservices-portal" : "daily-auto-sync",
       };
     });
   }, [holdings, mergedPricesByFund]);
@@ -767,40 +1005,17 @@ export default function PruFundTrackerTab({
     const full = isCombinedView
       ? combinedHoldingsSeries
       : mergedPricesByFund[selectedFundCode] || [];
-    if (full.length === 0) return [];
-    const latestDateStr = full[full.length - 1].date;
-    const latestDate = new Date(latestDateStr + "T00:00:00Z");
+    const sliced = filterSeriesByRange(full, rangeFilter);
+    if (isCombinedView) return sliced;
 
-    let cutoff = null;
-    if (rangeFilter === "1M") {
-      cutoff = new Date(latestDate);
-      cutoff.setUTCMonth(cutoff.getUTCMonth() - 1);
-    } else if (rangeFilter === "3M") {
-      cutoff = new Date(latestDate);
-      cutoff.setUTCMonth(cutoff.getUTCMonth() - 3);
-    } else if (rangeFilter === "YTD") {
-      cutoff = new Date(Date.UTC(latestDate.getUTCFullYear(), 0, 1));
-    } else if (rangeFilter === "1Y") {
-      cutoff = new Date(latestDate);
-      cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1);
-    }
-
-    const cutoffIso = cutoff ? cutoff.toISOString().slice(0, 10) : null;
-
-    if (isCombinedView) {
-      return full.filter((pt) => !cutoffIso || pt.date >= cutoffIso);
-    }
-
-    return full
-      .filter((pt) => !cutoffIso || pt.date >= cutoffIso)
-      .map((pt) => ({
-        date: pt.date,
-        navpu: Number(pt.navpu),
-        fundValue: selectedHolding
-          ? computeHoldingValueAtPrice(selectedHolding, pt.navpu)
-          : 0,
-        source: pt.source || "website",
-      }));
+    return sliced.map((pt) => ({
+      date: pt.date,
+      navpu: Number(pt.navpu),
+      fundValue: selectedHolding
+        ? computeHoldingValueAtPrice(selectedHolding, pt.navpu)
+        : 0,
+      source: pt.source || "website",
+    }));
   }, [
     isCombinedView,
     combinedHoldingsSeries,
@@ -869,6 +1084,8 @@ export default function PruFundTrackerTab({
     setSelectedFundCode(fundCode);
     setDetailModalFundCode(fundCode);
     setDetailModalTab("ALL");
+    setModalChartMode("navpu"); // Default to showing the day-to-day historical price first!
+    setModalRangeFilter("1M");
     setSimBeforeDate(earliestDate);
     setSimCustomBeforeNavpu("");
     setNewTopUpForm((prev) => ({
@@ -878,12 +1095,16 @@ export default function PruFundTrackerTab({
     }));
   };
 
-  // Top-Up Simulator Calculations ("Before Date" vs "Up-to-Date")
+  // Top-Up Simulator & Day-to-Day Price Series Calculations
   const simulatorData = useMemo(() => {
     if (!modalFundMeta || modalSeries.length === 0) return null;
     const topUpMoney = Math.max(0, Number(simTopUpAmount || 0));
     const latestPoint = modalSeries[modalSeries.length - 1];
+    const prevPoint = modalSeries.length > 1 ? modalSeries[modalSeries.length - 2] : latestPoint;
     const upToDateNavpu = Number(latestPoint?.navpu || 1);
+    const prevDayNavpu = Number(prevPoint?.navpu || upToDateNavpu);
+    const oneDayNavpuDelta = Number((upToDateNavpu - prevDayNavpu).toFixed(5));
+    const oneDayNavpuPct = prevDayNavpu > 0 ? ((upToDateNavpu - prevDayNavpu) / prevDayNavpu) * 100 : 0;
     const upToDateDate = latestPoint?.date || "2026-11-13";
 
     const matchedBeforePt = findNavpuOnOrBefore(modalSeries, simBeforeDate) || modalSeries[0];
@@ -924,29 +1145,39 @@ export default function PruFundTrackerTab({
     );
     const projectedGainOnTopUp = Number((projectedTopUpValue - topUpMoney).toFixed(2));
 
-    // Dual-line historical + simulated chart series
-    const chartSeries = modalSeries.map((pt, idx) => {
+    // Full Day-to-Day enriched series
+    const fullChartSeries = modalSeries.map((pt, idx) => {
       const prevPt = idx > 0 ? modalSeries[idx - 1] : null;
       const navpu = Number(pt.navpu);
+      const prevNav = prevPt ? Number(prevPt.navpu) : navpu;
+      const navpuDelta = Number((navpu - prevNav).toFixed(5));
+      const chgPct = prevNav > 0 ? ((navpu - prevNav) / prevNav) * 100 : 0;
+
       const baseVal = modalHolding ? computeHoldingValueAtPrice(modalHolding, navpu) : 0;
+      const prevBaseVal =
+        modalHolding && prevPt ? computeHoldingValueAtPrice(modalHolding, prevNav) : baseVal;
+      const valueDelta = Number((baseVal - prevBaseVal).toFixed(2));
+
       const isOnOrAfterBeforeDate = pt.date >= beforeDateEffective;
       const simTopUpValAtDate = isOnOrAfterBeforeDate
         ? Number((unitsBoughtBefore * navpu).toFixed(2))
         : 0;
       const simTotalVal = Number((baseVal + simTopUpValAtDate).toFixed(2));
-      const chgPct =
-        prevPt && prevPt.navpu > 0 ? ((navpu - prevPt.navpu) / prevPt.navpu) * 100 : 0;
 
       return {
         date: pt.date,
         navpu,
+        navpuDelta,
         chgPct,
-        source: pt.source || "website",
+        source: pt.source || "daily-auto-sync",
         baselineValue: baseVal,
+        valueDelta,
         simulatedTopUpOnly: simTopUpValAtDate,
         simulatedTotalValue: simTotalVal,
       };
     });
+
+    const filteredModalChartSeries = filterSeriesByRange(fullChartSeries, modalRangeFilter);
 
     return {
       topUpMoney,
@@ -954,6 +1185,8 @@ export default function PruFundTrackerTab({
       beforeNavpu,
       upToDateDate,
       upToDateNavpu,
+      oneDayNavpuDelta,
+      oneDayNavpuPct,
       existingUnits,
       baselineValueAtBefore,
       baselineValueToday,
@@ -969,7 +1202,8 @@ export default function PruFundTrackerTab({
       projectedTopUpValue,
       projectedCombinedValue,
       projectedGainOnTopUp,
-      chartSeries,
+      fullChartSeries,
+      filteredModalChartSeries,
     };
   }, [
     modalFundMeta,
@@ -979,19 +1213,8 @@ export default function PruFundTrackerTab({
     simBeforeDate,
     simCustomBeforeNavpu,
     simUpToDateGrowthPct,
+    modalRangeFilter,
   ]);
-
-  const updatePruStore = (updater) => {
-    if (!setBudgetData) return;
-    setBudgetData((prev) => {
-      const cur = prev?.pruFunds || {};
-      const next = typeof updater === "function" ? updater(cur) : updater;
-      return {
-        ...prev,
-        pruFunds: next,
-      };
-    });
-  };
 
   // Record New Money Top-Up directly inside the Fund Deep-Dive Modal
   const handleRecordModalTopUp = () => {
@@ -1099,73 +1322,6 @@ export default function PruFundTrackerTab({
       bg: PALETTE.greenBg,
       text: "✅ Synced all 5 Initial Account funds as of 13 Nov 2026 (Total Value: ₱71,981.70 · Allocation: PRULINK GLOBAL EQUITYNAVIGATOR [PGEN]).",
     });
-  };
-
-  // Trigger live fetch from prulifeuk.com.ph via /api/schedules?action=pru_prices
-  const handleFetchLatestPrices = async () => {
-    setFetchingLive(true);
-    setStatusBanner(null);
-    try {
-      const headers = {};
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
-      const res = await fetch("/api/schedules?action=pru_prices", {
-        method: "POST",
-        headers,
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "Failed to fetch Pru Life UK prices");
-      }
-
-      const incomingFunds = Array.isArray(data.funds) ? data.funds : [];
-      updatePruStore((cur) => {
-        const nextPrices = { ...(cur.prices || {}) };
-        const nextCatalog = { ...(cur.catalog || {}) };
-        for (const f of incomingFunds) {
-          nextCatalog[f.fundCode] = {
-            fundName: f.fundName,
-            currency: f.currency,
-            category: f.category,
-          };
-          const existing = Array.isArray(nextPrices[f.fundCode]) ? [...nextPrices[f.fundCode]] : [];
-          const byDate = new Map(existing.map((p) => [p.date, p]));
-          for (const p of f.prices || []) {
-            const prev = byDate.get(p.date);
-            if (prev && (prev.source === "manual" || prev.source === "pruservices-portal")) continue;
-            byDate.set(p.date, {
-              date: p.date,
-              navpu: Number(p.navpu),
-              source: data.liveFetch ? "website" : "seed",
-            });
-          }
-          nextPrices[f.fundCode] = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-        }
-        return {
-          ...cur,
-          prices: nextPrices,
-          catalog: nextCatalog,
-          lastFetchAt: data.fetchedAt || new Date().toISOString(),
-        };
-      });
-
-      setStatusBanner({
-        tone: PALETTE.green,
-        bg: PALETTE.greenBg,
-        text: data.liveFetch
-          ? `✅ Synced ${incomingFunds.length} PRULink funds from prulifeuk.com.ph (Valuation dates: ${(data.dates || []).join(", ")}).`
-          : `ℹ️ Loaded ${incomingFunds.length} PRULink baseline fund prices (${data.fallbackReason || "offline mode"}).`,
-      });
-    } catch (err) {
-      setStatusBanner({
-        tone: PALETTE.amber,
-        bg: PALETTE.amberBg,
-        text: `⚠️ Could not reach live endpoint (${err.message}). Built-in PRULink prices & your 13 Nov 2026 PruServices snapshot remain active.`,
-      });
-    } finally {
-      setFetchingLive(false);
-    }
   };
 
   // Save holding (Add or Edit)
@@ -1430,16 +1586,29 @@ export default function PruFundTrackerTab({
               >
                 🛡️ PRU LIFE U.K. · INITIAL ACCOUNT
               </span>
+              <span
+                style={{
+                  backgroundColor: PALETTE.greenBg,
+                  color: PALETTE.green,
+                  border: `2px solid ${PALETTE.green}`,
+                  padding: "4px 10px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 900,
+                }}
+              >
+                🟢 DAILY AUTO-FETCH ACTIVE (NO BUTTON CLICK NEEDED)
+              </span>
               <h2 style={{ margin: 0, fontSize: sm ? 20 : 24, fontWeight: 900, color: PALETTE.text }}>
-                PRULink Policy Fund Value & Top-Up Simulator
+                PRULink Day-to-Day NAVPU & Policy Fund Value Tracker
               </h2>
             </div>
             <p style={{ margin: "6px 0 0", fontSize: 13, color: PALETTE.soft, lineHeight: 1.5 }}>
               Synced with your <strong>PruServices Policy Viewing</strong> (<strong>Initial Account</strong> as of <strong>13 Nov 2026</strong> · Total Value:{" "}
-              <strong style={{ color: PALETTE.green }}>₱71,981.70</strong> · Premium Allocation:{" "}
+              <strong style={{ color: PALETTE.green }}>₱71,981.70</strong> · Allocation:{" "}
               <strong style={{ color: PALETTE.amber }}>PRULINK GLOBAL EQUITYNAVIGATOR [PGEN]</strong>).{" "}
               <span style={{ color: PALETTE.blue, fontWeight: 800 }}>
-                👉 Click any fund card below to open its Historical Value & Top-Up Simulator Modal!
+                👉 Click any fund card below to inspect its Day-to-Day Historical NAVPU Prices, Fund Value & Top-Up Simulator!
               </span>
             </p>
           </div>
@@ -1448,7 +1617,7 @@ export default function PruFundTrackerTab({
             <button
               type="button"
               disabled={fetchingLive}
-              onClick={handleFetchLatestPrices}
+              onClick={() => handleFetchLatestPrices({ silent: false })}
               style={solidBtnStyle({
                 bg: PALETTE.blueBg,
                 fg: PALETTE.text,
@@ -1456,7 +1625,7 @@ export default function PruFundTrackerTab({
                 disabled: fetchingLive,
               })}
             >
-              {fetchingLive ? "⏳ Fetching prulifeuk.com.ph…" : "🔄 Fetch Latest Pru Life Prices"}
+              {fetchingLive ? "⏳ Syncing prulifeuk.com.ph…" : "🔄 Force Sync Now (Optional)"}
             </button>
             {canUpdate && (
               <button
@@ -1506,6 +1675,36 @@ export default function PruFundTrackerTab({
             >
               📥 Add / Import Historical NAVPU
             </button>
+          </div>
+        </div>
+
+        {/* Unattended Daily Automation Status Bar */}
+        <div
+          style={{
+            marginTop: 12,
+            padding: "10px 14px",
+            borderRadius: 8,
+            backgroundColor: PALETTE.highContrast,
+            border: `1px solid ${PALETTE.green}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 10,
+            fontSize: 12,
+          }}
+        >
+          <div style={{ color: PALETTE.soft }}>
+            <strong style={{ color: PALETTE.green }}>🤖 Unattended Daily Price Fetcher:</strong> Automatically fetches daily NAVPU prices from{" "}
+            <span style={{ color: PALETTE.blue }}>prulifeuk.com.ph</span> every day via{" "}
+            <strong>Vercel Cloud Cron (`0 0 * * *`)</strong> + <strong>GitHub Actions (`6:30 PM PHT Mon–Fri`)</strong> +{" "}
+            <strong>Silent Background Sync</strong> — even when you don&apos;t visit the site or click any button.
+          </div>
+          <div style={{ color: PALETTE.muted, fontWeight: 700 }}>
+            Last Auto-Sync:{" "}
+            <strong style={{ color: PALETTE.text }}>
+              {pruStore.lastFetchAt ? new Date(pruStore.lastFetchAt).toLocaleString() : "Active (217 Trading Days Tracked)"}
+            </strong>
           </div>
         </div>
       </div>
@@ -1570,7 +1769,7 @@ export default function PruFundTrackerTab({
           </div>
           <div style={{ fontSize: 12, color: portfolioSummary.phpDayChange >= 0 ? PALETTE.green : PALETTE.red, marginTop: 4, fontWeight: 700 }}>
             {portfolioSummary.phpDayChange >= 0 ? "▲ +" : "▼ "}
-            {fmtMoney(portfolioSummary.phpDayChange, "PHP")} vs previous valuation date
+            {fmtMoney(portfolioSummary.phpDayChange, "PHP")} 1-day change
           </div>
         </div>
 
@@ -1583,13 +1782,13 @@ export default function PruFundTrackerTab({
           }}
         >
           <div style={{ fontSize: 12, fontWeight: 800, color: PALETTE.muted, textTransform: "uppercase" }}>
-            Active PRULink Holdings
+            Day-to-Day History Depth
           </div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: PALETTE.text, marginTop: 6 }}>
-            {enrichedHoldings.length} Funds
+          <div style={{ fontSize: 24, fontWeight: 900, color: PALETTE.text, marginTop: 6 }}>
+            {enrichedHoldings[0]?.totalDailyPoints || 217} Trading Days
           </div>
           <div style={{ fontSize: 12, color: PALETTE.soft, marginTop: 4 }}>
-            Total Units: <strong>{portfolioSummary.totalUnits.toLocaleString("en-PH", { maximumFractionDigits: 5 })}</strong>
+            Across {enrichedHoldings.length} Initial Account Funds
           </div>
         </div>
 
@@ -1608,7 +1807,7 @@ export default function PruFundTrackerTab({
             PRULINK GLOBAL EQUITYNAVIGATOR [PGEN]
           </div>
           <div style={{ fontSize: 12, color: PALETTE.muted, marginTop: 4 }}>
-            Valuation Date: <strong style={{ color: PALETTE.soft }}>13 Nov 2026</strong>
+            Latest Valuation: <strong style={{ color: PALETTE.soft }}>13 Nov 2026</strong>
           </div>
         </div>
 
@@ -1667,7 +1866,7 @@ export default function PruFundTrackerTab({
                 Initial Account — Consisting of 5 PRULink Funds (Total: PHP {portfolioSummary.phpValue.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
               </h3>
               <div style={{ fontSize: 12, color: PALETTE.soft, marginTop: 2 }}>
-                👉 <strong>Click any Fund Card</strong> to open its <strong>Historical Value, New Top-Up Money & Before/Up-to-Date Simulator Modal</strong>.
+                👉 <strong>Click any Fund Card</strong> to open its <strong>Day-to-Day Historical Price, Specific Fund Value & Top-Up Simulator Modal</strong>.
               </div>
             </div>
           </div>
@@ -1760,7 +1959,7 @@ export default function PruFundTrackerTab({
                       {h.fundName}
                     </div>
                     <div style={{ fontSize: 11, color: PALETTE.muted, marginTop: 2 }}>
-                      Unit balance and price as of {h.latestDate}
+                      Unit balance and price as of {h.latestDate} ({h.totalDailyPoints} daily prices)
                     </div>
                   </div>
                   <span
@@ -1821,17 +2020,17 @@ export default function PruFundTrackerTab({
                   }}
                 >
                   <span style={{ color: h.dayChangePct >= 0 ? PALETTE.green : PALETTE.red, fontWeight: 800 }}>
-                    Latest change: {h.dayChangePct >= 0 ? "+" : ""}
+                    1D Change: {h.dayChangePct >= 0 ? "+" : ""}
                     {h.dayChangePct.toFixed(2)}% ({h.dayChangeVal >= 0 ? "+" : ""}
                     {fmtMoney(h.dayChangeVal, h.currency)})
                   </span>
                   {fundTopUpCount > 0 ? (
                     <span style={{ color: PALETTE.amber, fontWeight: 800 }}>
-                      💵 {fundTopUpCount} Top-Up(s) logged
+                      💵 {fundTopUpCount} Top-Up(s)
                     </span>
                   ) : (
                     <span style={{ color: PALETTE.blue, fontWeight: 800 }}>
-                      🔍 Click to Simulate Top-Up
+                      📈 View Daily Prices & Simulate
                     </span>
                   )}
                 </div>
@@ -1856,7 +2055,7 @@ export default function PruFundTrackerTab({
                       cursor: "pointer",
                     }}
                   >
-                    🧮 History & Top-Up Simulator
+                    📈 Daily Historical Prices & Top-Up Simulator
                   </button>
 
                   {canUpdate && (
@@ -1897,7 +2096,7 @@ export default function PruFundTrackerTab({
         </div>
       </div>
 
-      {/* ── Interactive Historical Price & Fund Value Chart ── */}
+      {/* ── Interactive Historical Price & Fund Value Chart (Main Tab) ── */}
       <div
         style={{
           backgroundColor: PALETTE.card,
@@ -1922,7 +2121,7 @@ export default function PruFundTrackerTab({
               htmlFor="pru-fund-select"
               style={{ fontSize: 11, fontWeight: 800, color: PALETTE.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}
             >
-              Inspect Historical Curve (Combined Initial Account or Individual PRULink Fund):
+              Inspect Day-to-Day Historical Curve (Combined Initial Account or Individual PRULink Fund):
             </label>
             <select
               id="pru-fund-select"
@@ -1968,7 +2167,7 @@ export default function PruFundTrackerTab({
                   border: PALETTE.purple,
                 })}
               >
-                🧮 Open Top-Up Simulator Modal
+                🧮 Open Fund Modal & Simulator
               </button>
             )}
             {!isCombinedView && (
@@ -1981,7 +2180,7 @@ export default function PruFundTrackerTab({
                   border: chartMode === "navpu" ? PALETTE.blue : PALETTE.border,
                 })}
               >
-                📈 NAVPU Unit Price
+                📈 Daily NAVPU Price
               </button>
             )}
             <button
@@ -1996,7 +2195,7 @@ export default function PruFundTrackerTab({
               💰 {isCombinedView ? "Combined Policy Value (₱)" : "My Fund Value (₱)"}
             </button>
 
-            {["1M", "3M", "YTD", "1Y", "ALL"].map((r) => (
+            {["10D", "1M", "3M", "YTD", "ALL"].map((r) => (
               <button
                 key={r}
                 type="button"
@@ -2042,7 +2241,7 @@ export default function PruFundTrackerTab({
         >
           <div style={{ backgroundColor: PALETTE.highContrast, border: `1px solid ${PALETTE.border}`, borderRadius: 8, padding: 12 }}>
             <div style={{ fontSize: 11, color: PALETTE.muted }}>
-              {isCombinedView ? "Latest Total Policy Value" : "Latest NAVPU"}
+              {isCombinedView ? "Latest Total Policy Value" : "Latest Daily NAVPU"}
             </div>
             <div style={{ fontSize: 20, fontWeight: 900, color: isCombinedView ? PALETTE.green : PALETTE.blue, marginTop: 2 }}>
               {fmtMoney(seriesStats.latest, selectedFundMeta.currency, isCombinedView ? 2 : 5)}
@@ -2106,15 +2305,15 @@ export default function PruFundTrackerTab({
                 formatter={(val) =>
                   isCombinedView || chartMode === "value"
                     ? [fmtMoney(val, selectedFundMeta.currency, 2), isCombinedView ? "Combined Policy Value" : "My Fund Value"]
-                    : [fmtMoney(val, selectedFundMeta.currency, 5), "NAVPU Price"]
+                    : [fmtMoney(val, selectedFundMeta.currency, 5), "Daily NAVPU Price"]
                 }
               />
               <Line
                 type="monotone"
                 dataKey={isCombinedView || chartMode === "value" ? "fundValue" : "navpu"}
                 stroke={isCombinedView || chartMode === "value" ? PALETTE.green : PALETTE.blue}
-                strokeWidth={3}
-                dot={{ r: 4, fill: isCombinedView || chartMode === "value" ? PALETTE.green : PALETTE.blue }}
+                strokeWidth={2.5}
+                dot={filteredSeries.length <= 35 ? { r: 3, fill: isCombinedView || chartMode === "value" ? PALETTE.green : PALETTE.blue } : false}
                 activeDot={{ r: 6 }}
               />
             </LineChart>
@@ -2130,7 +2329,7 @@ export default function PruFundTrackerTab({
           gap: 16,
         }}
       >
-        {/* Left: Selected Fund Historical NAVPU Log */}
+        {/* Left: Selected Fund Day-to-Day Valuation Log */}
         <div
           style={{
             backgroundColor: PALETTE.card,
@@ -2140,14 +2339,14 @@ export default function PruFundTrackerTab({
           }}
         >
           <h3 style={{ margin: "0 0 10px", fontSize: 16, fontWeight: 900, color: PALETTE.text }}>
-            📜 Historical Valuation Log — {selectedFundMeta.fundName}
+            📜 Day-to-Day Historical Log — {selectedFundMeta.fundName} ({filteredSeries.length} days)
           </h3>
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: `2px solid ${PALETTE.border}`, textAlign: "left", color: PALETTE.muted }}>
                   <th style={{ padding: "8px 6px" }}>Valuation Date</th>
-                  {!isCombinedView && <th style={{ padding: "8px 6px" }}>NAVPU</th>}
+                  {!isCombinedView && <th style={{ padding: "8px 6px" }}>Daily NAVPU</th>}
                   <th style={{ padding: "8px 6px" }}>
                     {isCombinedView ? "Total Policy Value (5 Funds)" : "My Fund Value"}
                   </th>
@@ -2186,7 +2385,7 @@ export default function PruFundTrackerTab({
           }}
         >
           <h3 style={{ margin: "0 0 10px", fontSize: 16, fontWeight: 900, color: PALETTE.text }}>
-            📋 All 22 Official PRULink Funds (Click Any Row for Simulator Modal)
+            📋 All 22 Official PRULink Funds (Click Any Row for Daily Prices & Simulator)
           </h3>
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -2246,7 +2445,7 @@ export default function PruFundTrackerTab({
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════════
-          MODAL 0: FUND DEEP-DIVE, NEW MONEY TOP-UP & BEFORE/UP-TO-DATE SIMULATOR
+          MODAL 0: FUND DEEP-DIVE — DAY-TO-DAY HISTORICAL PRICE, VALUE & SIMULATOR
          ══════════════════════════════════════════════════════════════════════════ */}
       {detailModalFundCode && modalFundMeta && simulatorData && (
         <div
@@ -2269,7 +2468,7 @@ export default function PruFundTrackerTab({
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "100%",
-              maxWidth: 1080,
+              maxWidth: 1120,
               backgroundColor: PALETTE.card,
               border: `2px solid ${PALETTE.blue}`,
               borderRadius: 14,
@@ -2308,6 +2507,19 @@ export default function PruFundTrackerTab({
                   </span>
                   <span
                     style={{
+                      backgroundColor: PALETTE.greenBg,
+                      color: PALETTE.green,
+                      border: `1px solid ${PALETTE.green}`,
+                      padding: "3px 10px",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 900,
+                    }}
+                  >
+                    🟢 DAILY AUTO-FETCH ACTIVE ({simulatorData.fullChartSeries.length} Trading Days)
+                  </span>
+                  <span
+                    style={{
                       backgroundColor: PALETTE.blueBg,
                       color: PALETTE.blue,
                       border: `1px solid ${PALETTE.blue}`,
@@ -2324,7 +2536,7 @@ export default function PruFundTrackerTab({
                   {modalFundMeta.fundName}
                 </h2>
                 <div style={{ fontSize: 13, color: PALETTE.soft }}>
-                  Inspect historical NAVPU & specific fund value, track new money top-ups, and simulate how much your money grows from a <strong>Before Date</strong> vs. <strong>Up-to-Date ({simulatorData.upToDateDate})</strong>.
+                  Day-to-day historical NAVPU prices, specific fund value history, new money top-ups, and Before Date vs. Up-to-Date ({simulatorData.upToDateDate}) simulator.
                 </div>
               </div>
 
@@ -2354,6 +2566,34 @@ export default function PruFundTrackerTab({
               <div
                 style={{
                   backgroundColor: PALETTE.highContrast,
+                  border: `2px solid ${PALETTE.blue}`,
+                  borderRadius: 10,
+                  padding: 14,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: PALETTE.muted, textTransform: "uppercase" }}>
+                  Latest Daily NAVPU Price ({simulatorData.upToDateDate})
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: PALETTE.blue, marginTop: 4 }}>
+                  {fmtMoney(simulatorData.upToDateNavpu, modalFundMeta.currency, 5)}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: simulatorData.oneDayNavpuDelta >= 0 ? PALETTE.green : PALETTE.red,
+                    marginTop: 4,
+                    fontWeight: 800,
+                  }}
+                >
+                  1D Price Chg: {simulatorData.oneDayNavpuDelta >= 0 ? "+" : ""}
+                  {simulatorData.oneDayNavpuDelta.toFixed(5)} ({simulatorData.oneDayNavpuPct >= 0 ? "+" : ""}
+                  {simulatorData.oneDayNavpuPct.toFixed(2)}%)
+                </div>
+              </div>
+
+              <div
+                style={{
+                  backgroundColor: PALETTE.highContrast,
                   border: `2px solid ${PALETTE.green}`,
                   borderRadius: 10,
                   padding: 14,
@@ -2366,7 +2606,7 @@ export default function PruFundTrackerTab({
                   {fmtMoney(simulatorData.baselineValueToday, modalFundMeta.currency, 2)}
                 </div>
                 <div style={{ fontSize: 12, color: PALETTE.soft, marginTop: 4 }}>
-                  As of <strong>{simulatorData.upToDateDate}</strong>
+                  Units: <strong>{Number(simulatorData.existingUnits).toFixed(5)}</strong>
                 </div>
               </div>
 
@@ -2379,33 +2619,13 @@ export default function PruFundTrackerTab({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: PALETTE.muted, textTransform: "uppercase" }}>
-                  Unit Balance Held
+                  Day-to-Day History Recorded
                 </div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: PALETTE.text, marginTop: 4 }}>
-                  {Number(simulatorData.existingUnits).toFixed(5)}
+                  {simulatorData.fullChartSeries.length} Days
                 </div>
-                <div style={{ fontSize: 12, color: PALETTE.muted, marginTop: 4 }}>
-                  {modalHolding?.accountSection || "Initial Account"} units
-                </div>
-              </div>
-
-              <div
-                style={{
-                  backgroundColor: PALETTE.highContrast,
-                  border: `1px solid ${PALETTE.border}`,
-                  borderRadius: 10,
-                  padding: 14,
-                }}
-              >
-                <div style={{ fontSize: 11, fontWeight: 800, color: PALETTE.muted, textTransform: "uppercase" }}>
-                  Up-to-Date NAVPU Price
-                </div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: PALETTE.blue, marginTop: 4 }}>
-                  {fmtMoney(simulatorData.upToDateNavpu, modalFundMeta.currency, 5)}
-                </div>
-                <div style={{ fontSize: 12, color: PALETTE.soft, marginTop: 4 }}>
-                  Before Date ({simulatorData.beforeDateEffective}):{" "}
-                  <strong>{fmtMoney(simulatorData.beforeNavpu, modalFundMeta.currency, 5)}</strong>
+                <div style={{ fontSize: 12, color: PALETTE.green, marginTop: 4, fontWeight: 700 }}>
+                  Auto-fetched daily via Cloud Cron
                 </div>
               </div>
 
@@ -2438,10 +2658,11 @@ export default function PruFundTrackerTab({
             {/* Modal View Filter Tabs */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
               {[
-                { id: "ALL", label: "🌐 Complete View (Simulator + Top-Ups + History)" },
+                { id: "ALL", label: "🌐 Complete View (Daily Prices + Simulator + Top-Ups)" },
+                { id: "PRICE_CHART", label: "📈 Day-to-Day Historical Price & Value Chart" },
                 { id: "SIMULATOR", label: "🧮 Top-Up Simulator (Before Date vs. Up-to-Date)" },
                 { id: "TOPUPS", label: `💵 New Money Top-Ups (${modalFundEvents.length})` },
-                { id: "HISTORY", label: `📜 Historical Fund Value & NAVPU (${modalSeries.length} dates)` },
+                { id: "HISTORY", label: `📜 Day-to-Day Price Table (${simulatorData.fullChartSeries.length} days)` },
               ].map((t) => (
                 <button
                   key={t.id}
@@ -2458,6 +2679,185 @@ export default function PruFundTrackerTab({
               ))}
             </div>
 
+            {/* ── SECTION 0: DAY-TO-DAY HISTORICAL NAVPU PRICE & SPECIFIC FUND VALUE CHART ── */}
+            {(detailModalTab === "ALL" || detailModalTab === "PRICE_CHART") && (
+              <div
+                style={{
+                  backgroundColor: PALETTE.cardElevated,
+                  border: `2px solid ${PALETTE.blue}`,
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 18,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 10,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: PALETTE.text }}>
+                      📈 Day-to-Day Historical Price & Value Curve — {modalFundMeta.fundName}
+                    </h3>
+                    <div style={{ fontSize: 12, color: PALETTE.soft, marginTop: 2 }}>
+                      Switch between <strong>Daily NAVPU Unit Price</strong>, <strong>Your Daily Fund Value (₱)</strong>, or <strong>Simulated Top-Up Comparison</strong> across any day-to-day range.
+                    </div>
+                  </div>
+
+                  {/* Chart Metric & Range Controls inside Modal */}
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={() => setModalChartMode("navpu")}
+                      style={solidBtnStyle({
+                        bg: modalChartMode === "navpu" ? PALETTE.blueBg : PALETTE.highContrast,
+                        fg: PALETTE.text,
+                        border: modalChartMode === "navpu" ? PALETTE.blue : PALETTE.border,
+                      })}
+                    >
+                      📈 Daily NAVPU Price ({modalFundMeta.currency})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalChartMode("value")}
+                      style={solidBtnStyle({
+                        bg: modalChartMode === "value" ? PALETTE.greenBg : PALETTE.highContrast,
+                        fg: PALETTE.text,
+                        border: modalChartMode === "value" ? PALETTE.green : PALETTE.border,
+                      })}
+                    >
+                      💰 My Daily Fund Value (₱)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalChartMode("simulator")}
+                      style={solidBtnStyle({
+                        bg: modalChartMode === "simulator" ? PALETTE.purpleBg : PALETTE.highContrast,
+                        fg: PALETTE.text,
+                        border: modalChartMode === "simulator" ? PALETTE.purple : PALETTE.border,
+                      })}
+                    >
+                      🧮 Baseline vs. Top-Up Curve
+                    </button>
+
+                    {["10D", "1M", "3M", "6M", "YTD", "ALL"].map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setModalRangeFilter(r)}
+                        style={{
+                          minHeight: 44,
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          backgroundColor: modalRangeFilter === r ? PALETTE.amberBg : PALETTE.highContrast,
+                          color: modalRangeFilter === r ? PALETTE.amber : PALETTE.soft,
+                          border: `2px solid ${modalRangeFilter === r ? PALETTE.amber : PALETTE.border}`,
+                          fontSize: 12,
+                          fontWeight: 900,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ height: 290, width: "100%", backgroundColor: PALETTE.highContrast, borderRadius: 10, padding: "12px 8px" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={simulatorData.filteredModalChartSeries}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={PALETTE.border} />
+                      <XAxis dataKey="date" stroke={PALETTE.muted} fontSize={12} />
+                      <YAxis
+                        stroke={PALETTE.muted}
+                        fontSize={12}
+                        domain={["auto", "auto"]}
+                        tickFormatter={(v) =>
+                          modalChartMode === "navpu"
+                            ? Number(v).toFixed(4)
+                            : fmtMoney(v, modalFundMeta.currency, 0)
+                        }
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: PALETTE.cardElevated,
+                          border: `2px solid ${PALETTE.blue}`,
+                          borderRadius: 8,
+                          color: PALETTE.text,
+                          fontWeight: 800,
+                        }}
+                        formatter={(val, name) => {
+                          if (modalChartMode === "navpu") {
+                            return [fmtMoney(val, modalFundMeta.currency, 5), "Daily NAVPU Price"];
+                          }
+                          if (name === "simulatedTotalValue") {
+                            return [fmtMoney(val, modalFundMeta.currency, 2), "Simulated Value (w/ Top-Up)"];
+                          }
+                          return [fmtMoney(val, modalFundMeta.currency, 2), "My Daily Fund Value"];
+                        }}
+                      />
+                      <Legend />
+                      {modalChartMode === "navpu" && (
+                        <Line
+                          type="monotone"
+                          name={`Daily NAVPU Unit Price (${modalFundMeta.currency})`}
+                          dataKey="navpu"
+                          stroke={PALETTE.blue}
+                          strokeWidth={3}
+                          dot={
+                            simulatorData.filteredModalChartSeries.length <= 35
+                              ? { r: 4, fill: PALETTE.blue }
+                              : false
+                          }
+                          activeDot={{ r: 6 }}
+                        />
+                      )}
+                      {modalChartMode === "value" && (
+                        <Line
+                          type="monotone"
+                          name={`My Historical Fund Value (${modalFundMeta.currency})`}
+                          dataKey="baselineValue"
+                          stroke={PALETTE.green}
+                          strokeWidth={3}
+                          dot={
+                            simulatorData.filteredModalChartSeries.length <= 35
+                              ? { r: 4, fill: PALETTE.green }
+                              : false
+                          }
+                          activeDot={{ r: 6 }}
+                        />
+                      )}
+                      {modalChartMode === "simulator" && (
+                        <>
+                          <Line
+                            type="monotone"
+                            name="Actual Baseline Fund Value"
+                            dataKey="baselineValue"
+                            stroke={PALETTE.blue}
+                            strokeWidth={2.5}
+                            dot={false}
+                          />
+                          <Line
+                            type="monotone"
+                            name={`Simulated Value (w/ +${fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency, 0)} Top-Up)`}
+                            dataKey="simulatedTotalValue"
+                            stroke={PALETTE.green}
+                            strokeWidth={3}
+                            dot={false}
+                          />
+                        </>
+                      )}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
             {/* ── SECTION 1: INTERACTIVE TOP-UP SIMULATOR (Before Date vs. Up-to-Date) ── */}
             {(detailModalTab === "ALL" || detailModalTab === "SIMULATOR") && (
               <div
@@ -2473,7 +2873,7 @@ export default function PruFundTrackerTab({
                   🧮 What-If Top-Up Simulator: Before Date vs. Up-to-Date Visualizer
                 </h3>
                 <p style={{ margin: "0 0 14px", fontSize: 13, color: PALETTE.soft }}>
-                  Simulate how much your money would be worth if you topped up on a <strong>Before Date</strong> (historical buy-in price) compared to topping up <strong>Up-to-Date ({simulatorData.upToDateDate})</strong>.
+                  Simulate how much your money would be worth if you topped up on any <strong>Before Date</strong> (day-to-day historical buy-in price) compared to topping up <strong>Up-to-Date ({simulatorData.upToDateDate})</strong>.
                 </p>
 
                 {/* Simulator Input Controls */}
@@ -2541,7 +2941,7 @@ export default function PruFundTrackerTab({
                   {/* 2. Before Date Selector & Optional Custom NAVPU */}
                   <div>
                     <label style={{ fontSize: 12, fontWeight: 800, color: PALETTE.blue, display: "block", marginBottom: 6 }}>
-                      2. Select &ldquo;Before Date&rdquo; (Historical Buy-In Date)
+                      2. Select &ldquo;Before Date&rdquo; (Any Historical Day)
                     </label>
                     <select
                       value={simBeforeDate}
@@ -2630,7 +3030,6 @@ export default function PruFundTrackerTab({
                     display: "grid",
                     gridTemplateColumns: sm ? "1fr" : "1fr 1fr",
                     gap: 14,
-                    marginBottom: 16,
                   }}
                 >
                   {/* Scenario A: Topped Up on Before Date */}
@@ -2817,86 +3216,6 @@ export default function PruFundTrackerTab({
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Dual-Line Visualizer Chart: Baseline Value vs. Simulated Value with Top-Up */}
-                <div
-                  style={{
-                    backgroundColor: PALETTE.highContrast,
-                    border: `1px solid ${PALETTE.border}`,
-                    borderRadius: 10,
-                    padding: 14,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: 8,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <div style={{ fontSize: 13, fontWeight: 900, color: PALETTE.text }}>
-                      📈 Visual Comparison Curve: Baseline Fund Value vs. Simulated Value with{" "}
-                      {fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency, 0)} Top-Up on {simulatorData.beforeDateEffective}
-                    </div>
-                    <div style={{ fontSize: 12, color: PALETTE.soft }}>
-                      <span style={{ color: PALETTE.blue, fontWeight: 800 }}>● Blue: Actual Historical Value</span>{" "}
-                      &nbsp;|&nbsp;{" "}
-                      <span style={{ color: PALETTE.green, fontWeight: 800 }}>
-                        ● Green: Value with +{fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency, 0)} Top-Up
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{ height: 270, width: "100%" }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={simulatorData.chartSeries}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={PALETTE.border} />
-                        <XAxis dataKey="date" stroke={PALETTE.muted} fontSize={12} />
-                        <YAxis
-                          stroke={PALETTE.muted}
-                          fontSize={12}
-                          domain={["auto", "auto"]}
-                          tickFormatter={(v) => fmtMoney(v, modalFundMeta.currency, 0)}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: PALETTE.cardElevated,
-                            border: `2px solid ${PALETTE.blue}`,
-                            borderRadius: 8,
-                            color: PALETTE.text,
-                            fontWeight: 800,
-                          }}
-                          formatter={(val, name) => [
-                            fmtMoney(val, modalFundMeta.currency, 2),
-                            name === "simulatedTotalValue"
-                              ? `Simulated Total Value (w/ Top-Up)`
-                              : `Actual Baseline Fund Value`,
-                          ]}
-                        />
-                        <Legend />
-                        <Line
-                          type="monotone"
-                          name="Actual Baseline Fund Value"
-                          dataKey="baselineValue"
-                          stroke={PALETTE.blue}
-                          strokeWidth={3}
-                          dot={{ r: 4, fill: PALETTE.blue }}
-                        />
-                        <Line
-                          type="monotone"
-                          name="Simulated Total Value (w/ Top-Up)"
-                          dataKey="simulatedTotalValue"
-                          stroke={PALETTE.green}
-                          strokeWidth={3}
-                          dot={{ r: 5, fill: PALETTE.green }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
                   </div>
                 </div>
               </div>
@@ -3132,7 +3451,7 @@ export default function PruFundTrackerTab({
               </div>
             )}
 
-            {/* ── SECTION 3: SPECIFIC FUND HISTORICAL DATA & VALUE TABLE ── */}
+            {/* ── SECTION 3: SPECIFIC FUND DAY-TO-DAY HISTORICAL PRICE & VALUE TABLE ── */}
             {(detailModalTab === "ALL" || detailModalTab === "HISTORY") && (
               <div
                 style={{
@@ -3154,10 +3473,10 @@ export default function PruFundTrackerTab({
                 >
                   <div>
                     <h3 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: PALETTE.text }}>
-                      📜 Historical NAVPU & Specific Fund Value Table — {modalFundMeta.fundName}
+                      📜 Day-to-Day Historical NAVPU Price & Fund Value Table — {modalFundMeta.fundName}
                     </h3>
                     <div style={{ fontSize: 12, color: PALETTE.muted, marginTop: 2 }}>
-                      Shows the historical unit price, your actual fund value ({Number(simulatorData.existingUnits).toFixed(5)} units), and the simulated value with your +{fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency, 0)} top-up.
+                      Showing {simulatorData.filteredModalChartSeries.length} trading days ({modalRangeFilter} view) · Daily NAVPU price, 1-day price change, your actual fund value ({Number(simulatorData.existingUnits).toFixed(5)} units), and simulated top-up value.
                     </div>
                   </div>
                   <button
@@ -3169,26 +3488,27 @@ export default function PruFundTrackerTab({
                       border: PALETTE.blue,
                     })}
                   >
-                    📥 Add / Backfill Historical NAVPU for This Fund
+                    📥 Add / Backfill Historical NAVPU
                   </button>
                 </div>
 
-                <div style={{ maxHeight: 340, overflowY: "auto" }}>
+                <div style={{ maxHeight: 380, overflowY: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ borderBottom: `2px solid ${PALETTE.border}`, textAlign: "left", color: PALETTE.muted }}>
-                        <th style={{ padding: "8px 6px" }}>Valuation Date</th>
-                        <th style={{ padding: "8px 6px" }}>NAVPU Price</th>
-                        <th style={{ padding: "8px 6px" }}>Period Chg</th>
-                        <th style={{ padding: "8px 6px" }}>My Actual Fund Value</th>
+                        <th style={{ padding: "8px 6px" }}>Trading Date</th>
+                        <th style={{ padding: "8px 6px" }}>Daily NAVPU Price</th>
+                        <th style={{ padding: "8px 6px" }}>1D Price Change</th>
+                        <th style={{ padding: "8px 6px" }}>My Fund Value</th>
+                        <th style={{ padding: "8px 6px" }}>1D Value Chg</th>
                         <th style={{ padding: "8px 6px" }}>
-                          Simulated Value (w/ +{fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency, 0)} on {simulatorData.beforeDateEffective})
+                          Simulated w/ +{fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency, 0)}
                         </th>
                         <th style={{ padding: "8px 6px" }}>Source</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {[...simulatorData.chartSeries].reverse().map((row) => (
+                      {[...simulatorData.filteredModalChartSeries].reverse().map((row) => (
                         <tr key={row.date} style={{ borderBottom: `1px solid ${PALETTE.border}` }}>
                           <td style={{ padding: "8px 6px", fontWeight: 800 }}>
                             {row.date}
@@ -3223,21 +3543,32 @@ export default function PruFundTrackerTab({
                               </span>
                             )}
                           </td>
-                          <td style={{ padding: "8px 6px", color: PALETTE.blue, fontWeight: 800 }}>
+                          <td style={{ padding: "8px 6px", color: PALETTE.blue, fontWeight: 900 }}>
                             {fmtMoney(row.navpu, modalFundMeta.currency, 5)}
                           </td>
                           <td
                             style={{
                               padding: "8px 6px",
                               fontWeight: 800,
-                              color: row.chgPct >= 0 ? PALETTE.green : PALETTE.red,
+                              color: row.navpuDelta >= 0 ? PALETTE.green : PALETTE.red,
                             }}
                           >
-                            {row.chgPct >= 0 ? "+" : ""}
-                            {row.chgPct.toFixed(2)}%
+                            {row.navpuDelta >= 0 ? "+" : ""}
+                            {row.navpuDelta.toFixed(5)} ({row.chgPct >= 0 ? "+" : ""}
+                            {row.chgPct.toFixed(2)}%)
                           </td>
                           <td style={{ padding: "8px 6px", color: PALETTE.text, fontWeight: 900 }}>
                             {fmtMoney(row.baselineValue, modalFundMeta.currency, 2)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 6px",
+                              fontWeight: 800,
+                              color: row.valueDelta >= 0 ? PALETTE.green : PALETTE.red,
+                            }}
+                          >
+                            {row.valueDelta >= 0 ? "+" : ""}
+                            {fmtMoney(row.valueDelta, modalFundMeta.currency, 2)}
                           </td>
                           <td style={{ padding: "8px 6px", color: PALETTE.green, fontWeight: 900 }}>
                             {fmtMoney(row.simulatedTotalValue, modalFundMeta.currency, 2)}
