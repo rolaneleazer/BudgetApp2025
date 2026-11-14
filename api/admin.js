@@ -14,7 +14,11 @@ export default async function handler(req, res) {
   if (pathname.includes("/permissions")) {
     return await permissionsHandler(req, res);
   }
-  if (pathname.includes("/code-sentinel")) {
+  if (
+    pathname.includes("/code-sentinel") ||
+    parsedUrl.query?.action === "code_sentinel" ||
+    parsedUrl.query?.action === "code-sentinel"
+  ) {
     return await codeSentinelApiHandler(req, res);
   }
   

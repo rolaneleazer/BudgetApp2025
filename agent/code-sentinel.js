@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import crypto from "node:crypto";
+import os from "node:os";
 import { WebSocketServer } from "ws";
 import {
   computeSecurityScore,
@@ -13,6 +14,7 @@ import {
 } from "./scanners.js";
 import { applyFindingFix, restoreBackupSnapshot } from "./remediation.js";
 import { sendReportEmail } from "../mcp/email.js";
+import { getSupabaseAdmin } from "../mcp/admin.js";
 
 const REPO_ROOT = process.cwd();
 const STATE_FILE = path.join(REPO_ROOT, ".sentinel-state.json");
@@ -68,7 +70,9 @@ const wsClients = new Set();
 
 function saveState() {
   try {
+    state.summary = buildSummary();
     fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), "utf8");
+    syncStateToSupabase(false).catch(() => {});
   } catch (err) {
     console.error("[Code Sentinel] Failed to persist state:", err.message);
   }
@@ -110,6 +114,13 @@ function buildSummary() {
   const active = findings.filter((f) => f.status !== "FIXED_VERIFIED" && f.status !== "IGNORED");
   return {
     daemonOnline: true,
+    daemonStatus: {
+      online: true,
+      mode: "direct-daemon",
+      hostname: os.hostname(),
+      lastHeartbeatAt: new Date().toISOString(),
+      watchEnabled: Boolean(state.policy.watchEnabled),
+    },
     watchEnabled: Boolean(state.policy.watchEnabled),
     autoFixMode: state.policy.autoFixMode,
     score: computeSecurityScore(findings),
@@ -471,6 +482,183 @@ function startWatcher() {
   });
 }
 
+let lastSupabaseSyncAt = 0;
+let isSyncingToSupabase = false;
+
+async function syncStateToSupabase(force = false) {
+  const now = Date.now();
+  if (!force && (isSyncingToSupabase || now - lastSupabaseSyncAt < 3000)) return;
+  isSyncingToSupabase = true;
+
+  try {
+    const admin = getSupabaseAdmin();
+    if (!admin) return;
+
+    lastSupabaseSyncAt = Date.now();
+    const payload = {
+      summary: {
+        ...buildSummary(),
+        daemonStatus: {
+          online: true,
+          mode: "direct-daemon",
+          hostname: os.hostname(),
+          lastHeartbeatAt: new Date().toISOString(),
+          watchEnabled: Boolean(state.policy.watchEnabled),
+        },
+      },
+      findings: state.findings.slice(0, 100),
+      logs: state.logs.slice(0, 250),
+      history: state.history.slice(-30),
+      policy: state.policy,
+      syncedAt: new Date().toISOString(),
+    };
+
+    const { data: rows, error: selectErr } = await admin
+      .from("user_data")
+      .select("user_id, budget_data");
+
+    if (selectErr || !Array.isArray(rows) || rows.length === 0) return;
+
+    for (const row of rows) {
+      const nextBudgetData = {
+        ...(row.budget_data || {}),
+        codeSentinel: {
+          ...(row.budget_data?.codeSentinel || {}),
+          ...payload,
+        },
+      };
+      await admin
+        .from("user_data")
+        .update({ budget_data: nextBudgetData, updated_at: new Date().toISOString() })
+        .eq("user_id", row.user_id);
+    }
+  } catch {
+    // Network / offline safe catch
+  } finally {
+    isSyncingToSupabase = false;
+  }
+}
+
+let isProcessingApproval = false;
+async function pollCloudApprovals() {
+  if (isProcessingApproval) return;
+  try {
+    const admin = getSupabaseAdmin();
+    if (!admin) return;
+
+    const { data: rows, error } = await admin
+      .from("user_data")
+      .select("user_id, budget_data");
+
+    if (error || !Array.isArray(rows) || rows.length === 0) return;
+
+    for (const row of rows) {
+      const cs = row.budget_data?.codeSentinel;
+      if (!cs) continue;
+
+      // 1. Check if scan was requested from Vercel
+      if (cs.scanRequested?.requestedAt) {
+        const reqTime = new Date(cs.scanRequested.requestedAt).getTime();
+        const lastScanTime = state.lastScanAt ? new Date(state.lastScanAt).getTime() : 0;
+        if (reqTime > lastScanTime) {
+          appendLog({
+            eventType: "SCAN_REQUEST_RECEIVED",
+            severity: "INFO",
+            target: "workspace",
+            actor: cs.scanRequested.requestedBy || "Cloud Admin",
+            outcome: "TRIGGERED",
+            message: `Remote scan request received from Vercel by ${cs.scanRequested.requestedBy || "Admin"}.`,
+          });
+          await executeFullScan({ runNpmAudit: false, actor: cs.scanRequested.requestedBy || "Cloud Admin" });
+          const nextBudgetData = {
+            ...(row.budget_data || {}),
+            codeSentinel: {
+              ...(row.budget_data?.codeSentinel || {}),
+              scanRequested: null,
+            },
+          };
+          await admin
+            .from("user_data")
+            .update({ budget_data: nextBudgetData })
+            .eq("user_id", row.user_id);
+          continue;
+        }
+      }
+
+      // 2. Check for findings approved on Vercel awaiting daemon execution
+      const cloudFindings = Array.isArray(cs.findings) ? cs.findings : [];
+      const approvedQueued = cloudFindings.filter((f) => f.status === "APPROVED_QUEUED");
+
+      if (approvedQueued.length > 0) {
+        isProcessingApproval = true;
+        try {
+          for (const af of approvedQueued) {
+            appendLog({
+              eventType: "CLOUD_APPROVAL_RECEIVED",
+              severity: af.severity,
+              target: `${af.filePath}:${af.lineStart}`,
+              actor: af.approvedBy || "Admin via Vercel",
+              outcome: "EXECUTING_FIX",
+              message: `Direct daemon picked up approved fix for ${af.ruleId} (${af.title}) approved by ${af.approvedBy || "Admin"}.`,
+            });
+
+            // Find in local state
+            const localIdx = state.findings.findIndex((f) => f.id === af.id);
+            if (localIdx !== -1) {
+              const res = await handleFindingApproval(af.id, af.approvedBy || "Admin via Vercel");
+              if (res.ok) {
+                appendLog({
+                  eventType: "CLOUD_APPROVAL_COMPLETED",
+                  severity: af.severity,
+                  target: af.filePath,
+                  actor: "Direct Daemon",
+                  outcome: "VERIFIED",
+                  message: `Verified and applied approved fix for ${af.ruleId} in ${af.filePath}.`,
+                });
+              } else {
+                appendLog({
+                  eventType: "CLOUD_APPROVAL_FAILED",
+                  severity: "HIGH",
+                  target: af.filePath,
+                  actor: "Direct Daemon",
+                  outcome: "ROLLED_BACK",
+                  message: `Fix failed verification: ${res.error}`,
+                });
+              }
+            } else {
+              // Apply by finding ID
+              await handleFindingApproval(af.id, af.approvedBy || "Admin via Vercel");
+            }
+          }
+          await syncStateToSupabase(true);
+        } finally {
+          isProcessingApproval = false;
+        }
+      }
+    }
+  } catch {
+    // Ignore network blips
+  }
+}
+
+function startCloudSyncLoop() {
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    console.log("ℹ️  Direct Daemon running in local-only mode (SUPABASE_SERVICE_ROLE_KEY not configured).");
+    return;
+  }
+  console.log("☁️  Direct Daemon cloud link active: Supabase direct synchronization & approval queue polling enabled.");
+
+  // Initial sync to cloud
+  syncStateToSupabase(true).catch(() => {});
+
+  // Poll cloud queue and send heartbeats every 4.5 seconds
+  setInterval(() => {
+    pollCloudApprovals().catch(() => {});
+    syncStateToSupabase(false).catch(() => {});
+  }, 4500);
+}
+
 function readJsonBody(req) {
   return new Promise((resolve) => {
     let raw = "";
@@ -669,6 +857,7 @@ async function main() {
   if (isWatch) {
     startServer();
     startWatcher();
+    startCloudSyncLoop();
   }
 }
 

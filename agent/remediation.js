@@ -13,9 +13,9 @@ export function sha256(text) {
 /**
  * Resolve a relative repo path safely, rejecting path traversal outside repoRoot.
  */
-export function resolveRepoPath(repoRoot, relPath) {
-  const root = path.resolve(repoRoot);
-  const resolved = path.resolve(root, relPath);
+export function resolveRepoPath(repoRoot = process.cwd(), relPath = "") {
+  const root = path.resolve(repoRoot || process.cwd());
+  const resolved = path.resolve(root, relPath || "");
   if (resolved !== root && !resolved.startsWith(root + path.sep)) {
     throw new Error(`Unsafe path outside repository root: ${relPath}`);
   }
@@ -85,14 +85,15 @@ export function buildUnifiedDiff(beforeText, afterText, filePath = "file", conte
 /**
  * Save a pre-patch backup snapshot of one or more relative files.
  */
-export function createBackupSnapshot(repoRoot, relPaths, findingId = "manual") {
+export function createBackupSnapshot(repoRoot = process.cwd(), relPaths = [], findingId = "manual") {
+  const root = repoRoot || process.cwd();
   const backupId = `bak_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
-  const backupFolder = path.join(repoRoot, BACKUP_DIR_NAME, backupId);
+  const backupFolder = path.join(root, BACKUP_DIR_NAME, backupId);
   fs.mkdirSync(backupFolder, { recursive: true });
 
   const files = [];
   for (const rel of relPaths) {
-    const abs = resolveRepoPath(repoRoot, rel);
+    const abs = resolveRepoPath(root, rel);
     const existed = fs.existsSync(abs);
     const content = existed ? fs.readFileSync(abs, "utf8") : "";
     const safeName = rel.replace(/[^a-zA-Z0-9._-]/g, "_") + ".bak";
@@ -118,10 +119,11 @@ export function createBackupSnapshot(repoRoot, relPaths, findingId = "manual") {
 /**
  * Restore files from an existing backup snapshot.
  */
-export function restoreBackupSnapshot(repoRoot, backupId) {
+export function restoreBackupSnapshot(repoRoot = process.cwd(), backupId) {
+  const root = repoRoot || process.cwd();
   const safeId = String(backupId || "").replace(/[^a-zA-Z0-9_-]/g, "");
   if (!safeId) throw new Error("Invalid backupId.");
-  const backupFolder = path.join(repoRoot, BACKUP_DIR_NAME, safeId);
+  const backupFolder = path.join(root, BACKUP_DIR_NAME, safeId);
   const metaPath = path.join(backupFolder, "meta.json");
   if (!fs.existsSync(metaPath)) {
     throw new Error(`Backup snapshot '${safeId}' not found.`);
@@ -130,7 +132,7 @@ export function restoreBackupSnapshot(repoRoot, backupId) {
   const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
   const restoredFiles = [];
   for (const entry of meta.files || []) {
-    const targetAbs = resolveRepoPath(repoRoot, entry.relPath);
+    const targetAbs = resolveRepoPath(root, entry.relPath);
     if (!entry.existed) {
       if (fs.existsSync(targetAbs)) fs.unlinkSync(targetAbs);
     } else {
@@ -162,7 +164,8 @@ export function verifySyntaxWithEsbuild(filePath, content) {
 /**
  * Apply an approved finding fix, run Adversarial Verification, and auto-rollback on failure.
  */
-export function applyFindingFix(finding, repoRoot, options = {}) {
+export function applyFindingFix(finding, repoRoot = process.cwd(), options = {}) {
+  const root = repoRoot || process.cwd();
   const { runPreDeployGate = true, rescanFileFn = null } = options;
 
   if (!finding) {
@@ -178,16 +181,16 @@ export function applyFindingFix(finding, repoRoot, options = {}) {
   const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
 
   if (finding.fixStrategy === "npm-audit-fix") {
-    const backup = createBackupSnapshot(repoRoot, ["package.json", "package-lock.json"], finding.id);
+    const backup = createBackupSnapshot(root, ["package.json", "package-lock.json"], finding.id);
     try {
       const args = finding.fixPackage && finding.fixVersion
         ? ["install", `${finding.fixPackage}@${finding.fixVersion}`, "--no-audit", "--no-fund"]
         : ["audit", "fix"];
-      execFileSync(npmCmd, args, { cwd: repoRoot, encoding: "utf8", stdio: "pipe" });
+      execFileSync(npmCmd, args, { cwd: root, encoding: "utf8", stdio: "pipe" });
 
       if (runPreDeployGate) {
         execFileSync(process.execPath, ["--max-http-header-size=65536", "scripts/pre-deploy-check.js"], {
-          cwd: repoRoot,
+          cwd: root,
           encoding: "utf8",
           stdio: "pipe",
         });
@@ -200,7 +203,7 @@ export function applyFindingFix(finding, repoRoot, options = {}) {
         message: `Dependency fix applied (${args.join(" ")}) and Quality Gate passed.`,
       };
     } catch (err) {
-      restoreBackupSnapshot(repoRoot, backup.backupId);
+      restoreBackupSnapshot(root, backup.backupId);
       return {
         ok: false,
         rolledBack: true,
@@ -215,7 +218,7 @@ export function applyFindingFix(finding, repoRoot, options = {}) {
     return { ok: false, error: "Finding does not contain a valid proposed file patch." };
   }
 
-  const absTarget = resolveRepoPath(repoRoot, finding.filePath);
+  const absTarget = resolveRepoPath(root, finding.filePath);
   if (!fs.existsSync(absTarget)) {
     return { ok: false, error: `Target file no longer exists: ${finding.filePath}` };
   }
@@ -237,13 +240,13 @@ export function applyFindingFix(finding, repoRoot, options = {}) {
     };
   }
 
-  const backup = createBackupSnapshot(repoRoot, [finding.filePath], finding.id);
+  const backup = createBackupSnapshot(root, [finding.filePath], finding.id);
   try {
     fs.writeFileSync(absTarget, finding.proposedAfter, "utf8");
 
     // Re-scan modified file to confirm finding is resolved
     if (typeof rescanFileFn === "function") {
-      const remaining = rescanFileFn(finding.filePath, repoRoot);
+      const remaining = rescanFileFn(finding.filePath, root);
       const stillPresent = remaining.some((f) => f.id === finding.id);
       if (stillPresent) {
         throw new Error(`Post-patch re-scan shows rule ${finding.ruleId} is still triggered.`);
@@ -252,7 +255,7 @@ export function applyFindingFix(finding, repoRoot, options = {}) {
 
     if (runPreDeployGate) {
       execFileSync(process.execPath, ["--max-http-header-size=65536", "scripts/pre-deploy-check.js"], {
-        cwd: repoRoot,
+        cwd: root,
         encoding: "utf8",
         stdio: "pipe",
       });
@@ -265,7 +268,7 @@ export function applyFindingFix(finding, repoRoot, options = {}) {
       message: `Patch applied to ${finding.filePath} and verified via Quality Gate.`,
     };
   } catch (err) {
-    restoreBackupSnapshot(repoRoot, backup.backupId);
+    restoreBackupSnapshot(root, backup.backupId);
     return {
       ok: false,
       rolledBack: true,

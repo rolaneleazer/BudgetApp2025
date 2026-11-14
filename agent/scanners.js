@@ -38,7 +38,7 @@ function replaceSingleLine(lines, lineIdx, nextLineText) {
  * Scan a single file for syntax errors, SAST security issues, hardcoded secrets,
  * and BudgetApp2025 Doctrine/UX invariants.
  */
-export function scanFile(relPath, repoRoot) {
+export function scanFile(relPath, repoRoot = process.cwd()) {
   const normPath = relPath.replace(/\\/g, "/");
   const absPath = resolveRepoPath(repoRoot, normPath);
   if (!fs.existsSync(absPath)) return [];
@@ -425,7 +425,7 @@ export function scanFile(relPath, repoRoot) {
 /**
  * Snyk Open Source equivalent: Scan package.json & npm audit advisories.
  */
-export function scanDependencies(repoRoot, options = {}) {
+export function scanDependencies(repoRoot = process.cwd(), options = {}) {
   const { runNpmAudit = true } = options;
   const findings = [];
   const now = new Date().toISOString();
@@ -565,7 +565,7 @@ export function scanDependencies(repoRoot, options = {}) {
 /**
  * Check .gitignore, vercel.json security headers, and Honeynet invariants.
  */
-export function scanRepoHygiene(repoRoot) {
+export function scanRepoHygiene(repoRoot = process.cwd()) {
   const findings = [];
   const now = new Date().toISOString();
 
@@ -646,7 +646,7 @@ function walkFiles(dirAbs, repoRoot, out = []) {
   return out;
 }
 
-export function listWatchedFiles(repoRoot) {
+export function listWatchedFiles(repoRoot = process.cwd()) {
   const files = new Set();
   for (const root of SCAN_ROOTS) {
     for (const f of walkFiles(path.join(repoRoot, root), repoRoot)) {
@@ -667,7 +667,7 @@ export function computeSecurityScore(findings) {
   return Math.max(0, Math.min(100, 100 - penalty));
 }
 
-export function runFullScan(repoRoot, options = {}) {
+export function runFullScan(repoRoot = process.cwd(), options = {}) {
   const startedAt = Date.now();
   const files = listWatchedFiles(repoRoot);
   const findings = [];

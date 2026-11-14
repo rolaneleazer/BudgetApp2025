@@ -43,7 +43,8 @@ const SEV_STYLE = {
 };
 
 const STATUS_STYLE = {
-  PENDING_REVIEW: { fg: "#fbbf24", bg: "#332206", label: "Pending Review" },
+  PENDING_REVIEW: { fg: "#fbbf24", bg: "#332206", label: "Awaiting Approval" },
+  APPROVED_QUEUED: { fg: "#38bdf8", bg: "#0d2347", label: "Approved & Queued" },
   FIXED_VERIFIED: { fg: "#4ade80", bg: "#0a2e1f", label: "Verified & Fixed" },
   ROLLED_BACK: { fg: "#fca5a5", bg: "#3b0d11", label: "Rolled Back" },
   IGNORED: { fg: "#9fb1c9", bg: "#101d31", label: "Ignored" },
@@ -81,12 +82,14 @@ function downloadFile(filename, content, mimeType) {
 }
 
 /**
- * Real-time hook connecting App.jsx to the local Code Sentinel WebSocket/HTTP daemon
- * with Supabase/budgetData fallback so notifications & badges update everywhere in real time.
+ * Real-time hook connecting App.jsx to the local Code Sentinel WebSocket daemon
+ * and Supabase cloud API with direct-daemon queue support so approval and history
+ * work seamlessly on both localhost and Vercel deployments.
  */
 export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWrite, isAdmin }) {
   const fallback = budgetData?.codeSentinel || {};
   const [daemonOnline, setDaemonOnline] = useState(false);
+  const [daemonMode, setDaemonMode] = useState("checking"); // "local-ws" | "cloud-direct" | "offline-snapshot"
   const [scanning, setScanning] = useState(false);
   const [summary, setSummary] = useState(() => fallback.summary || null);
   const [findings, setFindings] = useState(() => (Array.isArray(fallback.findings) ? fallback.findings : []));
@@ -104,7 +107,7 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
         codeSentinel: {
           summary: nextSummary || prev?.codeSentinel?.summary || null,
           findings: Array.isArray(nextFindings) ? nextFindings.slice(0, 100) : prev?.codeSentinel?.findings || [],
-          logs: Array.isArray(nextLogs) ? nextLogs.slice(0, 200) : prev?.codeSentinel?.logs || [],
+          logs: Array.isArray(nextLogs) ? nextLogs.slice(0, 250) : prev?.codeSentinel?.logs || [],
           syncedAt: new Date().toISOString(),
         },
       }));
@@ -122,6 +125,7 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
       const fJson = await fRes.json();
       const lJson = lRes.ok ? await lRes.json() : { logs: [] };
       setDaemonOnline(true);
+      setDaemonMode("local-ws");
       setSummary(fJson.summary || null);
       setFindings(Array.isArray(fJson.findings) ? fJson.findings : []);
       setLogs(Array.isArray(lJson.logs) ? lJson.logs : []);
@@ -129,8 +133,7 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
       persistSnapshot(fJson.summary, fJson.findings, lJson.logs);
       return true;
     } catch {
-      setDaemonOnline(false);
-      // Fallback to cloud API when authenticated as admin
+      // Fallback to cloud API (Vercel deployment mode)
       if (session?.access_token) {
         try {
           const res = await fetch("/api/admin/code-sentinel", {
@@ -138,14 +141,24 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
           });
           if (res.ok) {
             const data = await res.json();
+            const sum = data.summary || {};
+            const lastBeat = sum.daemonStatus?.lastHeartbeatAt;
+            const isFresh = lastBeat && Date.now() - new Date(lastBeat).getTime() < 45000;
+            setDaemonOnline(Boolean(isFresh));
+            setDaemonMode(isFresh ? "cloud-direct" : "offline-snapshot");
             if (Array.isArray(data.findings)) setFindings(data.findings);
             if (Array.isArray(data.logs)) setLogs(data.logs);
             if (data.summary) setSummary(data.summary);
+            setLastError(null);
+            persistSnapshot(data.summary, data.findings, data.logs);
+            return true;
           }
         } catch {
-          // Offline / demo mode uses budgetData.codeSentinel
+          // Offline / local storage mode
         }
       }
+      setDaemonOnline(false);
+      setDaemonMode("offline-snapshot");
       return false;
     }
   }, [persistSnapshot, session?.access_token]);
@@ -167,6 +180,7 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
 
         ws.onopen = () => {
           setDaemonOnline(true);
+          setDaemonMode("local-ws");
           setLastError(null);
         };
 
@@ -176,6 +190,7 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
             const { event, payload } = msg;
             if (event === "CONNECTED") {
               setDaemonOnline(true);
+              setDaemonMode("local-ws");
               if (payload?.summary) setSummary(payload.summary);
               if (Array.isArray(payload?.findings)) setFindings(payload.findings);
               if (Array.isArray(payload?.logs)) setLogs(payload.logs);
@@ -197,7 +212,7 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
                 setLiveToast({
                   id: `${Date.now()}`,
                   severity: top.severity,
-                  title: `${list.length} New Code Issue${list.length > 1 ? "s" : ""} Detected`,
+                  title: `${list.length} Code Finding${list.length > 1 ? "s" : ""} — Awaiting Approval`,
                   message: `${top.ruleId}: ${top.title} (${top.filePath}:${top.lineStart})`,
                   findingId: top.id,
                 });
@@ -209,7 +224,7 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
                 setLiveToast({
                   id: `${Date.now()}`,
                   severity: "INFO",
-                  title: "Fix Applied & Verified",
+                  title: "Fix Verified & Applied",
                   message: `${payload.finding.filePath} passed Quality Gate.`,
                   findingId: payload.finding.id,
                 });
@@ -232,16 +247,15 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
         };
 
         ws.onclose = () => {
-          setDaemonOnline(false);
           if (!cancelled) {
-            reconnectTimer = setTimeout(connectWs, 5000);
+            reconnectTimer = setTimeout(connectWs, 6000);
           }
         };
         ws.onerror = () => {
           ws.close();
         };
       } catch {
-        setDaemonOnline(false);
+        // Fallback to cloud sync polling
       }
     };
 
@@ -258,25 +272,59 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
       setActionBusy(true);
       setLastError(null);
       try {
-        const res = await fetch(`/sentinel-api${endpoint}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...body,
-            actor: session?.user?.email || "Admin",
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || data.ok === false) {
-          throw new Error(data.error || `Request failed (${res.status})`);
+        if (daemonMode === "local-ws") {
+          const res = await fetch(`/sentinel-api${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...body,
+              actor: session?.user?.email || "Admin",
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || data.ok === false) {
+            throw new Error(data.error || `Request failed (${res.status})`);
+          }
+          if (data.summary) setSummary(data.summary);
+          if (Array.isArray(data.findings)) setFindings(data.findings);
+          if (data.finding) {
+            setFindings((prev) => prev.map((f) => (f.id === data.finding.id ? data.finding : f)));
+          }
+          await fetchFromDaemon();
+          return { ok: true, data };
+        } else {
+          // Cloud mode (Vercel) — route via /api/admin/code-sentinel
+          const actionMap = {
+            "/approve-fix": "approve",
+            "/ignore": "ignore",
+            "/reopen": "reopen",
+            "/scan": "request_scan",
+            "/policy": "policy",
+            "/rollback": "rollback",
+          };
+          const action = actionMap[endpoint] || "sync";
+          const res = await fetch("/api/admin/code-sentinel", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({
+              action,
+              ...body,
+              actor: session?.user?.email || "Admin",
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || data.ok === false) {
+            throw new Error(data.error || `Request failed (${res.status})`);
+          }
+          if (data.finding) {
+            setFindings((prev) => prev.map((f) => (f.id === data.finding.id ? data.finding : f)));
+          }
+          await fetchFromDaemon();
+          return { ok: true, data };
         }
-        if (data.summary) setSummary(data.summary);
-        if (Array.isArray(data.findings)) setFindings(data.findings);
-        if (data.finding) {
-          setFindings((prev) => prev.map((f) => (f.id === data.finding.id ? data.finding : f)));
-        }
-        await fetchFromDaemon();
-        return { ok: true, data };
       } catch (err) {
         setLastError(err.message);
         return { ok: false, error: err.message };
@@ -284,21 +332,27 @@ export function useCodeSentinelLive({ budgetData, setBudgetData, session, canWri
         setActionBusy(false);
       }
     },
-    [fetchFromDaemon, session?.user?.email]
+    [daemonMode, fetchFromDaemon, session?.access_token, session?.user?.email]
   );
 
   const pendingCount = useMemo(
     () => findings.filter((f) => f.status === "PENDING_REVIEW").length,
     [findings]
   );
+  const approvedCount = useMemo(
+    () => findings.filter((f) => f.status === "APPROVED_QUEUED").length,
+    [findings]
+  );
 
   return {
     daemonOnline,
+    daemonMode,
     scanning,
     summary,
     findings,
     logs,
     pendingCount,
+    approvedCount,
     liveToast,
     dismissToast: () => setLiveToast(null),
     actionBusy,
@@ -373,7 +427,7 @@ export function CodeSentinelNotificationBanner({ toast, onDismiss, onReview }) {
         onClick={() => onReview(toast.findingId)}
         style={solidBtnStyle({ bg: PALETTE.blueBg, fg: PALETTE.text, border: PALETTE.blue })}
       >
-        🔍 Review & How to Fix
+        🔍 Review & Approve Fix
       </button>
     </div>
   );
@@ -389,7 +443,7 @@ export default function CodeSentinelTab({
   onAppendSecurityLog,
   initialFindingId,
 }) {
-  const [subView, setSubView] = useState("dashboard"); // "dashboard" | "logs"
+  const [subView, setSubView] = useState("dashboard"); // "dashboard" | "history" | "logs"
   const [sevFilter, setSevFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("PENDING_REVIEW");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
@@ -439,6 +493,14 @@ export default function CodeSentinelTab({
     });
   }, [findings, sevFilter, statusFilter, categoryFilter, searchQuery]);
 
+  const verifiedFixedHistory = useMemo(() => {
+    return findings.filter((f) => f.status === "FIXED_VERIFIED");
+  }, [findings]);
+
+  const ignoredHistory = useMemo(() => {
+    return findings.filter((f) => f.status === "IGNORED");
+  }, [findings]);
+
   const filteredLogs = useMemo(() => {
     const q = logSearch.trim().toLowerCase();
     return logs.filter((l) => {
@@ -474,13 +536,16 @@ export default function CodeSentinelTab({
   const handleApproveFix = async (finding) => {
     const res = await sentinel.approveFix(finding.id);
     if (res.ok) {
-      setFeedbackBanner({ type: "success", text: res.data?.message || `Fixed and verified ${finding.filePath}.` });
+      const msg = res.data?.message || (sentinel.daemonMode === "cloud-direct"
+        ? `Fix approved! Queued for Direct Daemon on your PC to apply and verify.`
+        : `Fixed and verified ${finding.filePath}.`);
+      setFeedbackBanner({ type: "success", text: msg });
       if (onAppendSecurityLog) {
-        onAppendSecurityLog(`Code Sentinel fixed & verified ${finding.ruleId} in ${finding.filePath}.`, "INFO");
+        onAppendSecurityLog(`Code Sentinel approved fix for ${finding.ruleId} in ${finding.filePath}.`, "INFO");
       }
       setSelectedFinding(res.data?.finding || null);
     } else {
-      setFeedbackBanner({ type: "error", text: res.error || "Fix verification failed." });
+      setFeedbackBanner({ type: "error", text: res.error || "Approval failed." });
     }
   };
 
@@ -529,22 +594,48 @@ export default function CodeSentinelTab({
     if (setTab) setTab("pullboard");
   };
 
-  const handleExportLogs = (format) => {
+  const handleExportHistory = (format) => {
     const stamp = new Date().toISOString().slice(0, 10);
+    const dataToExport = {
+      summary,
+      verifiedFixes: verifiedFixedHistory,
+      scanHistory: summary.history,
+      ignoredExceptions: ignoredHistory,
+      auditLogs: logs,
+    };
     if (format === "json") {
-      downloadFile(`code-sentinel-logs-${stamp}.json`, JSON.stringify(logs, null, 2), "application/json");
+      downloadFile(`code-sentinel-history-${stamp}.json`, JSON.stringify(dataToExport, null, 2), "application/json");
       return;
     }
-    const header = ["Timestamp", "EventType", "Severity", "Target", "Actor", "Outcome", "Message"];
-    const rows = logs.map((l) =>
-      [l.timestamp, l.eventType, l.severity, l.target, l.actor, l.outcome, l.message]
+    const header = ["Timestamp", "RuleID", "Title", "Severity", "FilePath", "Status", "ApprovedBy", "VerifiedAt"];
+    const rows = findings.map((f) =>
+      [
+        f.detectedAt,
+        f.ruleId,
+        f.title,
+        f.severity,
+        f.filePath,
+        f.status,
+        f.approvedBy || "",
+        f.fixedAt || "",
+      ]
         .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
         .join(",")
     );
-    downloadFile(`code-sentinel-logs-${stamp}.csv`, [header.join(","), ...rows].join("\n"), "text/csv");
+    downloadFile(`code-sentinel-history-${stamp}.csv`, [header.join(","), ...rows].join("\n"), "text/csv");
   };
 
   const scoreColor = summary.score >= 85 ? PALETTE.green : summary.score >= 65 ? PALETTE.amber : PALETTE.red;
+
+  const daemonBadge = useMemo(() => {
+    if (sentinel?.daemonMode === "local-ws") {
+      return { text: "● LOCAL DAEMON WS (Live Watching Files)", bg: PALETTE.greenBg, fg: PALETTE.green, border: PALETTE.green };
+    }
+    if (sentinel?.daemonMode === "cloud-direct") {
+      return { text: "● DIRECT DAEMON ONLINE (Direct Supabase Sync Active)", bg: PALETTE.blueBg, fg: "#38bdf8", border: PALETTE.blue };
+    }
+    return { text: "☁️ CLOUD SNAPSHOT (Run 'npm run sentinel:watch' on PC to enable fix execution)", bg: PALETTE.amberBg, fg: PALETTE.amber, border: PALETTE.amber };
+  }, [sentinel?.daemonMode]);
 
   return (
     <div style={{ color: PALETTE.soft }}>
@@ -587,46 +678,34 @@ export default function CodeSentinelTab({
               </h2>
               <span
                 style={{
-                  backgroundColor: sentinel?.daemonOnline ? PALETTE.greenBg : PALETTE.amberBg,
-                  color: sentinel?.daemonOnline ? PALETTE.green : PALETTE.amber,
-                  border: `1px solid ${sentinel?.daemonOnline ? PALETTE.green : PALETTE.amber}`,
-                  padding: "3px 10px",
+                  backgroundColor: daemonBadge.bg,
+                  color: daemonBadge.fg,
+                  border: `1px solid ${daemonBadge.border}`,
+                  padding: "4px 10px",
                   borderRadius: 999,
                   fontSize: 11,
                   fontWeight: 800,
                 }}
               >
-                {sentinel?.scanning
-                  ? "⏳ SCANNING…"
-                  : sentinel?.daemonOnline
-                    ? policy.watchEnabled
-                      ? "● LIVE WATCHING"
-                      : "⏸ WATCH PAUSED"
-                    : "☁️ SNAPSHOT MODE (Start local daemon for live watch & auto-fix)"}
+                {sentinel?.scanning ? "⏳ SCANNING REPOSITORY…" : daemonBadge.text}
               </span>
             </div>
             <div style={{ fontSize: 13, color: PALETTE.muted, lineHeight: 1.45 }}>
-              Checks SAST, dependencies (`npm audit`), secrets, and Doctrine rules on every save — notifies you with{" "}
-              <strong style={{ color: PALETTE.text }}>How to Fix</strong> guides, diff previews, and verified auto-fixes.
+              Strict <strong style={{ color: PALETTE.amber }}>Approve-First</strong> security gate: All findings require human review before applying verified patches & Quality Gate builds.
             </div>
-            {!sentinel?.daemonOnline && (
-              <div style={{ marginTop: 6, fontSize: 12, color: PALETTE.amber, fontFamily: "monospace" }}>
-                Run locally for real-time watching & disk patching: <strong>npm run sentinel:watch</strong>
-              </div>
-            )}
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button
             type="button"
-            disabled={!sentinel?.daemonOnline || sentinel?.actionBusy || sentinel?.scanning}
+            disabled={sentinel?.actionBusy || sentinel?.scanning}
             onClick={() => sentinel.runScan(true)}
             style={solidBtnStyle({
               bg: PALETTE.blueBg,
               fg: PALETTE.text,
               border: PALETTE.blue,
-              disabled: !sentinel?.daemonOnline || sentinel?.actionBusy || sentinel?.scanning,
+              disabled: sentinel?.actionBusy || sentinel?.scanning,
             })}
           >
             {sentinel?.scanning ? "⏳ Scanning…" : "🔍 Run Full Scan"}
@@ -636,12 +715,12 @@ export default function CodeSentinelTab({
             onClick={() => sentinel.refresh()}
             style={solidBtnStyle({ bg: PALETTE.card, fg: PALETTE.soft, border: PALETTE.border })}
           >
-            ↻ Refresh
+            ↻ Refresh Cloud Sync
           </button>
         </div>
       </div>
 
-      {/* Sub-Navigation Pills: Dashboard vs Logs */}
+      {/* Sub-Navigation: Dashboard vs Historical Audits vs Real-Time Logs */}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <button
           type="button"
@@ -652,7 +731,18 @@ export default function CodeSentinelTab({
             border: subView === "dashboard" ? PALETTE.blue : PALETTE.border,
           })}
         >
-          📊 Dashboard & Review Queue ({summary.pendingReviewCount || 0})
+          📊 Dashboard & Review Queue ({summary.pendingReviewCount || 0} Awaiting Approval)
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubView("history")}
+          style={solidBtnStyle({
+            bg: subView === "history" ? PALETTE.blueBg : PALETTE.card,
+            fg: PALETTE.text,
+            border: subView === "history" ? PALETTE.blue : PALETTE.border,
+          })}
+        >
+          📜 Historical Audits & Verified Fixes ({verifiedFixedHistory.length} Fixed)
         </button>
         <button
           type="button"
@@ -663,11 +753,11 @@ export default function CodeSentinelTab({
             border: subView === "logs" ? PALETTE.blue : PALETTE.border,
           })}
         >
-          📜 Agent Activity & Audit Logs ({logs.length})
+          ⚡ Real-Time Activity & Telemetry ({logs.length})
         </button>
       </div>
 
-      {/* Status / Action Feedback Banner */}
+      {/* Feedback Banner */}
       {(feedbackBanner || sentinel?.lastError) && (
         <div
           style={{
@@ -714,9 +804,52 @@ export default function CodeSentinelTab({
         </div>
       )}
 
-      {/* ───────────────────────────── DASHBOARD SUB-VIEW ───────────────────────────── */}
+      {/* ───────────────────────────── 1. DASHBOARD SUB-VIEW ───────────────────────────── */}
       {subView === "dashboard" && (
         <>
+          {/* Strict Human-in-the-Loop Mode Guarantee Card */}
+          <div
+            style={{
+              backgroundColor: PALETTE.highContrast,
+              border: `2px solid ${PALETTE.amber}`,
+              borderRadius: 10,
+              padding: "14px 18px",
+              marginBottom: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 22 }}>🔒</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: PALETTE.text }}>
+                  Human Review & Approval Required Before Any Code Changes
+                </div>
+                <div style={{ fontSize: 12, color: PALETTE.muted, marginTop: 2 }}>
+                  Every security issue, dependency CVE, or Doctrine finding stays paused until you inspect the root cause, view the unified diff, and click <strong>Approve</strong>.
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span
+                style={{
+                  backgroundColor: PALETTE.amberBg,
+                  color: PALETTE.amber,
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  border: `1px solid ${PALETTE.amber}`,
+                }}
+              >
+                MODE: REVIEW-FIRST (ENFORCED)
+              </span>
+            </div>
+          </div>
+
           {/* Severity KPI Row */}
           <div
             style={{
@@ -750,151 +883,7 @@ export default function CodeSentinelTab({
             ))}
           </div>
 
-          {/* Policy Controls + Charts */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: sm ? "1fr" : "1.1fr 1fr 1fr",
-              gap: 14,
-              marginBottom: 16,
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: PALETTE.card,
-                border: `1px solid ${PALETTE.border}`,
-                borderRadius: 10,
-                padding: 16,
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 800, color: PALETTE.text, marginBottom: 12 }}>
-                ⚙️ Agent Watch & Auto-Fix Policy
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <label style={{ fontSize: 12, color: PALETTE.muted, fontWeight: 700 }}>
-                  Remediation Mode
-                  <select
-                    disabled={!sentinel?.daemonOnline || !canUpdate || sentinel?.actionBusy}
-                    value={policy.autoFixMode || "review-first"}
-                    onChange={(e) => sentinel.updatePolicy({ autoFixMode: e.target.value })}
-                    style={{
-                      width: "100%",
-                      marginTop: 6,
-                      minHeight: 44,
-                      backgroundColor: PALETTE.highContrast,
-                      color: PALETTE.text,
-                      border: `1px solid ${PALETTE.border}`,
-                      borderRadius: 8,
-                      padding: "8px 10px",
-                      fontSize: 13,
-                    }}
-                  >
-                    <option value="review-first">Review First (Notify + Diff + Approve to Fix)</option>
-                    <option value="guided-auto">Guided Auto-Fix (Low-Risk Auto + High/Critical Review)</option>
-                  </select>
-                </label>
-
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    disabled={!sentinel?.daemonOnline || !canUpdate}
-                    onClick={() => sentinel.updatePolicy({ watchEnabled: !policy.watchEnabled })}
-                    style={solidBtnStyle({
-                      bg: policy.watchEnabled ? PALETTE.greenBg : PALETTE.amberBg,
-                      fg: PALETTE.text,
-                      border: policy.watchEnabled ? PALETTE.green : PALETTE.amber,
-                      disabled: !sentinel?.daemonOnline || !canUpdate,
-                    })}
-                  >
-                    {policy.watchEnabled ? "● Real-Time Watch: ON" : "⏸ Real-Time Watch: OFF"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!sentinel?.daemonOnline || !canUpdate}
-                    onClick={() => sentinel.updatePolicy({ notifyEmail: !policy.notifyEmail })}
-                    style={solidBtnStyle({
-                      bg: policy.notifyEmail ? PALETTE.blueBg : PALETTE.cardElevated,
-                      fg: PALETTE.text,
-                      border: policy.notifyEmail ? PALETTE.blue : PALETTE.border,
-                      disabled: !sentinel?.daemonOnline || !canUpdate,
-                    })}
-                  >
-                    {policy.notifyEmail ? "✉️ Email Alerts: ON" : "✉️ Email Alerts: OFF"}
-                  </button>
-                </div>
-
-                <div style={{ fontSize: 12, color: PALETTE.muted }}>
-                  Last scan:{" "}
-                  <strong style={{ color: PALETTE.text }}>
-                    {summary.lastScanAt ? new Date(summary.lastScanAt).toLocaleString() : "Not yet run"}
-                  </strong>{" "}
-                  ({summary.scannedFilesCount || 0} files)
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: PALETTE.card,
-                border: `1px solid ${PALETTE.border}`,
-                borderRadius: 10,
-                padding: 16,
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 800, color: PALETTE.text, marginBottom: 8 }}>
-                📈 Findings Distribution
-              </div>
-              <div style={{ height: 170 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartSeverityData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={PALETTE.border} />
-                    <XAxis dataKey="name" stroke={PALETTE.muted} fontSize={11} />
-                    <YAxis stroke={PALETTE.muted} fontSize={11} allowDecimals={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: PALETTE.highContrast,
-                        border: `1px solid ${PALETTE.border}`,
-                        color: PALETTE.text,
-                      }}
-                    />
-                    <Bar dataKey="count" fill={PALETTE.blue} radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: PALETTE.card,
-                border: `1px solid ${PALETTE.border}`,
-                borderRadius: 10,
-                padding: 16,
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 800, color: PALETTE.text, marginBottom: 8 }}>
-                🛡️ Posture Score History
-              </div>
-              <div style={{ height: 170 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={historyChartData.length ? historyChartData : [{ time: "Now", score: summary.score }]}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={PALETTE.border} />
-                    <XAxis dataKey="time" stroke={PALETTE.muted} fontSize={11} />
-                    <YAxis domain={[0, 100]} stroke={PALETTE.muted} fontSize={11} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: PALETTE.highContrast,
-                        border: `1px solid ${PALETTE.border}`,
-                        color: PALETTE.text,
-                      }}
-                    />
-                    <Area type="monotone" dataKey="score" stroke={PALETTE.green} fill={PALETTE.greenBg} strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* Findings Queue Filters */}
+          {/* Findings Review Queue */}
           <div
             style={{
               backgroundColor: PALETTE.card,
@@ -906,7 +895,7 @@ export default function CodeSentinelTab({
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 14 }}>
               <input
                 type="text"
-                placeholder="Search file path, rule ID, or vulnerability..."
+                placeholder="Search file path, rule ID, or vulnerability title..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
@@ -934,8 +923,9 @@ export default function CodeSentinelTab({
                 }}
               >
                 <option value="ALL">All Statuses</option>
-                <option value="PENDING_REVIEW">Pending Review</option>
-                <option value="FIXED_VERIFIED">Verified & Fixed</option>
+                <option value="PENDING_REVIEW">Awaiting Approval ({summary.pendingReviewCount || 0})</option>
+                <option value="APPROVED_QUEUED">Approved & Queued ({sentinel.approvedCount || 0})</option>
+                <option value="FIXED_VERIFIED">Verified & Fixed ({summary.fixedCount || 0})</option>
                 <option value="ROLLED_BACK">Rolled Back</option>
                 <option value="IGNORED">Ignored</option>
               </select>
@@ -1045,7 +1035,7 @@ export default function CodeSentinelTab({
                                 fontWeight: 700,
                               }}
                             >
-                              ⚡ Auto-Fix Ready
+                              ⚡ Auto-Fix Available
                             </span>
                           )}
                         </div>
@@ -1063,21 +1053,21 @@ export default function CodeSentinelTab({
                           onClick={() => setSelectedFinding(f)}
                           style={solidBtnStyle({ bg: PALETTE.blueBg, fg: PALETTE.text, border: PALETTE.blue })}
                         >
-                          🔍 Review & How to Fix
+                          🔍 Review & "How to Fix"
                         </button>
-                        {f.autoFixable && f.status === "PENDING_REVIEW" && (
+                        {f.status === "PENDING_REVIEW" && f.autoFixable && (
                           <button
                             type="button"
-                            disabled={!sentinel?.daemonOnline || sentinel?.actionBusy || !canUpdate}
-                            onClick={() => handleApproveFix(f)}
+                            disabled={sentinel?.actionBusy || !canUpdate}
+                            onClick={() => setSelectedFinding(f)}
                             style={solidBtnStyle({
                               bg: PALETTE.greenBg,
                               fg: PALETTE.text,
                               border: PALETTE.green,
-                              disabled: !sentinel?.daemonOnline || sentinel?.actionBusy || !canUpdate,
+                              disabled: sentinel?.actionBusy || !canUpdate,
                             })}
                           >
-                            ⚡ Approve & Fix
+                            ✓ Review & Approve Fix
                           </button>
                         )}
                       </div>
@@ -1090,7 +1080,289 @@ export default function CodeSentinelTab({
         </>
       )}
 
-      {/* ───────────────────────────── LOGS SUB-VIEW ───────────────────────────── */}
+      {/* ───────────────────────────── 2. HISTORICAL AUDITS SUB-VIEW ───────────────────────────── */}
+      {subView === "history" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Top Historical KPI Cards */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: sm ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+              gap: 12,
+            }}
+          >
+            {[
+              { label: "Verified Fixes", val: verifiedFixedHistory.length, color: PALETTE.green, bg: PALETTE.greenBg },
+              { label: "Historical Scans", val: (summary.history || []).length, color: PALETTE.blue, bg: PALETTE.blueBg },
+              { label: "Active Posture Score", val: `${summary.score}/100`, color: scoreColor, bg: PALETTE.cardElevated },
+              { label: "Ignored Exceptions", val: ignoredHistory.length, color: PALETTE.muted, bg: PALETTE.card },
+            ].map((k) => (
+              <div
+                key={k.label}
+                style={{
+                  backgroundColor: k.bg,
+                  border: `2px solid ${k.color}`,
+                  borderRadius: 10,
+                  padding: "14px 16px",
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 700, color: PALETTE.soft, textTransform: "uppercase" }}>
+                  {k.label}
+                </div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: PALETTE.text, marginTop: 4 }}>{k.val}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Posture Score History Chart + Scan Sessions */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: sm ? "1fr" : "1.2fr 1fr",
+              gap: 14,
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: PALETTE.card,
+                border: `1px solid ${PALETTE.border}`,
+                borderRadius: 10,
+                padding: 16,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: PALETTE.text }}>
+                  📈 Historical Posture Score & Open Issues Trend
+                </div>
+                <div style={{ fontSize: 11, color: PALETTE.muted }}>Last 12 Data Points</div>
+              </div>
+              <div style={{ height: 180 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={historyChartData.length ? historyChartData : [{ time: "Now", score: summary.score, open: 0 }]}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={PALETTE.border} />
+                    <XAxis dataKey="time" stroke={PALETTE.muted} fontSize={11} />
+                    <YAxis domain={[0, 100]} stroke={PALETTE.muted} fontSize={11} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: PALETTE.highContrast,
+                        border: `1px solid ${PALETTE.border}`,
+                        color: PALETTE.text,
+                      }}
+                    />
+                    <Area type="monotone" dataKey="score" stroke={PALETTE.green} fill={PALETTE.greenBg} strokeWidth={2} name="Score" />
+                    <Area type="monotone" dataKey="open" stroke={PALETTE.amber} fill={PALETTE.amberBg} strokeWidth={1.5} name="Open Issues" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: PALETTE.card,
+                border: `1px solid ${PALETTE.border}`,
+                borderRadius: 10,
+                padding: 16,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: PALETTE.text }}>
+                  ⏱️ Recent Scan Sessions
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleExportHistory("csv")}
+                    style={solidBtnStyle({ bg: PALETTE.cardElevated, fg: PALETTE.text, border: PALETTE.border })}
+                  >
+                    ⬇ CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExportHistory("json")}
+                    style={solidBtnStyle({ bg: PALETTE.cardElevated, fg: PALETTE.text, border: PALETTE.border })}
+                  >
+                    ⬇ JSON
+                  </button>
+                </div>
+              </div>
+              <div style={{ maxHeight: 180, overflowY: "auto" }}>
+                {(summary.history || []).length === 0 ? (
+                  <div style={{ color: PALETTE.muted, fontSize: 12, padding: 10 }}>No scan sessions recorded yet.</div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ textAlign: "left", color: PALETTE.muted }}>
+                        <th style={{ padding: "6px 8px" }}>Time</th>
+                        <th style={{ padding: "6px 8px" }}>Score</th>
+                        <th style={{ padding: "6px 8px" }}>Crit/High</th>
+                        <th style={{ padding: "6px 8px" }}>Fixed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(summary.history || []).slice(-8).reverse().map((h, i) => (
+                        <tr key={i} style={{ borderTop: `1px solid ${PALETTE.border}` }}>
+                          <td style={{ padding: "6px 8px", color: PALETTE.soft }}>{new Date(h.timestamp).toLocaleTimeString()}</td>
+                          <td style={{ padding: "6px 8px", fontWeight: 800, color: h.score >= 85 ? PALETTE.green : PALETTE.amber }}>{h.score}</td>
+                          <td style={{ padding: "6px 8px", color: PALETTE.red }}>{(h.critical || 0) + (h.high || 0)}</td>
+                          <td style={{ padding: "6px 8px", color: PALETTE.green }}>{h.fixed || 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Historical Verified Fixes Table */}
+          <div
+            style={{
+              backgroundColor: PALETTE.card,
+              border: `1px solid ${PALETTE.border}`,
+              borderRadius: 10,
+              padding: 16,
+            }}
+          >
+            <div style={{ fontSize: 15, fontWeight: 900, color: PALETTE.text, marginBottom: 12 }}>
+              ✅ Approved & Verified Fixes Log ({verifiedFixedHistory.length})
+            </div>
+            {verifiedFixedHistory.length === 0 ? (
+              <div style={{ padding: 24, textAlign: "center", color: PALETTE.muted, fontSize: 13 }}>
+                No verified fixes recorded yet. When you approve an issue, Code Sentinel applies the patch, passes Quality Gate verification, and records the audit record here.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {verifiedFixedHistory.map((f) => (
+                  <div
+                    key={f.id}
+                    style={{
+                      backgroundColor: PALETTE.cardElevated,
+                      border: `1px solid ${PALETTE.green}`,
+                      borderRadius: 8,
+                      padding: 14,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
+                        <span
+                          style={{
+                            backgroundColor: PALETTE.greenBg,
+                            color: PALETTE.green,
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 800,
+                          }}
+                        >
+                          VERIFIED & FIXED
+                        </span>
+                        <span style={{ fontSize: 12, fontFamily: "monospace", color: PALETTE.teal }}>
+                          {f.ruleId} · {f.filePath}:{f.lineStart}
+                        </span>
+                        <span style={{ fontSize: 11, color: PALETTE.muted }}>
+                          Approved by: <strong style={{ color: PALETTE.text }}>{f.approvedBy || f.fixedBy || "Admin"}</strong>
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: PALETTE.text }}>{f.title}</div>
+                      <div style={{ fontSize: 12, color: PALETTE.muted, marginTop: 2 }}>
+                        Fixed At: {f.fixedAt ? new Date(f.fixedAt).toLocaleString() : "Recently"} · Quality Gate: <strong>Passed</strong> · Backup: <code style={{ color: PALETTE.teal }}>{f.backupId || "bak_snapshot"}</code>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFinding(f)}
+                        style={solidBtnStyle({ bg: PALETTE.card, fg: PALETTE.text, border: PALETTE.border })}
+                      >
+                        🔍 View Diff Snapshot
+                      </button>
+                      {f.backupId && (
+                        <button
+                          type="button"
+                          disabled={sentinel?.actionBusy || !canUpdate}
+                          onClick={() => handleRollback(f)}
+                          style={solidBtnStyle({
+                            bg: PALETTE.amberBg,
+                            fg: PALETTE.text,
+                            border: PALETTE.amber,
+                            disabled: sentinel?.actionBusy || !canUpdate,
+                          })}
+                        >
+                          ↩ Rollback Patch
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Historical Exceptions (Ignored) */}
+          {ignoredHistory.length > 0 && (
+            <div
+              style={{
+                backgroundColor: PALETTE.card,
+                border: `1px solid ${PALETTE.border}`,
+                borderRadius: 10,
+                padding: 16,
+              }}
+            >
+              <div style={{ fontSize: 15, fontWeight: 900, color: PALETTE.text, marginBottom: 12 }}>
+                ⚠️ Historical Exceptions (Ignored Issues: {ignoredHistory.length})
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {ignoredHistory.map((f) => (
+                  <div
+                    key={f.id}
+                    style={{
+                      backgroundColor: PALETTE.highContrast,
+                      border: `1px solid ${PALETTE.border}`,
+                      borderRadius: 8,
+                      padding: 12,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 10,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: PALETTE.text }}>
+                        {f.ruleId} — {f.title} ({f.filePath}:{f.lineStart})
+                      </div>
+                      <div style={{ fontSize: 12, color: PALETTE.amber, marginTop: 2 }}>
+                        Reason: "{f.ignoredReason || "Accepted by admin"}" · Ignored by: {f.ignoredBy || "Admin"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={sentinel?.actionBusy || !canUpdate}
+                      onClick={() => sentinel.reopenFinding(f.id)}
+                      style={solidBtnStyle({
+                        bg: PALETTE.cardElevated,
+                        fg: PALETTE.text,
+                        border: PALETTE.border,
+                        disabled: sentinel?.actionBusy || !canUpdate,
+                      })}
+                    >
+                      Re-Open for Review
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ───────────────────────────── 3. REAL-TIME ACTIVITY LOGS SUB-VIEW ───────────────────────────── */}
       {subView === "logs" && (
         <div
           style={{
@@ -1113,7 +1385,7 @@ export default function CodeSentinelTab({
             <div style={{ display: "flex", gap: 10, flex: "1 1 340px", flexWrap: "wrap" }}>
               <input
                 type="text"
-                placeholder="Filter logs by file, event, actor, or message..."
+                placeholder="Filter logs by event type, file, or message..."
                 value={logSearch}
                 onChange={(e) => setLogSearch(e.target.value)}
                 style={{
@@ -1151,14 +1423,14 @@ export default function CodeSentinelTab({
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 type="button"
-                onClick={() => handleExportLogs("csv")}
+                onClick={() => handleExportHistory("csv")}
                 style={solidBtnStyle({ bg: PALETTE.cardElevated, fg: PALETTE.text, border: PALETTE.border })}
               >
                 ⬇ Export CSV
               </button>
               <button
                 type="button"
-                onClick={() => handleExportLogs("json")}
+                onClick={() => handleExportHistory("json")}
                 style={solidBtnStyle({ bg: PALETTE.cardElevated, fg: PALETTE.text, border: PALETTE.border })}
               >
                 ⬇ Export JSON
@@ -1168,7 +1440,7 @@ export default function CodeSentinelTab({
 
           {filteredLogs.length === 0 ? (
             <div style={{ padding: 28, textAlign: "center", color: PALETTE.muted }}>
-              No audit logs recorded yet. Run a scan or start `npm run sentinel:watch`.
+              No audit logs recorded yet. Start `npm run sentinel:watch` or click "Run Full Scan".
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
@@ -1240,7 +1512,7 @@ export default function CodeSentinelTab({
             position: "fixed",
             inset: 0,
             zIndex: 99995,
-            backgroundColor: "rgba(2, 8, 20, 0.85)",
+            backgroundColor: "rgba(2, 8, 20, 0.88)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1250,8 +1522,8 @@ export default function CodeSentinelTab({
           <div
             style={{
               width: "100%",
-              maxWidth: 780,
-              maxHeight: "90vh",
+              maxWidth: 800,
+              maxHeight: "92vh",
               overflowY: "auto",
               backgroundColor: PALETTE.panel,
               border: `2px solid ${(SEV_STYLE[selectedFinding.severity] || SEV_STYLE.MEDIUM).border}`,
@@ -1262,10 +1534,27 @@ export default function CodeSentinelTab({
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 12, fontFamily: "monospace", color: PALETTE.teal, marginBottom: 4 }}>
-                  {selectedFinding.ruleId} · {selectedFinding.cwe} · {selectedFinding.filePath}:{selectedFinding.lineStart}
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                  <span
+                    style={{
+                      backgroundColor: (STATUS_STYLE[selectedFinding.status] || STATUS_STYLE.PENDING_REVIEW).bg,
+                      color: (STATUS_STYLE[selectedFinding.status] || STATUS_STYLE.PENDING_REVIEW).fg,
+                      padding: "3px 10px",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 800,
+                    }}
+                  >
+                    STATUS: {(STATUS_STYLE[selectedFinding.status] || STATUS_STYLE.PENDING_REVIEW).label.toUpperCase()}
+                  </span>
+                  <span style={{ fontSize: 12, fontFamily: "monospace", color: PALETTE.teal }}>
+                    {selectedFinding.ruleId} · {selectedFinding.cwe}
+                  </span>
                 </div>
                 <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>{selectedFinding.title}</h3>
+                <div style={{ fontSize: 12, fontFamily: "monospace", color: PALETTE.muted, marginTop: 4 }}>
+                  📄 {selectedFinding.filePath}:{selectedFinding.lineStart}
+                </div>
               </div>
               <button
                 type="button"
@@ -1274,6 +1563,27 @@ export default function CodeSentinelTab({
               >
                 ✕ Close
               </button>
+            </div>
+
+            {/* Approval Notice */}
+            <div
+              style={{
+                backgroundColor: PALETTE.highContrast,
+                border: `1.5px solid ${PALETTE.amber}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+                marginBottom: 14,
+                fontSize: 12,
+                color: PALETTE.soft,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span>🔒</span>
+              <span>
+                <strong>Approval Checkpoint:</strong> Code Sentinel will never alter your code without your approval. Review the root cause, remediation steps, and diff below before clicking <strong>Approve & Execute Verified Fix</strong>.
+              </span>
             </div>
 
             <div
@@ -1286,7 +1596,7 @@ export default function CodeSentinelTab({
               }}
             >
               <div style={{ fontSize: 12, fontWeight: 800, color: PALETTE.amber, marginBottom: 6 }}>
-                WHAT IS WRONG
+                1. WHAT IS WRONG (ROOT CAUSE)
               </div>
               <div style={{ fontSize: 14, color: PALETTE.soft, lineHeight: 1.5 }}>{selectedFinding.description}</div>
             </div>
@@ -1301,7 +1611,7 @@ export default function CodeSentinelTab({
               }}
             >
               <div style={{ fontSize: 12, fontWeight: 800, color: PALETTE.text, marginBottom: 8 }}>
-                🛠️ HOW TO FIX (STEP-BY-STEP)
+                2. HOW TO FIX (STEP-BY-STEP REMEDIATION)
               </div>
               <ol style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.6, color: PALETTE.soft }}>
                 {(selectedFinding.howToFix || []).map((step, idx) => (
@@ -1313,7 +1623,7 @@ export default function CodeSentinelTab({
             {selectedFinding.snippet && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 12, fontWeight: 800, color: PALETTE.muted, marginBottom: 6 }}>
-                  CURRENT CODE SNIPPET
+                  3. CURRENT CODE SNIPPET
                 </div>
                 <pre
                   style={{
@@ -1335,7 +1645,7 @@ export default function CodeSentinelTab({
             {selectedFinding.diff && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 12, fontWeight: 800, color: PALETTE.green, marginBottom: 6 }}>
-                  PROPOSED AUTO-FIX DIFF PREVIEW
+                  4. PROPOSED AUTO-FIX UNIFIED DIFF PREVIEW
                 </div>
                 <pre
                   style={{
@@ -1369,6 +1679,38 @@ export default function CodeSentinelTab({
               </div>
             )}
 
+            {selectedFinding.status === "APPROVED_QUEUED" && (
+              <div
+                style={{
+                  backgroundColor: PALETTE.blueBg,
+                  border: `1.5px solid ${PALETTE.blue}`,
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 14,
+                  fontSize: 13,
+                  color: "#e0f2fe",
+                }}
+              >
+                ⏳ <strong>Fix Approved!</strong> Approved by {selectedFinding.approvedBy || "Admin"}. The Direct Daemon on your developer PC will pick up this fix, apply the patch, and verify it via `scripts/pre-deploy-check.js`.
+              </div>
+            )}
+
+            {selectedFinding.status === "FIXED_VERIFIED" && (
+              <div
+                style={{
+                  backgroundColor: PALETTE.greenBg,
+                  border: `1.5px solid ${PALETTE.green}`,
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 14,
+                  fontSize: 13,
+                  color: "#dcfce7",
+                }}
+              >
+                ✅ <strong>Verified & Fixed!</strong> Verified on disk. Backup snapshot: <code style={{ color: PALETTE.teal }}>{selectedFinding.backupId || "snapshot"}</code>.
+              </div>
+            )}
+
             {selectedFinding.lastFixError && (
               <div
                 style={{
@@ -1381,37 +1723,38 @@ export default function CodeSentinelTab({
                   color: PALETTE.text,
                 }}
               >
-                ⚠️ Last fix attempt failed & rolled back: {selectedFinding.lastFixError}
+                ⚠️ Last fix attempt failed Quality Gate and was rolled back: {selectedFinding.lastFixError}
               </div>
             )}
 
+            {/* Modal Actions */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                {selectedFinding.autoFixable && selectedFinding.status !== "FIXED_VERIFIED" && (
+                {selectedFinding.autoFixable && selectedFinding.status === "PENDING_REVIEW" && (
                   <button
                     type="button"
-                    disabled={!sentinel?.daemonOnline || sentinel?.actionBusy || !canUpdate}
+                    disabled={sentinel?.actionBusy || !canUpdate}
                     onClick={() => handleApproveFix(selectedFinding)}
                     style={solidBtnStyle({
                       bg: PALETTE.greenBg,
                       fg: PALETTE.text,
                       border: PALETTE.green,
-                      disabled: !sentinel?.daemonOnline || sentinel?.actionBusy || !canUpdate,
+                      disabled: sentinel?.actionBusy || !canUpdate,
                     })}
                   >
-                    {sentinel?.actionBusy ? "⏳ Applying & Verifying…" : "⚡ Approve & Auto-Fix + Verify"}
+                    {sentinel?.actionBusy ? "⏳ Processing Approval…" : "✓ Approve & Execute Verified Fix"}
                   </button>
                 )}
                 {selectedFinding.backupId && selectedFinding.status === "FIXED_VERIFIED" && (
                   <button
                     type="button"
-                    disabled={!sentinel?.daemonOnline || sentinel?.actionBusy || !canUpdate}
+                    disabled={sentinel?.actionBusy || !canUpdate}
                     onClick={() => handleRollback(selectedFinding)}
                     style={solidBtnStyle({
                       bg: PALETTE.amberBg,
                       fg: PALETTE.text,
                       border: PALETTE.amber,
-                      disabled: !sentinel?.daemonOnline || sentinel?.actionBusy || !canUpdate,
+                      disabled: sentinel?.actionBusy || !canUpdate,
                     })}
                   >
                     ↩ Rollback Patch
@@ -1445,13 +1788,13 @@ export default function CodeSentinelTab({
                   />
                   <button
                     type="button"
-                    disabled={!sentinel?.daemonOnline || sentinel?.actionBusy || !canUpdate}
+                    disabled={sentinel?.actionBusy || !canUpdate}
                     onClick={() => handleIgnore(selectedFinding)}
                     style={solidBtnStyle({
                       bg: PALETTE.card,
                       fg: PALETTE.muted,
                       border: PALETTE.border,
-                      disabled: !sentinel?.daemonOnline || sentinel?.actionBusy || !canUpdate,
+                      disabled: sentinel?.actionBusy || !canUpdate,
                     })}
                   >
                     Ignore
@@ -1460,13 +1803,13 @@ export default function CodeSentinelTab({
               ) : (
                 <button
                   type="button"
-                  disabled={!sentinel?.daemonOnline || sentinel?.actionBusy || !canUpdate}
+                  disabled={sentinel?.actionBusy || !canUpdate}
                   onClick={() => sentinel.reopenFinding(selectedFinding.id).then(() => setSelectedFinding(null))}
                   style={solidBtnStyle({
                     bg: PALETTE.card,
                     fg: PALETTE.text,
                     border: PALETTE.border,
-                    disabled: !sentinel?.daemonOnline || sentinel?.actionBusy || !canUpdate,
+                    disabled: sentinel?.actionBusy || !canUpdate,
                   })}
                 >
                   Re-Open Finding
@@ -1486,7 +1829,7 @@ export default function CodeSentinelTab({
             position: "fixed",
             inset: 0,
             zIndex: 99995,
-            backgroundColor: "rgba(2, 8, 20, 0.85)",
+            backgroundColor: "rgba(2, 8, 20, 0.88)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1507,7 +1850,7 @@ export default function CodeSentinelTab({
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>📜 Audit Log Payload</h3>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>📜 Telemetry / Audit Log Payload</h3>
               <button
                 type="button"
                 onClick={() => setSelectedLog(null)}
@@ -1536,4 +1879,3 @@ export default function CodeSentinelTab({
     </div>
   );
 }
-
