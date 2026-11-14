@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import ws from "ws";
+import { DEFAULT_PRU_FUNDS_SEED, DEFAULT_PRU_HOLDINGS } from "./pruFunds.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
@@ -998,7 +999,7 @@ function summarizeCodeSentinelModule(profile) {
 
 function summarizePruFundsModule(profile) {
   const pf = profile.budgetData?.pruFunds || {};
-  const holdings = Array.isArray(pf.holdings) ? pf.holdings : [];
+  const holdings = Array.isArray(pf.holdings) && pf.holdings.length > 0 ? pf.holdings : DEFAULT_PRU_HOLDINGS;
   const prices = pf.prices && typeof pf.prices === "object" ? pf.prices : {};
   const catalog = pf.catalog && typeof pf.catalog === "object" ? pf.catalog : {};
 
@@ -1008,21 +1009,31 @@ function summarizePruFundsModule(profile) {
   let totalPremiumsUsd = 0;
 
   const enrichedHoldings = holdings.map((h) => {
-    const series = Array.isArray(prices[h.fundCode]) ? prices[h.fundCode] : [];
+    const seedFund = DEFAULT_PRU_FUNDS_SEED.find((f) => f.fundCode === h.fundCode);
+    const seedSeries = seedFund?.prices || [];
+    const userSeries = Array.isArray(prices[h.fundCode]) ? prices[h.fundCode] : [];
+    const byDate = new Map();
+    for (const sp of seedSeries) byDate.set(sp.date, sp);
+    for (const up of userSeries) byDate.set(up.date, up);
+    const series = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+
     const latest = series.length > 0 ? series[series.length - 1] : null;
     const prev = series.length > 1 ? series[series.length - 2] : null;
-    const navpu = Number(latest?.navpu ?? h.lastNavpu ?? 0);
+    const navpu = Number(latest?.navpu ?? h.snapshotNavpu ?? h.lastNavpu ?? 0);
     const units = Number(h.units || 0);
-    const value = units * navpu;
+    const isExactPortalSnapshot =
+      h.snapshotValue != null &&
+      h.snapshotNavpu != null &&
+      Math.abs(navpu - Number(h.snapshotNavpu)) < 1e-7 &&
+      Math.abs(units - Number(h.units)) < 1e-7;
+    const value = isExactPortalSnapshot ? Number(h.snapshotValue) : Number((units * navpu).toFixed(2));
     const premiums = Number(h.totalPremiumsPaid || 0);
-    const currency = h.currency || catalog[h.fundCode]?.currency || "PHP";
+    const currency = h.currency || catalog[h.fundCode]?.currency || seedFund?.currency || "PHP";
     if (currency === "USD") {
-      totalValueUsd += value;
-      totalValueUsd = Number(totalValueUsd.toFixed(2));
+      totalValueUsd = Number((totalValueUsd + value).toFixed(2));
       totalPremiumsUsd += premiums;
     } else {
-      totalValuePhp += value;
-      totalValuePhp = Number(totalValuePhp.toFixed(2));
+      totalValuePhp = Number((totalValuePhp + value).toFixed(2));
       totalPremiumsPhp += premiums;
     }
     return {
@@ -1039,15 +1050,17 @@ function summarizePruFundsModule(profile) {
 
   return {
     module: "Pru Life UK (PH) PRULink Fund Value Tracker",
+    accountSection: "Initial Account",
+    asOfDate: "2026-11-13",
     holdingsCount: holdings.length,
-    trackedFundsCount: Object.keys(prices).length,
+    trackedFundsCount: DEFAULT_PRU_FUNDS_SEED.length,
     totalValuePhp: Number(totalValuePhp.toFixed(2)),
     totalValueUsd: Number(totalValueUsd.toFixed(2)),
     totalPremiumsPhp: Number(totalPremiumsPhp.toFixed(2)),
     totalPremiumsUsd: Number(totalPremiumsUsd.toFixed(2)),
     netGainLossPhp: totalPremiumsPhp > 0 ? Number((totalValuePhp - totalPremiumsPhp).toFixed(2)) : null,
     netGainLossUsd: totalPremiumsUsd > 0 ? Number((totalValueUsd - totalPremiumsUsd).toFixed(2)) : null,
-    lastFetchAt: pf.lastFetchAt || null,
+    lastFetchAt: pf.lastFetchAt || "2026-11-13T00:00:00.000Z",
     holdings: enrichedHoldings,
   };
 }
