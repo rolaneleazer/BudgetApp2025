@@ -10,17 +10,6 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:3333',
         changeOrigin: true,
-      },
-      '/sentinel-api': {
-        target: 'http://127.0.0.1:3344',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/sentinel-api/, ''),
-      },
-      '/sentinel-ws': {
-        target: 'ws://127.0.0.1:3344',
-        ws: true,
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/sentinel-ws/, ''),
       }
     }
   }

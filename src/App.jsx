@@ -16261,22 +16261,122 @@ const OFFICE_ROOMS = [
   { id: 'ops', name: 'FINANCIAL OPS HUB', subtitle: 'Accounts · 5th/20th Payroll · Debts', gx1: 1, gy1: 1, gx2: 7, gy2: 7, floorColor: '#0e2d1f', rimColor: '#24d17e', wallColor: '#091f15', targetTab: 'account-dashboard', entry: { x: 7.2, y: 5.5 } },
   { id: 'intel', name: 'CYBER & CLOUD INTEL LAB', subtitle: 'Honeynet · SHA-256 · Vercel CPU/RAM', gx1: 10.5, gy1: 1, gx2: 17, gy2: 6.5, floorColor: '#0a2933', rimColor: '#30d6b0', wallColor: '#071c24', targetTab: 'security', entry: { x: 10.5, y: 5.5 } },
   { id: 'brain', name: 'THE BRAIN · COMMAND CENTER', subtitle: 'Orchestrator · Morning Brief · PARA', gx1: 7.5, gy1: 7.2, gx2: 11.8, gy2: 11.5, floorColor: '#221c0c', rimColor: '#f2a71b', wallColor: '#171206', targetTab: 'second-brain', entry: { x: 9.6, y: 11.6 } },
-  { id: 'studio', name: 'DEV STUDIO & UX LAB', subtitle: 'Code Sentinel · Pullboard · WCAG 2.2', gx1: 12.6, gy1: 7.2, gx2: 17.5, gy2: 13, floorColor: '#0e2240', rimColor: '#4b8dff', wallColor: '#09162b', targetTab: 'code-sentinel', entry: { x: 12.4, y: 10.2 } },
+  { id: 'studio', name: 'DEV STUDIO & UX LAB', subtitle: 'Pullboard Spec Verifier · WCAG 2.2', gx1: 12.6, gy1: 7.2, gx2: 17.5, gy2: 13, floorColor: '#0e2240', rimColor: '#4b8dff', wallColor: '#09162b', targetTab: 'pullboard', entry: { x: 12.4, y: 10.2 } },
   { id: 'lounge', name: 'PANTRY & GAME LOUNGE', subtitle: 'AI Employee Break & Idle Zone', gx1: 1, gy1: 11.8, gx2: 7.5, gy2: 17.2, floorColor: '#241a0d', rimColor: '#fbbf24', wallColor: '#191107', targetTab: 'ai-office', entry: { x: 6.8, y: 12.0 } },
   { id: 'rec', name: 'PICKLEBALL & GYM ZONE', subtitle: 'Idle Recreation & Recharge', gx1: 9.2, gy1: 13.5, gx2: 17, gy2: 17.2, floorColor: '#191233', rimColor: '#7257ff', wallColor: '#110c24', targetTab: 'ai-office', entry: { x: 9.5, y: 13.2 } }
 ];
 
-const OFFICE_AGENT_ROSTER = [
-  { id: 'boss', name: 'Boss', role: 'Chief Second-Brain Orchestrator', areaTitle: 'Executive Finance & Second Brain', roomId: 'brain', targetTab: 'second-brain', color: '#f2a71b', deskPos: { x: 8.6, y: 8.6 }, restPos: { x: 3.1, y: 13.8 }, missionLabel: 'Synthesize Live Morning Executive Brief' },
-  { id: 'librarian', name: 'Librarian', role: 'PARA Markdown & Rules Custodian', areaTitle: 'Knowledge Vault & Permanent Rules', roomId: 'brain', targetTab: 'second-brain', color: '#fbbf24', deskPos: { x: 10.7, y: 9.2 }, restPos: { x: 4.9, y: 14.2 }, missionLabel: 'Audit PARA Notes & Permanent Brain Rules' },
-  { id: 'balanse', name: 'Balanse', role: 'Philippine Bank Treasurer Bot', areaTitle: 'PH Bank Accounts & Cash Flow', roomId: 'ops', targetTab: 'account-dashboard', color: '#24d17e', deskPos: { x: 3.1, y: 3.2 }, restPos: { x: 2.3, y: 15.2 }, missionLabel: 'Audit PH Bank Card Balances & Net Flow' },
-  { id: 'kinsenas', name: 'Kinsenas', role: '5th/20th Payroll & Debt Strategist', areaTitle: 'Bi-Monthly Payroll, Debts & Goals', roomId: 'ops', targetTab: 'debts', color: '#4ade80', deskPos: { x: 5.5, y: 4.5 }, restPos: { x: 4.2, y: 15.8 }, missionLabel: 'Analyze Debt Utilization & Major Goals' },
-  { id: 'bantay', name: 'Bantay', role: 'Cyber Security & Honeynet Sentinel', areaTitle: 'Vault Security, SHA-256 & Honeynet', roomId: 'intel', targetTab: 'security', color: '#ff514f', deskPos: { x: 12.2, y: 3.1 }, restPos: { x: 11.4, y: 15.2 }, missionLabel: 'Verify SHA-256 Integrity & Honeynet Traps' },
-  { id: 'vercelbot', name: 'VercelBot', role: 'Cloud CPU, RAM & Supabase Monitor', areaTitle: 'Cloud Runtime & Database Telemetry', roomId: 'intel', targetTab: 'resources', color: '#30d6b0', deskPos: { x: 15.2, y: 4.4 }, restPos: { x: 13.6, y: 15.6 }, missionLabel: 'Ping Vercel Node CPU/RAM & Supabase Latency' },
-  { id: 'vero', name: 'Vero', role: 'Pullboard Adversarial Verifier', areaTitle: 'Pullboard Specs & Quality Gates', roomId: 'studio', targetTab: 'pullboard', color: '#4b8dff', deskPos: { x: 14.3, y: 9.0 }, restPos: { x: 5.9, y: 15.2 }, missionLabel: 'Check Pullboard Spec Lanes & Escalations' },
-  { id: 'tala', name: 'Tala', role: 'Senior-Friendly UX/UI Architect', areaTitle: 'WCAG 2.2 Accessibility & DTCG UI', roomId: 'studio', targetTab: 'ux-advisor', color: '#bc8cff', deskPos: { x: 15.8, y: 11.3 }, restPos: { x: 14.8, y: 14.8 }, missionLabel: 'Run WCAG 2.2 AA-AAA Card Contrast Audit' },
-  { id: 'sentinel', name: 'Sentinel', role: 'Real-Time Snyk Code & Dependency Agent', areaTitle: 'Code Security, SAST, Dependencies & Auto-Fix', roomId: 'studio', targetTab: 'code-sentinel', color: '#38bdf8', deskPos: { x: 13.3, y: 11.4 }, restPos: { x: 10.4, y: 16.1 }, missionLabel: 'Scan Codebase in Real Time & Prepare Verified Fixes' }
+const DEFAULT_OFFICE_CONVERSATIONS = [
+  { id: 'c1', timestamp: new Date(Date.now() - 7200000).toISOString(), fromId: 'boss', toId: 'balanse', fromName: 'Boss', toName: 'Balanse', fromFace: '🧠', toFace: '🏦', text: 'Balanse, audit liquidity and total cash reserves across all 11 bank accounts.' },
+  { id: 'c2', timestamp: new Date(Date.now() - 6500000).toISOString(), fromId: 'balanse', toId: 'boss', fromName: 'Balanse', toName: 'Boss', fromFace: '🏦', toFace: '🧠', text: 'Audited all 11 bank cards. Consolidated liquid reserves are strong, 0 negative balance alerts.' },
+  { id: 'c3', timestamp: new Date(Date.now() - 5200000).toISOString(), fromId: 'bantay', toId: 'boss', fromName: 'Bantay', toName: 'Boss', fromFace: '🛡️', toFace: '🧠', text: 'SHA-256 financial digest verified & signed. All Honeynet intrusion traps operational.' },
+  { id: 'c4', timestamp: new Date(Date.now() - 4100000).toISOString(), fromId: 'boss', toId: 'bantay', fromName: 'Boss', toName: 'Bantay', fromFace: '🧠', toFace: '🛡️', text: 'Good vigilance, Bantay. Continue monitoring edge requests and vault authentication.' },
+  { id: 'c5', timestamp: new Date(Date.now() - 3200000).toISOString(), fromId: 'kinsenas', toId: 'balanse', fromName: 'Kinsenas', toName: 'Balanse', fromFace: '💵', toFace: '🏦', text: 'Mapping upcoming 5th/20th payroll disbursements against debt limits. Bank buffers look sufficient.' },
+  { id: 'c6', timestamp: new Date(Date.now() - 2100000).toISOString(), fromId: 'tala', toId: 'vero', fromName: 'Tala', toName: 'Vero', fromFace: '🎨', toFace: '🕵️‍♂️', text: 'WCAG 2.2 AA-AAA contrast audit complete across all bank cards. 0 contrast failures.' },
+  { id: 'c7', timestamp: new Date(Date.now() - 1100000).toISOString(), fromId: 'vero', toId: 'tala', fromName: 'Vero', toName: 'Tala', fromFace: '🕵️‍♂️', toFace: '🎨', text: 'Pullboard verification certified. Senior-friendly UX gate passes with zero escalations.' },
+  { id: 'c8', timestamp: new Date(Date.now() - 300000).toISOString(), fromId: 'librarian', toId: 'boss', fromName: 'Librarian', toName: 'Boss', fromFace: '📚', toFace: '🧠', text: 'PARA Vault indexed: markdown notes and permanent rules compound successfully.' },
+  { id: 'c9', timestamp: new Date(Date.now() - 150000).toISOString(), fromId: 'sentinel', toId: 'boss', fromName: 'Sentinel', toName: 'Boss', fromFace: '🛡️', toFace: '🧠', text: 'Real-time SAST & dependency scan completed. Approval-first fix queue is active.' },
+
 ];
+
+const AGENT_PLANS = {
+  boss: [
+    { step: 1, title: 'Consolidate Portfolio State', desc: 'Ingest bank balances, debts, and major milestones.', done: true },
+    { step: 2, title: 'Calculate Net Worth & Cash Flow', desc: 'Compute liquid cash and daily burn rate.', done: true },
+    { step: 3, title: 'Synthesize Executive Morning Brief', desc: 'Generate markdown brief with live PHT timestamps.', done: true },
+    { step: 4, title: 'Broadcast Operational Directive', desc: 'Issue shift priorities to Balanse, Bantay, and Vero.', done: false, active: true },
+  ],
+  librarian: [
+    { step: 1, title: 'Scan Second Brain Vault', desc: 'Index markdown notes across Context, Projects, Areas, Resources, Archive.', done: true },
+    { step: 2, title: 'Verify Permanent Rules', desc: 'Audit active vs inactive rules to prevent rule collisions.', done: true },
+    { step: 3, title: 'Archive Ephemeral Transcripts', desc: 'Clean outdated scratch logs and preserve critical findings.', done: false, active: true },
+    { step: 4, title: 'Sync with Boss Briefing', desc: 'Deliver distilled context for executive synthesis.', done: false },
+  ],
+  balanse: [
+    { step: 1, title: 'Audit Bank Card Balances', desc: 'Inspect balances across BDO, BPI, UnionBank, GCash, Maya, etc.', done: true },
+    { step: 2, title: 'Scan Debit History & Ledgers', desc: 'Detect overdrafts, unusual debit spikes, and card fees.', done: true },
+    { step: 3, title: 'Reconcile Liquidity Reserves', desc: 'Confirm payroll buffers for upcoming payout cycles.', done: false, active: true },
+    { step: 4, title: 'Dispatch Treasury Report', desc: 'Notify Kinsenas and Boss of consolidated bank liquidity.', done: false },
+  ],
+  kinsenas: [
+    { step: 1, title: 'Map 5th / 20th Payroll Cycle', desc: 'Calculate upcoming disbursement window & cash buffers.', done: true },
+    { step: 2, title: 'Audit Debt Utilization', desc: 'Review card limit utilization vs minimum due dates.', done: true },
+    { step: 3, title: 'Evaluate Major Expense Targets', desc: 'Check funding milestones for active financial goals.', done: false, active: true },
+    { step: 4, title: 'Coordinate with Balanse', desc: 'Ensure bank liquidity covers scheduled debt repayments.', done: false },
+  ],
+  bantay: [
+    { step: 1, title: 'Compute Financial Digest Hash', desc: 'Generate SHA-256 integrity seal over accounts, debts, and settings.', done: true },
+    { step: 2, title: 'Poll Honeynet Deception Traps', desc: 'Check /api/honeypot telemetry for unauthorized probe attempts.', done: true },
+    { step: 3, title: 'Verify Vault PIN & AES-256 Vault', desc: 'Check master PIN hash status and encryption readiness.', done: false, active: true },
+    { step: 4, title: 'Transmit Security Briefing to Boss', desc: 'Report any tamper anomalies or unverified ledger state.', done: false },
+  ],
+  vercelbot: [
+    { step: 1, title: 'Ping Vercel Serverless Health', desc: 'Test /api/health endpoint for round-trip latency & HTTP 200.', done: true },
+    { step: 2, title: 'Sample Node Memory & CPU', desc: 'Track process RSS memory (MB) and CPU load factors.', done: true },
+    { step: 3, title: 'Check Supabase Edge Connectivity', desc: 'Verify database query latency and authentication handshake.', done: false, active: true },
+    { step: 4, title: 'Log Infrastructure Metrics', desc: 'Append system resource telemetry to live office logs.', done: false },
+  ],
+  vero: [
+    { step: 1, title: 'Inspect Pullboard Invariants', desc: 'Verify DOCTRINE Rule 1: Nothing Ships Unverified.', done: true },
+    { step: 2, title: 'Audit Adversarial Verification Lane', desc: 'Ensure spec criteria are validated before transitioning to Shipped.', done: true },
+    { step: 3, title: 'Track Escalation Shouts', desc: 'Flag unresolved human escalation shouts blocking release.', done: false, active: true },
+    { step: 4, title: 'Run Automated Quality Gate', desc: 'Execute pre-deploy validation checks across all modules.', done: false },
+  ],
+  sentinel: [
+    { step: 1, title: 'Watch Workspace Files', desc: 'Real-time fs.watch over src/, api/, mcp/, and package.json.', done: true },
+    { step: 2, title: 'Run SAST & Dependency Scanners', desc: 'Scan for DOM XSS, API auth, cleartext secrets, and CVEs.', done: true },
+    { step: 3, title: 'Enforce Approval-First Fix Queue', desc: 'Prepare verified diffs and wait for admin approval.', done: false, active: true },
+    { step: 4, title: 'Verify Patches via Quality Gate', desc: 'Run pre-deploy check with automatic rollback on failure.', done: false },
+  ],
+  tala: [
+    { step: 1, title: 'Sample UI Component Tokens', desc: 'Inspect DTCG design token colors and solid backgrounds.', done: true },
+    { step: 2, title: 'Calculate WCAG 2.2 Contrast Ratios', desc: 'Ensure account card text satisfies >= 4.5:1 (AA) and >= 7.0:1 (AAA).', done: true },
+    { step: 3, title: 'Senior-Friendly Ergonomics Audit', desc: 'Verify 44px touch targets and high-contrast modal popups.', done: false, active: true },
+    { step: 4, title: 'Handoff UX Certification to Vero', desc: 'Certify frontend changes for Pullboard verification.', done: false },
+  ],
+};
+
+const AGENT_COLLABORATORS = {
+  boss: { partnerId: 'balanse', reason: 'Consolidating treasury reserves and net worth metrics.' },
+  librarian: { partnerId: 'boss', reason: 'Syncing permanent PARA memory and rule compounding.' },
+  balanse: { partnerId: 'kinsenas', reason: 'Aligning bank liquidity with 5th/20th payroll disbursements.' },
+  kinsenas: { partnerId: 'balanse', reason: 'Verifying bank reserves against credit card debt payments.' },
+  bantay: { partnerId: 'boss', reason: 'Reporting SHA-256 integrity seal and Honeynet deception telemetry.' },
+  vercelbot: { partnerId: 'bantay', reason: 'Correlating edge cloud latency with security telemetry.' },
+  vero: { partnerId: 'tala', reason: 'Verifying Pullboard tasks and WCAG 2.2 contrast compliance.' },
+  tala: { partnerId: 'vero', reason: 'Delivering senior-friendly accessibility audits to Pullboard verifier.' },
+  sentinel: { partnerId: 'vero', reason: 'Synchronizing real-time code security with Pullboard quality gates.' },
+};
+
+const CUSTOM_EMOJIS = ['🧠', '🤖', '🛡️', '💼', '⚖️', '📚', '💵', '⚡', '🕵️‍♂️', '🎨', '🦉', '🐱', '🦊', '🚀', '💎', '🌟', '🎯', '🔥', '👑', '🦾'];
+
+const CUSTOM_COLORS = [
+  { name: 'Amber Gold', hex: '#f2a71b' },
+  { name: 'Emerald', hex: '#24d17e' },
+  { name: 'Crimson', hex: '#ff514f' },
+  { name: 'Sky Blue', hex: '#4b8dff' },
+  { name: 'Violet', hex: '#bc8cff' },
+  { name: 'Teal', hex: '#30d6b0' },
+  { name: 'Warm Gold', hex: '#fbbf24' },
+  { name: 'Mint Green', hex: '#4ade80' },
+  { name: 'Electric Purple', hex: '#7257ff' },
+  { name: 'Rose', hex: '#fb7185' },
+  { name: 'Cyan', hex: '#06b6d4' },
+  { name: 'Silver Frost', hex: '#94a3b8' },
+];
+
+const OFFICE_AGENT_ROSTER = [
+  { id: 'boss', defaultName: 'Boss', defaultRole: 'Chief Second-Brain Orchestrator', defaultFace: '🧠', defaultColor: '#f2a71b', name: 'Boss', role: 'Chief Second-Brain Orchestrator', face: '🧠', color: '#f2a71b', roomId: 'brain', targetTab: 'second-brain', deskPos: { x: 8.6, y: 8.6 }, restPos: { x: 3.1, y: 13.8 }, missionLabel: 'Synthesize Live Morning Executive Brief' },
+  { id: 'librarian', defaultName: 'Librarian', defaultRole: 'PARA Markdown & Rules Custodian', defaultFace: '📚', defaultColor: '#fbbf24', name: 'Librarian', role: 'PARA Markdown & Rules Custodian', face: '📚', color: '#fbbf24', roomId: 'brain', targetTab: 'second-brain', deskPos: { x: 10.7, y: 9.2 }, restPos: { x: 4.9, y: 14.2 }, missionLabel: 'Audit PARA Notes & Permanent Brain Rules' },
+  { id: 'balanse', defaultName: 'Balanse', defaultRole: 'Philippine Bank Treasurer Bot', defaultFace: '🏦', defaultColor: '#24d17e', name: 'Balanse', role: 'Philippine Bank Treasurer Bot', face: '🏦', color: '#24d17e', roomId: 'ops', targetTab: 'account-dashboard', deskPos: { x: 3.1, y: 3.2 }, restPos: { x: 2.3, y: 15.2 }, missionLabel: 'Audit PH Bank Card Balances & Net Flow' },
+  { id: 'kinsenas', defaultName: 'Kinsenas', defaultRole: '5th/20th Payroll & Debt Strategist', defaultFace: '💵', defaultColor: '#4ade80', name: 'Kinsenas', role: '5th/20th Payroll & Debt Strategist', face: '💵', color: '#4ade80', roomId: 'ops', targetTab: 'debts', deskPos: { x: 5.5, y: 4.5 }, restPos: { x: 4.2, y: 15.8 }, missionLabel: 'Analyze Debt Utilization & Major Goals' },
+  { id: 'bantay', defaultName: 'Bantay', defaultRole: 'Cyber Security & Honeynet Sentinel', defaultFace: '🛡️', defaultColor: '#ff514f', name: 'Bantay', role: 'Cyber Security & Honeynet Sentinel', face: '🛡️', color: '#ff514f', roomId: 'intel', targetTab: 'security', deskPos: { x: 12.2, y: 3.1 }, restPos: { x: 11.4, y: 15.2 }, missionLabel: 'Verify SHA-256 Integrity & Honeynet Traps' },
+  { id: 'vercelbot', defaultName: 'VercelBot', defaultRole: 'Cloud CPU, RAM & Supabase Monitor', defaultFace: '⚡', defaultColor: '#30d6b0', name: 'VercelBot', role: 'Cloud CPU, RAM & Supabase Monitor', face: '⚡', color: '#30d6b0', roomId: 'intel', targetTab: 'resources', deskPos: { x: 15.2, y: 4.4 }, restPos: { x: 13.6, y: 15.6 }, missionLabel: 'Ping Vercel Node CPU/RAM & Supabase Latency' },
+  { id: 'vero', defaultName: 'Vero', defaultRole: 'Pullboard Adversarial Verifier', defaultFace: '🕵️‍♂️', defaultColor: '#4b8dff', name: 'Vero', role: 'Pullboard Adversarial Verifier', face: '🕵️‍♂️', color: '#4b8dff', roomId: 'studio', targetTab: 'pullboard', deskPos: { x: 14.3, y: 9.0 }, restPos: { x: 5.9, y: 15.2 }, missionLabel: 'Check Pullboard Spec Lanes & Escalations' },
+  { id: 'tala', defaultName: 'Tala', defaultRole: 'Senior-Friendly UX/UI Architect', defaultFace: '🎨', defaultColor: '#bc8cff', name: 'Tala', role: 'Senior-Friendly UX/UI Architect', face: '🎨', color: '#bc8cff', roomId: 'studio', targetTab: 'ux-advisor', deskPos: { x: 15.8, y: 11.3 }, restPos: { x: 14.8, y: 14.8 }, missionLabel: 'Run WCAG 2.2 AA-AAA Card Contrast Audit' },
+  { id: 'sentinel', defaultName: 'Sentinel', defaultRole: 'Real-Time Snyk Code & Dependency Agent', defaultFace: '🛡️', defaultColor: '#38bdf8', name: 'Sentinel', role: 'Real-Time Snyk Code & Dependency Agent', face: '🛡️', color: '#38bdf8', roomId: 'studio', targetTab: 'code-sentinel', deskPos: { x: 13.3, y: 11.4 }, restPos: { x: 10.4, y: 16.1 }, missionLabel: 'Scan Codebase in Real Time & Prepare Verified Fixes' },
+];
+
 
 function buildAgentAreaBriefing(agent, { accounts = [], budgetData = {}, debts = [], credits = [], majorExpenses = [], sentinel = null, status = {} }) {
   const room = OFFICE_ROOMS.find(r => r.id === agent.roomId);
@@ -16297,7 +16397,7 @@ function buildAgentAreaBriefing(agent, { accounts = [], budgetData = {}, debts =
     const modeLabel = sentinel?.daemonOnline ? (sum.watchEnabled ? 'Live Watching Files' : 'Daemon Connected (Watch Paused)') : 'Cloud/Snapshot Mode';
 
     talkingAbout = sentinel?.scanning
-      ? `Sentinel is actively scanning workspace files right now for SAST security risks, dependency CVEs, secrets, and Doctrine compliance.`
+      ? 'Sentinel is actively scanning workspace files right now for SAST security risks, dependency CVEs, secrets, and Doctrine compliance.'
       : pending.length > 0
         ? `Sentinel is discussing ${pending.length} open code issue(s) (Code Score: ${score}/100) and preparing step-by-step How-to-Fix guides & verified patches.`
         : `Sentinel verified the codebase at ${score}/100 with 0 pending code security issues (${fixed.length} fix(es) verified).`;
@@ -16306,7 +16406,7 @@ function buildAgentAreaBriefing(agent, { accounts = [], budgetData = {}, debts =
       { label: 'Watcher Engine', detail: `${modeLabel} · ${sum.scannedFilesCount || 0} files indexed`, badge: sentinel?.daemonOnline ? 'LIVE' : 'SNAPSHOT', tone: sentinel?.daemonOnline ? C.green : C.amber },
       { label: 'Posture & Fix Queue', detail: `Score ${score}/100 · ${pending.length} pending review · ${sum.autoFixableCount || 0} auto-fixable · ${fixed.length} fixed`, badge: `${pending.length} OPEN`, tone: pending.length > 0 ? C.amber : C.green },
       ...pending.slice(0, 3).map(f => ({
-        label: `[${f.severity}] ${f.ruleId} · ${f.filePath}:${f.lineStart}`,
+        label: `[${f.severity}] ${f.ruleId} · ${f.filePath}:${f.lineStart || f.line || 1}`,
         detail: `${f.title} — Fix: ${(f.howToFix || [])[0] || 'Review diff in Code Sentinel'}`,
         badge: f.autoFixable ? 'AUTO-FIX READY' : 'REVIEW',
         tone: f.severity === 'CRITICAL' ? C.red : f.severity === 'HIGH' ? C.orange : C.amber
@@ -16354,7 +16454,7 @@ function buildAgentAreaBriefing(agent, { accounts = [], budgetData = {}, debts =
       { label: 'Honeynet Telemetry', detail: `${hpCount} intruder event(s) captured across 5 armed traps`, badge: `${hpCount} EVENTS`, tone: hpCount > 0 ? C.red : C.teal }
     ];
   } else if (agent.id === 'vercelbot') {
-    talkingAbout = `VercelBot is monitoring serverless runtime health (/api/health), Node RSS memory, API latency, and Supabase payload usage.`;
+    talkingAbout = 'VercelBot is monitoring serverless runtime health (/api/health), Node RSS memory, API latency, and Supabase payload usage.';
     taskItems = [
       { label: 'Serverless Health', detail: 'Pings /api/health?telemetry=1 during each shift for live CPU/RAM/RTT', badge: 'TELEMETRY', tone: C.teal },
       { label: 'Supabase Sync Tier', detail: 'Tracks JSON payload footprint against 500 MB Free Tier limit', badge: 'CLOUD', tone: C.blue }
@@ -16364,27 +16464,21 @@ function buildAgentAreaBriefing(agent, { accounts = [], budgetData = {}, debts =
     const verCount = pbTasks.filter(t => t.lane === 'VERIFICATION').length;
     const shouts = budgetData?.pullboardData?.shouts || DEFAULT_PULLBOARD_SHOUTS;
     const openEsc = shouts.filter(s => s.type === 'ESCALATION' && s.status !== 'RESOLVED').length;
-    talkingAbout = `Vero is enforcing Pullboard Rule 1 (Adversarial Second-Verification) across ${pbTasks.length} specs and ${openEsc} open escalation(s).`;
+    talkingAbout = `Vero is verifying ${verCount} task(s) in Adversarial Verification and enforcing DOCTRINE Rule 1 (Nothing Ships Unverified).`;
     taskItems = [
-      { label: 'Adversarial Verification Lane', detail: `${verCount} work item(s) waiting for verifier sign-off`, badge: `${verCount} VERIFY`, tone: C.blue },
-      { label: 'Escalation Shouts', detail: `${openEsc} unresolved human escalation(s)`, badge: openEsc > 0 ? 'ESCALATED' : 'CLEAR', tone: openEsc > 0 ? C.amber : C.green }
+      { label: 'Adversarial Verification Lane', detail: `${verCount} task(s) awaiting verifier release`, badge: `${verCount} QUEUED`, tone: verCount > 0 ? C.blue : C.green },
+      { label: 'Doctrine Escalation Shouts', detail: `${openEsc} active human escalation(s)`, badge: openEsc > 0 ? `${openEsc} OPEN` : 'CLEAR', tone: openEsc > 0 ? C.red : C.green }
     ];
   } else if (agent.id === 'tala') {
-    let aaaCount = 0;
-    accounts.forEach(a => {
-      const b = getPhBankBrand(a);
-      if (calcWcagContrastRatio(b.solidBg, b.textColor) >= 7.0) aaaCount++;
-    });
-    const seniorOn = Boolean(budgetData?.uxAdvisorConfig?.seniorUxMode);
-    talkingAbout = `Tala is auditing WCAG 2.2 AA-AAA contrast (${aaaCount}/${accounts.length} PH bank cards pass AAA) and enforcing zero-gradient solid UI.`;
+    talkingAbout = `Tala is running WCAG 2.2 AA-AAA contrast audits across ${accounts.length} bank cards and checking senior-friendly touch targets.`;
     taskItems = [
-      { label: 'WCAG 2.2 Card Contrast', detail: `${aaaCount} of ${accounts.length} bank cards meet >= 7.0:1 AAA contrast`, badge: 'WCAG AAA', tone: C.purple },
-      { label: 'Senior Clarity Mode', detail: seniorOn ? 'Enhanced typography & focus rings active' : 'Standard clarity active', badge: seniorOn ? 'ON' : 'STD', tone: C.blue }
+      { label: 'WCAG 2.2 Contrast Gate', detail: 'Audit color contrast ratios against senior-friendly >= 4.5:1 (AA) and >= 7.0:1 (AAA)', badge: 'WCAG 2.2', tone: C.purple },
+      { label: 'DTCG Token Hierarchy', detail: 'Enforces solid backgrounds with zero gradients per DOCTRINE Rule 2', badge: 'SOLID COLOR', tone: C.green }
     ];
   }
 
   return {
-    roomName: room?.name || 'HQ',
+    roomName: room?.name || 'VIRTUAL OFFICE',
     roomSubtitle: room?.subtitle || '',
     areaTitle: agent.areaTitle || agent.role,
     talkingAbout,
@@ -16408,8 +16502,8 @@ function AiOfficeHqTab({
   const canvasRef = useRef(null);
   const [selectedAgentId, setSelectedAgentId] = useState('boss');
   const [selectedRoomId, setSelectedRoomId] = useState('brain');
-  const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
   const [autoShiftSec, setAutoShiftSec] = useState(12); // 12 | 25 | 0 (manual)
+  const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
   const [agentStatuses, setAgentStatuses] = useState(() =>
     OFFICE_AGENT_ROSTER.reduce((acc, a) => ({
       ...acc,
@@ -16417,26 +16511,64 @@ function AiOfficeHqTab({
     }), {})
   );
 
+  const customizations = budgetData?.aiOfficeCustomizations || {};
+  const activeRoster = useMemo(() => {
+    return OFFICE_AGENT_ROSTER.map(ag => {
+      const c = customizations[ag.id] || {};
+      return {
+        ...ag,
+        name: c.name || ag.defaultName,
+        role: c.role || ag.defaultRole,
+        face: c.face || ag.defaultFace,
+        color: c.color || ag.defaultColor,
+      };
+    });
+  }, [customizations]);
+
+  const [inspectorTab, setInspectorTab] = useState('task'); // 'task' | 'chat' | 'collab' | 'plan'
+  const [editingAgentId, setEditingAgentId] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', face: '', color: '', role: '' });
+  const [chatInputText, setChatInputText] = useState('');
+
   const aiOfficeLogs = Array.isArray(budgetData?.aiOfficeLog) ? budgetData.aiOfficeLog : [];
 
   // Mutable animation ref for silky 60fps canvas loop without React re-render lag
   const simRef = useRef({
-    agents: OFFICE_AGENT_ROSTER.map((a, idx) => ({
-      ...a,
-      x: a.restPos.x,
-      y: a.restPos.y,
-      waypoints: [],
-      state: 'IDLE', // 'IDLE' | 'WALKING_TO_DESK' | 'WORKING' | 'WALKING_TO_LOUNGE'
-      workTimerMs: 0,
-      bubble: '',
-      bubbleTimerMs: 0,
-      bobPhase: idx * 0.9
-    })),
+    agents: OFFICE_AGENT_ROSTER.map((a, idx) => {
+      const c = (budgetData?.aiOfficeCustomizations || {})[a.id] || {};
+      return {
+        ...a,
+        name: c.name || a.defaultName,
+        role: c.role || a.defaultRole,
+        face: c.face || a.defaultFace,
+        color: c.color || a.defaultColor,
+        x: a.restPos.x,
+        y: a.restPos.y,
+        waypoints: [],
+        state: 'IDLE', // 'IDLE' | 'WALKING_TO_DESK' | 'WORKING' | 'WALKING_TO_LOUNGE'
+        workTimerMs: 0,
+        bubble: '',
+        bubbleTimerMs: 0,
+        bobPhase: idx * 0.9
+      };
+    }),
     hitBoxes: [],
     selectedAgentId: 'boss',
     pulsePhase: 0,
     shiftIdx: 0
   });
+
+  // Sync customizations to simRef sprites for live 60fps rendering
+  useEffect(() => {
+    simRef.current.agents.forEach(ag => {
+      const c = (budgetData?.aiOfficeCustomizations || {})[ag.id] || {};
+      const base = OFFICE_AGENT_ROSTER.find(r => r.id === ag.id);
+      ag.name = c.name || base?.defaultName || ag.name;
+      ag.role = c.role || base?.defaultRole || ag.role;
+      ag.face = c.face || base?.defaultFace || ag.face;
+      ag.color = c.color || base?.defaultColor || ag.color;
+    });
+  }, [budgetData?.aiOfficeCustomizations]);
 
   // Latest live state ref so async dispatch executes against up-to-date state
   const liveStateRef = useRef({ accounts, budgetData, debts, credits, majorExpenses, sentinel });
@@ -16465,10 +16597,96 @@ function AiOfficeHqTab({
     });
   };
 
+  const recordOfficeConversation = (fromId, toId, text) => {
+    const fromAg = activeRoster.find(a => a.id === fromId) || { name: fromId, face: '🤖' };
+    const toAg = activeRoster.find(a => a.id === toId) || { name: toId, face: '🤖' };
+    const entry = {
+      id: `conv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toISOString(),
+      fromId,
+      toId,
+      fromName: fromAg.name,
+      toName: toAg.name,
+      fromFace: fromAg.face,
+      toFace: toAg.face,
+      text
+    };
+    setBudgetData(prev => {
+      const prevConvs = Array.isArray(prev?.aiOfficeConversations) && prev.aiOfficeConversations.length > 0
+        ? prev.aiOfficeConversations
+        : DEFAULT_OFFICE_CONVERSATIONS;
+      return {
+        ...prev,
+        aiOfficeConversations: [entry, ...prevConvs].slice(0, 60)
+      };
+    });
+  };
+
+  const handleUserSendMessage = () => {
+    if (!chatInputText.trim()) return;
+    const txt = chatInputText.trim();
+    setChatInputText('');
+    const curAgent = activeRoster.find(a => a.id === selectedAgentId) || activeRoster[0];
+    const userEntry = {
+      id: `usr_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      fromId: 'user',
+      toId: curAgent.id,
+      fromName: 'You (Owner)',
+      toName: curAgent.name,
+      fromFace: '👤',
+      toFace: curAgent.face,
+      text: txt
+    };
+
+    let reply = `Task received! Working on the next operational cycle.`;
+    if (curAgent.id === 'boss') {
+      reply = `Understood! I'll orchestrate the autonomous shifts and ensure all 8 agents maintain executive synchronization.`;
+    } else if (curAgent.id === 'balanse') {
+      reply = `Received! I am continuously monitoring your bank card balances and will alert you if any account dips into negative territory.`;
+    } else if (curAgent.id === 'bantay') {
+      reply = `Sentinel standing by! SHA-256 seal is intact and honeynet traps are actively guarding all endpoints.`;
+    } else if (curAgent.id === 'kinsenas') {
+      reply = `Copy that! I am tracking your 5th and 20th payroll allocations and debt repayment schedules.`;
+    } else if (curAgent.id === 'vero') {
+      reply = `On it! Adversarial verification checks are active. Nothing ships unverified per DOCTRINE Rule 1.`;
+    } else if (curAgent.id === 'tala') {
+      reply = `Noted! Ensuring all UI cards strictly adhere to WCAG 2.2 AA-AAA contrast and senior-friendly layout standards.`;
+    } else if (curAgent.id === 'vercelbot') {
+      reply = `Telemetry operational! Monitoring Vercel serverless latency and database responsiveness.`;
+    } else if (curAgent.id === 'librarian') {
+      reply = `Archived! Your notes and permanent rules in the Second Brain Vault are organized and preserved.`;
+    } else if (curAgent.id === 'sentinel') {
+      reply = `Code Sentinel standing by! Workspace files are monitored in real time with approval-first fix policies.`;
+    }
+
+    const replyEntry = {
+      id: `rep_${Date.now() + 1}`,
+      timestamp: new Date().toISOString(),
+      fromId: curAgent.id,
+      toId: 'user',
+      fromName: curAgent.name,
+      toName: 'You (Owner)',
+      fromFace: curAgent.face,
+      toFace: '👤',
+      text: reply
+    };
+
+    setBudgetData(prev => {
+      const prevConvs = Array.isArray(prev?.aiOfficeConversations) && prev.aiOfficeConversations.length > 0
+        ? prev.aiOfficeConversations
+        : DEFAULT_OFFICE_CONVERSATIONS;
+      return {
+        ...prev,
+        aiOfficeConversations: [replyEntry, userEntry, ...prevConvs].slice(0, 60)
+      };
+    });
+  };
+
   // Real executable mission logic for each AI Employee!
   const executeRealAgentMission = async (agentId) => {
-    const { accounts: curAcc, budgetData: curBudget, debts: curDebts, credits: curCreds, majorExpenses: curMajor, sentinel: curSentinel } = liveStateRef.current;
-    const def = OFFICE_AGENT_ROSTER.find(a => a.id === agentId);
+    const { accounts: curAcc, budgetData: curBudget, debts: curDebts, credits: curCreds, majorExpenses: curMajor } = liveStateRef.current;
+    const def = activeRoster.find(a => a.id === agentId) || OFFICE_AGENT_ROSTER.find(a => a.id === agentId);
     if (!def) return 'Mission complete';
 
     let shortBubble = 'Done ✓';
@@ -16480,7 +16698,7 @@ function AiOfficeHqTab({
       const pendingCreds = curCreds.filter(c => !c.done).reduce((s, c) => s + (Number(c.amount) || 0), 0);
       const netWorth = totalCash + pendingCreds - totalDebt;
       const nowPht = new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' });
-      const briefMd = `# ☀️ Autonomous HQ Executive Brief\nGenerated by AI Boss at ${nowPht}\n- Net Worth: ₱${Math.round(netWorth).toLocaleString()}\n- Bank Cash (${curAcc.length}): ₱${Math.round(totalCash).toLocaleString()} | Debt: ₱${Math.round(totalDebt).toLocaleString()}\n- Security Events: ${(curBudget?.honeypotEvents || []).length}`;
+      const briefMd = `# ☀️ Autonomous HQ Executive Brief\nGenerated by AI ${def.name} at ${nowPht}\n- Net Worth: ₱${Math.round(netWorth).toLocaleString()}\n- Bank Cash (${curAcc.length}): ₱${Math.round(totalCash).toLocaleString()} | Debt: ₱${Math.round(totalDebt).toLocaleString()}\n- Security Events: ${(curBudget?.honeypotEvents || []).length}`;
       setBudgetData(prev => ({
         ...prev,
         secondBrain: {
@@ -16489,25 +16707,25 @@ function AiOfficeHqTab({
         }
       }));
       shortBubble = `Net Worth ${fmtK(netWorth)}`;
-      fullSummary = `Boss synthesized Executive Morning Brief (Net Worth: ${peso(netWorth)} across ${curAcc.length} accounts).`;
+      fullSummary = `${def.name} synthesized Executive Morning Brief (Net Worth: ${peso(netWorth)} across ${curAcc.length} accounts).`;
     } else if (agentId === 'librarian') {
       const notes = curBudget?.secondBrain?.notes || DEFAULT_SB_NOTES;
       const rules = curBudget?.secondBrain?.rules || DEFAULT_SB_RULES;
       shortBubble = `${notes.length} MD Notes · ${rules.length} Rules`;
-      fullSummary = `Librarian audited PARA Markdown Vault (${notes.length} notes across Context/Projects/Areas/Resources/Archive, ${rules.length} permanent rules).`;
+      fullSummary = `${def.name} audited PARA Markdown Vault (${notes.length} notes across Context/Projects/Areas/Resources/Archive, ${rules.length} permanent rules).`;
     } else if (agentId === 'balanse') {
       const totalBal = curAcc.reduce((s, a) => s + (Number(a.balance) || 0), 0);
       const negCount = curAcc.filter(a => (Number(a.balance) || 0) < 0).length;
       const txCount = (curBudget?.debitHistory || []).length;
       shortBubble = `${curAcc.length} Banks · ${fmtK(totalBal)}`;
-      fullSummary = `Balanse audited ${curAcc.length} Philippine bank cards totaling ${peso(totalBal)} (${txCount} ledger transactions, ${negCount} negative alerts).`;
+      fullSummary = `${def.name} audited ${curAcc.length} Philippine bank cards totaling ${peso(totalBal)} (${txCount} ledger transactions, ${negCount} negative alerts).`;
     } else if (agentId === 'kinsenas') {
       const totalDebt = curDebts.reduce((s, d) => s + (Number(d.balance) || 0), 0);
       const totalLimit = curDebts.reduce((s, d) => s + (Number(d.limit) || 0), 0);
       const utilPct = totalLimit > 0 ? Math.round((totalDebt / totalLimit) * 100) : 0;
       const activeGoals = curMajor.filter(m => !m.done).length;
       shortBubble = `Debt ${utilPct}% · ${activeGoals} Goals`;
-      fullSummary = `Kinsenas checked 5th/20th payroll readiness: Total Debt ${peso(totalDebt)} (${utilPct}% limit utilization) & ${activeGoals} active Major Goals.`;
+      fullSummary = `${def.name} checked 5th/20th payroll readiness: Total Debt ${peso(totalDebt)} (${utilPct}% limit utilization) & ${activeGoals} active Major Goals.`;
     } else if (agentId === 'bantay') {
       const hash = await computeFinancialIntegrityFingerprint({
         accounts: curAcc,
@@ -16519,7 +16737,7 @@ function AiOfficeHqTab({
       const hpCount = (curBudget?.honeypotEvents || []).length;
       const pinOn = Boolean(curBudget?.securityConfig?.pinHash);
       shortBubble = `SHA ${hash.slice(0, 6)} · ${hpCount} Traps`;
-      fullSummary = `Bantay verified SHA-256 Financial Digest (${hash.slice(0, 12)}…), Vault PIN ${pinOn ? 'ACTIVE' : 'NOT SET'}, and ${hpCount} Honeynet alert(s).`;
+      fullSummary = `${def.name} verified SHA-256 Financial Digest (${hash.slice(0, 12)}…), Vault PIN ${pinOn ? 'ACTIVE' : 'NOT SET'}, and ${hpCount} Honeynet alert(s).`;
     } else if (agentId === 'vercelbot') {
       try {
         const start = performance.now();
@@ -16530,14 +16748,14 @@ function AiOfficeHqTab({
           const rss = data?.memory?.rssMb ?? '?';
           const cpu = data?.cpu?.processCpuPct ?? 0;
           shortBubble = `${rss}MB RAM · ${rtt}ms`;
-          fullSummary = `VercelBot sampled ${data?.vercel?.region || 'node'}: CPU ${cpu}%, Node RSS ${rss} MB, API RTT ${rtt}ms.`;
+          fullSummary = `${def.name} sampled ${data?.vercel?.region || 'node'}: CPU ${cpu}%, Node RSS ${rss} MB, API RTT ${rtt}ms.`;
         } else {
           shortBubble = `API HTTP ${res.status}`;
-          fullSummary = `VercelBot pinged /api/health?telemetry=1 (HTTP ${res.status}, ${rtt}ms).`;
+          fullSummary = `${def.name} pinged /api/health?telemetry=1 (HTTP ${res.status}, ${rtt}ms).`;
         }
       } catch {
         shortBubble = 'Local Vite Monitor';
-        fullSummary = 'VercelBot verified client memory & local browser telemetry (Vercel API reachable on deployment).';
+        fullSummary = `${def.name} verified client memory & local browser telemetry (Vercel API reachable on deployment).`;
       }
     } else if (agentId === 'vero') {
       const pbTasks = curBudget?.pullboardData?.tasks || DEFAULT_PULLBOARD_TASKS;
@@ -16545,7 +16763,14 @@ function AiOfficeHqTab({
       const shouts = curBudget?.pullboardData?.shouts || DEFAULT_PULLBOARD_SHOUTS;
       const openEsc = shouts.filter(s => s.type === 'ESCALATION' && s.status !== 'RESOLVED').length;
       shortBubble = `${verCount} Verify · ${openEsc} Esc`;
-      fullSummary = `Vero inspected Pullboard: ${verCount} task(s) in Adversarial Verification, ${openEsc} open human escalation(s).`;
+      fullSummary = `${def.name} inspected Pullboard: ${verCount} task(s) in Adversarial Verification, ${openEsc} open human escalation(s).`;
+    } else if (agentId === 'sentinel') {
+      const sum = sentinel?.summary || {};
+      const findings = Array.isArray(sentinel?.findings) ? sentinel.findings : [];
+      const pending = findings.filter(f => f.status !== 'FIXED_VERIFIED' && f.status !== 'IGNORED');
+      const score = sum.score ?? 100;
+      shortBubble = `Score ${score} · ${pending.length} Issues`;
+      fullSummary = `${def.name} verified codebase security score ${score}/100 (${pending.length} pending review, ${sum.fixedCount || 0} verified fixed).`;
     } else if (agentId === 'tala') {
       let aaaCount = 0;
       let failCount = 0;
@@ -16556,19 +16781,7 @@ function AiOfficeHqTab({
         else if (ratio < 4.5) failCount++;
       });
       shortBubble = `${aaaCount}/${curAcc.length} AAA Cards`;
-      fullSummary = `Tala completed WCAG 2.2 audit: ${aaaCount}/${curAcc.length} PH bank cards pass AAA (>=7.0:1), ${failCount} contrast failure(s).`;
-    } else if (agentId === 'sentinel') {
-      if (curSentinel?.refresh) {
-        await curSentinel.refresh();
-      }
-      const sum = curSentinel?.summary || {};
-      const findings = Array.isArray(curSentinel?.findings) ? curSentinel.findings : [];
-      const pending = findings.filter(f => f.status !== 'FIXED_VERIFIED' && f.status !== 'IGNORED');
-      const fixed = findings.filter(f => f.status === 'FIXED_VERIFIED').length;
-      const score = sum.score ?? 100;
-      const modeTag = curSentinel?.daemonOnline ? 'LIVE WATCH' : 'SNAPSHOT';
-      shortBubble = pending.length > 0 ? `Score ${score} · ${pending.length} Fix` : `Clean ${score}/100`;
-      fullSummary = `Sentinel (${modeTag}) checked ${sum.scannedFilesCount || 0} files: Code Score ${score}/100, ${pending.length} pending review (${sum.bySeverity?.CRITICAL || 0} Critical, ${sum.bySeverity?.HIGH || 0} High), ${fixed} verified fixed.`;
+      fullSummary = `${def.name} completed WCAG 2.2 audit: ${aaaCount}/${curAcc.length} PH bank cards pass AAA (>=7.0:1), ${failCount} contrast failure(s).`;
     }
 
     // Update Canvas Sprite Bubble & React Summary State
@@ -16588,6 +16801,41 @@ function AiOfficeHqTab({
       }
     }));
     recordOfficeLog(def, fullSummary);
+
+    const partnerId = AGENT_COLLABORATORS[agentId]?.partnerId || 'boss';
+    let collabMsg = fullSummary;
+    if (agentId === 'boss') {
+      collabMsg = `Consolidated morning brief synthesized. Net worth stands at ${peso(netWorth)} across ${curAcc.length} banks.`;
+    } else if (agentId === 'librarian') {
+      const notes = curBudget?.secondBrain?.notes || DEFAULT_SB_NOTES;
+      const rules = curBudget?.secondBrain?.rules || DEFAULT_SB_RULES;
+      collabMsg = `Vault audited: ${notes.length} PARA notes & ${rules.length} active rules indexed.`;
+    } else if (agentId === 'balanse') {
+      const totalBal = curAcc.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+      collabMsg = `Total liquid balance verified across ${curAcc.length} banks at ${peso(totalBal)}.`;
+    } else if (agentId === 'kinsenas') {
+      const totalDebt = curDebts.reduce((s, d) => s + (Number(d.balance) || 0), 0);
+      const totalLimit = curDebts.reduce((s, d) => s + (Number(d.limit) || 0), 0);
+      const utilPct = totalLimit > 0 ? Math.round((totalDebt / totalLimit) * 100) : 0;
+      collabMsg = `Debt utilization is ${utilPct}%. Next 5th/20th payout reserve is confirmed.`;
+    } else if (agentId === 'bantay') {
+      const hpCount = (curBudget?.honeypotEvents || []).length;
+      collabMsg = `SHA-256 seal verified. All ${hpCount} Honeynet deception traps active.`;
+    } else if (agentId === 'vercelbot') {
+      collabMsg = `Edge cloud telemetry checked: Vercel node memory & Supabase edge latency responsive.`;
+    } else if (agentId === 'vero') {
+      const pbTasks = curBudget?.pullboardData?.tasks || DEFAULT_PULLBOARD_TASKS;
+      const verCount = pbTasks.filter(t => t.lane === 'VERIFICATION').length;
+      const shouts = curBudget?.pullboardData?.shouts || DEFAULT_PULLBOARD_SHOUTS;
+      const openEsc = shouts.filter(s => s.type === 'ESCALATION' && s.status !== 'RESOLVED').length;
+      collabMsg = `Pullboard spec check: ${verCount} in Verification, ${openEsc} open escalations.`;
+    } else if (agentId === 'tala') {
+      collabMsg = `Accessibility scan: Bank cards evaluated for WCAG 2.2 AAA senior-friendly contrast.`;
+    } else if (agentId === 'sentinel') {
+      collabMsg = `Code Sentinel audit: Codebase posture score verified at ${sentinel?.summary?.score || 100}/100 with approval-first gating.`;
+    }
+
+    recordOfficeConversation(agentId, partnerId, collabMsg);
     return fullSummary;
   };
 
@@ -16661,42 +16909,12 @@ function AiOfficeHqTab({
     const t1 = setTimeout(() => dispatchAgent('boss'), 450);
     const t2 = setTimeout(() => dispatchAgent('balanse'), 1100);
     const t3 = setTimeout(() => dispatchAgent('bantay'), 1800);
-    const t4 = setTimeout(() => dispatchAgent('sentinel'), 2400);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
-      clearTimeout(t4);
     };
   }, []);
-
-  // React immediately in the Virtual Office when Code Sentinel scans or detects issues
-  useEffect(() => {
-    if (!sentinel) return;
-    if (sentinel.scanning) {
-      const sprite = simRef.current.agents.find(a => a.id === 'sentinel');
-      if (sprite && sprite.state === 'IDLE') {
-        dispatchAgent('sentinel');
-      } else if (sprite) {
-        sprite.bubble = 'Scanning code…';
-        sprite.bubbleTimerMs = 4000;
-      }
-    } else if (sentinel.summary?.lastScanAt) {
-      const sum = sentinel.summary;
-      const pending = sentinel.pendingCount || 0;
-      const shortBubble = pending > 0 ? `Score ${sum.score ?? 100} · ${pending} Fix` : `Clean ${sum.score ?? 100}/100`;
-      setAgentStatuses(prev => ({
-        ...prev,
-        sentinel: {
-          ...prev.sentinel,
-          state: sentinel.daemonOnline ? 'WORKING' : prev.sentinel?.state || 'IDLE',
-          bubble: shortBubble,
-          lastSummary: `Sentinel (${sentinel.daemonOnline ? 'LIVE WATCH' : 'SNAPSHOT'}): Score ${sum.score ?? 100}/100 across ${sum.scannedFilesCount || 0} files — ${pending} pending review, ${sum.fixedCount || 0} fixed.`,
-          lastRunAt: sum.lastScanAt
-        }
-      }));
-    }
-  }, [sentinel?.scanning, sentinel?.pendingCount, sentinel?.daemonOnline, sentinel?.summary?.lastScanAt]);
 
   // Main 60fps Isometric 2.5D Render & Physics Loop
   useEffect(() => {
@@ -16970,43 +17188,52 @@ function AiOfficeHqTab({
 
           // Isometric Avatar Torso
           const torsoY = base.y - 9 - bounce;
-          safeRoundRect(base.x - 6, torsoY, 12, 11, 4);
+          safeRoundRect(base.x - 7, torsoY, 14, 11, 4);
           ctx.fillStyle = ag.color;
           ctx.fill();
           ctx.strokeStyle = '#050b16';
           ctx.lineWidth = 1.2;
           ctx.stroke();
 
-          // Avatar Head
+          // Avatar Head & Face Emoji
           ctx.beginPath();
-          ctx.arc(base.x, torsoY - 5, 5.5, 0, Math.PI * 2);
-          ctx.fillStyle = '#fef3c7';
+          ctx.arc(base.x, torsoY - 6, 7, 0, Math.PI * 2);
+          ctx.fillStyle = '#0f172a';
           ctx.fill();
+          ctx.strokeStyle = ag.color;
+          ctx.lineWidth = 1.2;
           ctx.stroke();
+
+          ctx.font = '10px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(ag.face || '🤖', base.x, torsoY - 5.5);
 
           // Status Dot on Corner of Nameplate
           const statusClr = isWorking ? '#24d17e' : isWalking ? '#f2a71b' : '#94a3b8';
 
           // Floating Nameplate Tag
           ctx.font = 'bold 10px Inter, system-ui, sans-serif';
-          const nameW = ctx.measureText(ag.name).width + 18;
+          const nameStr = `${ag.face || '🤖'} ${ag.name}`;
+          const nameW = ctx.measureText(nameStr).width + 18;
           const tagX = base.x - nameW / 2;
-          const tagY = torsoY - 27;
+          const tagY = torsoY - 30;
           ctx.fillStyle = isSelected ? '#1e293b' : '#050b16';
           ctx.strokeStyle = isSelected ? '#ffffff' : ag.color;
           ctx.lineWidth = isSelected ? 1.8 : 1.1;
-          safeRoundRect(tagX, tagY, nameW, 15, 4);
+          safeRoundRect(tagX, tagY, nameW, 16, 4);
           ctx.fill();
           ctx.stroke();
 
           ctx.beginPath();
-          ctx.arc(tagX + 6, tagY + 7.5, 2.8, 0, Math.PI * 2);
+          ctx.arc(tagX + 6, tagY + 8, 2.8, 0, Math.PI * 2);
           ctx.fillStyle = statusClr;
           ctx.fill();
 
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'left';
-          ctx.fillText(ag.name, tagX + 12, tagY + 11);
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillText(nameStr, tagX + 12, tagY + 11.5);
 
           // Live Speech / Telemetry Bubble when working or dispatched
           if (ag.bubble) {
@@ -17065,19 +17292,71 @@ function AiOfficeHqTab({
     }
   };
 
-  const selectedAgent = OFFICE_AGENT_ROSTER.find(a => a.id === selectedAgentId) || OFFICE_AGENT_ROSTER[0];
+  const selectedAgent = activeRoster.find(a => a.id === selectedAgentId) || activeRoster[0];
   const selectedAgentStatus = agentStatuses[selectedAgent.id] || {};
-  const selectedBriefing = buildAgentAreaBriefing(selectedAgent, {
-    accounts,
-    budgetData,
-    debts,
-    credits,
-    majorExpenses,
-    sentinel,
-    status: selectedAgentStatus
-  });
-  const selectedAgentLogs = aiOfficeLogs.filter(l => l.agentId === selectedAgent.id).slice(0, 6);
+  const selectedBriefing = buildAgentAreaBriefing(selectedAgent, { accounts, budgetData, debts, credits, majorExpenses, sentinel, status: selectedAgentStatus });
   const workingCount = Object.values(agentStatuses).filter(s => s.state === 'WORKING' || s.state === 'WALKING').length;
+  const collab = AGENT_COLLABORATORS[selectedAgent.id] || { partnerId: 'boss', reason: 'Coordinating autonomous tasks.' };
+  const partnerAgent = activeRoster.find(a => a.id === collab.partnerId) || activeRoster[0];
+  const partnerStatus = agentStatuses[partnerAgent.id] || {};
+  const currentPlan = AGENT_PLANS[selectedAgent.id] || [
+    { step: 1, title: 'Data Ingestion', desc: 'Scan parameters from live modules.', done: true },
+    { step: 2, title: 'Deterministic Analysis', desc: 'Verify rules and calculate invariants.', done: true },
+    { step: 3, title: 'Collaborator Handoff', desc: 'Sync with partner agent.', done: false, active: true },
+    { step: 4, title: 'Telemetry Synthesis', desc: 'Record audit log and trigger executive brief.', done: false },
+  ];
+  const allConversations = Array.isArray(budgetData?.aiOfficeConversations) && budgetData.aiOfficeConversations.length > 0
+    ? budgetData.aiOfficeConversations
+    : DEFAULT_OFFICE_CONVERSATIONS;
+  const agentConversations = allConversations.filter(c => c.fromId === selectedAgent.id || c.toId === selectedAgent.id);
+
+  const handleOpenCustomizer = (ag) => {
+    setEditingAgentId(ag.id);
+    setEditForm({
+      name: ag.name,
+      face: ag.face || '🤖',
+      color: ag.color || '#f2a71b',
+      role: ag.role || ''
+    });
+  };
+
+  const handleSaveCustomizer = () => {
+    if (!editingAgentId) return;
+    const finalName = editForm.name.trim();
+    const finalFace = editForm.face.trim();
+    const finalRole = editForm.role.trim();
+    const finalColor = editForm.color.trim();
+
+    setBudgetData(prev => {
+      const prevCustoms = prev?.aiOfficeCustomizations || {};
+      return {
+        ...prev,
+        aiOfficeCustomizations: {
+          ...prevCustoms,
+          [editingAgentId]: {
+            name: finalName || undefined,
+            face: finalFace || undefined,
+            role: finalRole || undefined,
+            color: finalColor || undefined,
+          }
+        }
+      };
+    });
+    setEditingAgentId(null);
+  };
+
+  const handleResetCustomizer = () => {
+    if (!editingAgentId) return;
+    setBudgetData(prev => {
+      const prevCustoms = { ...(prev?.aiOfficeCustomizations || {}) };
+      delete prevCustoms[editingAgentId];
+      return {
+        ...prev,
+        aiOfficeCustomizations: prevCustoms
+      };
+    });
+    setEditingAgentId(null);
+  };
 
   return (
     <div>
@@ -17106,17 +17385,9 @@ function AiOfficeHqTab({
               }}>
                 {workingCount} / {OFFICE_AGENT_ROSTER.length} AGENTS ACTIVE
               </span>
-              <span style={{
-                fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 12,
-                background: '#050b16',
-                color: sentinel?.daemonOnline ? '#38bdf8' : C.muted,
-                border: `1px solid ${sentinel?.daemonOnline ? '#38bdf8' : C.border}`
-              }}>
-                🔍 SENTINEL: {sentinel?.scanning ? 'SCANNING…' : sentinel?.daemonOnline ? `LIVE (${sentinel?.pendingCount || 0} OPEN)` : `SNAPSHOT (${sentinel?.pendingCount || 0} OPEN)`}
-              </span>
             </div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
-              Watch your {OFFICE_AGENT_ROSTER.length} specialized AI employees (including Code Sentinel) walk to their HQ rooms and run real automations. Click any employee on the map or roster to inspect their task and what area they are talking about!
+              Watch your 8 specialized AI employees walk from the Lounge to their HQ rooms and run real automations across Accounts, Cyber Security, Pullboard, UX/UI, Second Brain & Vercel Cloud!
             </div>
           </div>
 
@@ -17178,7 +17449,7 @@ function AiOfficeHqTab({
             style={{ width: '100%', height: sm ? 360 : 520, display: 'block', borderRadius: 10, cursor: 'pointer' }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, padding: '0 6px', fontSize: 11, color: C.muted, flexWrap: 'wrap', gap: 8 }}>
-            <span>👆 Click any AI employee on the floor map to inspect their live mission and linked module.</span>
+            <span>👆 Click any AI employee on the floor map to inspect their live mission, task, and conversation.</span>
             <span>🟢 Working at Desk · 🟡 Walking Hallway · ⚪ Resting in Pantry Lounge</span>
           </div>
         </Card>
@@ -17188,101 +17459,330 @@ function AiOfficeHqTab({
           {/* Inspector Card */}
           <Card style={{ marginBottom: 0, background: '#081121', border: `2px solid ${selectedAgent.color}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18, fontWeight: 900, color: '#ffffff' }}>🤖 {selectedAgent.name}</span>
-                  <span style={{
-                    fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 8,
-                    background: `${selectedAgent.color}22`, color: selectedAgent.color, border: `1px solid ${selectedAgent.color}`
-                  }}>
-                    {selectedAgentStatus.state || 'IDLE'}
-                  </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 10, background: '#050b16',
+                  border: `2px solid ${selectedAgent.color}`, display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: 24
+                }}>
+                  {selectedAgent.face}
                 </div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{selectedAgent.role}</div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: '#ffffff' }}>{selectedAgent.name}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 8,
+                      background: `${selectedAgent.color}22`, color: selectedAgent.color, border: `1px solid ${selectedAgent.color}`
+                    }}>
+                      {selectedAgentStatus.state || 'IDLE'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{selectedAgent.role}</div>
+                </div>
               </div>
-              {setTab && (
+
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  onClick={() => setTab(selectedAgent.targetTab)}
+                  onClick={() => handleOpenCustomizer(selectedAgent)}
                   style={{
-                    padding: '6px 10px', borderRadius: 7, border: `1px solid ${selectedAgent.color}`,
-                    background: '#050b16', color: selectedAgent.color, fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                    padding: '6px 10px', borderRadius: 7, border: `1px solid ${C.amber}`,
+                    background: '#050b16', color: C.amber, fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                  }}
+                  title="Customize Name, Face Avatar & Color"
+                >
+                  ✏️ Customize
+                </button>
+                {setTab && (
+                  <button
+                    type="button"
+                    onClick={() => setTab(selectedAgent.targetTab)}
+                    style={{
+                      padding: '6px 10px', borderRadius: 7, border: `1px solid ${selectedAgent.color}`,
+                      background: '#050b16', color: selectedAgent.color, fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                    }}
+                  >
+                    ↗ Open {selectedAgent.targetTab}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Inspector Navigation Tabs */}
+            <div style={{
+              display: 'flex', gap: 4, marginTop: 12, borderBottom: `1px solid ${C.border}`, paddingBottom: 6,
+              overflowX: 'auto'
+            }}>
+              {[
+                { id: 'task', label: '📋 Task & Status' },
+                { id: 'chat', label: `💬 Conversation (${agentConversations.length})` },
+                { id: 'collab', label: '🤝 Collaboration' },
+                { id: 'plan', label: '🗺️ Plan & Roadmap' }
+              ].map(tb => (
+                <button
+                  key={tb.id}
+                  type="button"
+                  onClick={() => setInspectorTab(tb.id)}
+                  style={{
+                    padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
+                    background: inspectorTab === tb.id ? selectedAgent.color : 'transparent',
+                    color: inspectorTab === tb.id ? '#050b16' : C.muted
                   }}
                 >
-                  ↗ Open {selectedAgent.targetTab}
+                  {tb.label}
                 </button>
-              )}
+              ))}
             </div>
 
-            <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: '#050b16', border: `1px solid ${C.border}`, fontSize: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                <div>
-                  <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>📍 Area & Office Room</div>
-                  <div style={{ color: '#38bdf8', fontWeight: 900, marginTop: 2 }}>
-                    {selectedBriefing.roomName} · {selectedBriefing.areaTitle}
+            {/* Tab 1: Task & Status */}
+            {inspectorTab === 'task' && (
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ padding: 10, borderRadius: 8, background: '#050b16', border: `1px solid ${C.border}`, fontSize: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Current Ongoing Task</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 800,
+                      color: selectedAgentStatus.state === 'WORKING' ? C.green : selectedAgentStatus.state === 'WALKING' ? C.amber : C.muted
+                    }}>
+                      {selectedAgentStatus.state === 'WORKING' ? '⚡ ACTIVE EXECUTION' : selectedAgentStatus.state === 'WALKING' ? '🚶 EN ROUTE TO DESK' : '☕ RESTING IN LOUNGE'}
+                    </span>
+                  </div>
+                  <div style={{ color: '#ffffff', fontWeight: 800, marginTop: 4 }}>{selectedAgent.missionLabel}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
+                    Station: {OFFICE_ROOMS.find(r => r.id === selectedAgent.roomId)?.name || 'HQ'} (Desk: x={selectedAgent.deskPos.x}, y={selectedAgent.deskPos.y})
                   </div>
                 </div>
-              </div>
 
-              <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Assigned Automated Task</div>
-              <div style={{ color: '#ffffff', fontWeight: 800, marginTop: 2 }}>{selectedAgent.missionLabel}</div>
+                <div style={{ padding: 10, borderRadius: 8, background: '#050b16', border: `1px solid ${C.border}`, fontSize: 12 }}>
+                  <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>Latest Real Finding</div>
+                  <div style={{ color: C.green, fontWeight: 700, marginTop: 4, lineHeight: 1.4 }}>{selectedAgentStatus.lastSummary}</div>
+                  {selectedAgentStatus.lastRunAt && (
+                    <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>
+                      Executed: {new Date(selectedAgentStatus.lastRunAt).toLocaleTimeString()}
+                    </div>
+                  )}
+                </div>
 
-              <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase', marginTop: 10 }}>
-                💬 What {selectedAgent.name} Is Talking About
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => dispatchAgent(selectedAgent.id)}
+                    style={{
+                      flex: 1, padding: '9px 14px', borderRadius: 8, border: 'none',
+                      background: selectedAgent.color, color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                    }}
+                  >
+                    ▶ Dispatch {selectedAgent.name} to Desk Now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sprite = simRef.current.agents.find(a => a.id === selectedAgent.id);
+                      if (sprite) {
+                        const room = OFFICE_ROOMS.find(r => r.id === sprite.roomId);
+                        sprite.waypoints = [
+                          room?.entry || { x: 9.2, y: 11.5 },
+                          { x: 9.2, y: 12.2 },
+                          { x: 6.8, y: 12.2 },
+                          { ...sprite.restPos }
+                        ];
+                        sprite.state = 'WALKING_TO_LOUNGE';
+                        sprite.workTimerMs = 0;
+                        sprite.bubble = 'Break time ☕';
+                        sprite.bubbleTimerMs = 2400;
+                        setAgentStatuses(prev => ({
+                          ...prev,
+                          [selectedAgent.id]: { ...prev[selectedAgent.id], state: 'WALKING', bubble: 'Walking to Lounge…' }
+                        }));
+                      }
+                    }}
+                    style={{
+                      padding: '9px 12px', borderRadius: 8, border: `1px solid ${C.border}`,
+                      background: '#050b16', color: C.text, fontSize: 12, fontWeight: 800, cursor: 'pointer'
+                    }}
+                  >
+                    ☕ Send to Lounge
+                  </button>
+                </div>
               </div>
-              <div style={{ color: '#eef5ff', fontWeight: 600, marginTop: 3, lineHeight: 1.45, padding: '8px 10px', borderRadius: 6, background: '#0b1628', borderLeft: `3px solid ${selectedAgent.color}` }}>
-                "{selectedBriefing.talkingAbout}"
-              </div>
+            )}
 
-              {selectedBriefing.taskItems.length > 0 && (
-                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {/* Tab 2: Conversation History */}
+            {inspectorTab === 'chat' && (
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{
+                  maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8,
+                  padding: 8, background: '#050b16', borderRadius: 8, border: `1px solid ${C.border}`
+                }}>
+                  {agentConversations.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 18, color: C.muted, fontSize: 12 }}>
+                      No direct conversations recorded yet. Dispatch {selectedAgent.name} or send an instruction below!
+                    </div>
+                  ) : (
+                    agentConversations.map(msg => {
+                      const isMe = msg.fromId === selectedAgent.id;
+                      return (
+                        <div
+                          key={msg.id}
+                          style={{
+                            padding: '8px 10px', borderRadius: 8,
+                            background: isMe ? '#0c1b30' : '#081121',
+                            border: `1px solid ${isMe ? selectedAgent.color : C.border}`,
+                            fontSize: 12
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <span style={{ fontWeight: 800, color: isMe ? selectedAgent.color : C.amber, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span>{msg.fromFace || '🤖'}</span>
+                              <span>{msg.fromName}</span>
+                              <span style={{ color: C.muted, fontWeight: 400 }}>➔</span>
+                              <span>{msg.toFace || '🤖'}</span>
+                              <span>{msg.toName}</span>
+                            </span>
+                            <span style={{ fontSize: 9, color: C.muted }}>
+                              {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : ''}
+                            </span>
+                          </div>
+                          <div style={{ color: '#ffffff', lineHeight: 1.35 }}>{msg.text}</div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="text"
+                    value={chatInputText}
+                    onChange={(e) => setChatInputText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleUserSendMessage(); }}
+                    placeholder={`Send instruction or prompt to ${selectedAgent.name}…`}
+                    style={{
+                      flex: 1, padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.border}`,
+                      background: '#050b16', color: '#ffffff', fontSize: 12, outline: 'none'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleUserSendMessage}
+                    style={{
+                      padding: '8px 14px', borderRadius: 8, border: 'none',
+                      background: selectedAgent.color, color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                    }}
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 3: Collaboration (Who are they talking to?) */}
+            {inspectorTab === 'collab' && (
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ padding: 12, borderRadius: 8, background: '#050b16', border: `1.5px solid ${partnerAgent.color}` }}>
                   <div style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>
-                    📋 Live Task & Area Breakdown
+                    Active Collaborator Partner
                   </div>
-                  {selectedBriefing.taskItems.slice(0, 3).map((item, idx) => (
-                    <div key={idx} style={{ padding: '7px 9px', borderRadius: 6, background: '#0b1628', border: `1px solid ${C.border}` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#ffffff' }}>{item.label}</span>
-                        <span style={{ fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 5, background: '#050b16', color: item.tone || C.teal, border: `1px solid ${item.tone || C.teal}` }}>
-                          {item.badge}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 8, background: '#081121',
+                      border: `1.5px solid ${partnerAgent.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22
+                    }}>
+                      {partnerAgent.face}
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 14, fontWeight: 900, color: '#ffffff' }}>{partnerAgent.name}</span>
+                        <span style={{
+                          fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 6,
+                          background: `${partnerAgent.color}22`, color: partnerAgent.color, border: `1px solid ${partnerAgent.color}`
+                        }}>
+                          {partnerStatus.state || 'IDLE'}
                         </span>
                       </div>
-                      <div style={{ fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 1.35 }}>{item.detail}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>{partnerAgent.role}</div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => dispatchAgent(selectedAgent.id)}
-                style={{
-                  flex: '1 1 180px', minHeight: 44, padding: '9px 14px', borderRadius: 8, border: 'none',
-                  background: selectedAgent.color, color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer'
-                }}
-              >
-                ▶ Dispatch {selectedAgent.name} to Desk Now
-              </button>
-              <button
-                type="button"
-                onClick={() => setEmployeeModalOpen(true)}
-                style={{
-                  minHeight: 44, padding: '9px 12px', borderRadius: 8, border: `1.5px solid ${selectedAgent.color}`,
-                  background: '#050b16', color: '#ffffff', fontSize: 12, fontWeight: 800, cursor: 'pointer'
-                }}
-              >
-                🔎 Full Task & Area Briefing
-              </button>
-            </div>
+                  <div style={{ marginTop: 10, padding: 8, borderRadius: 6, background: '#081121', border: `1px solid ${C.border}`, fontSize: 11, color: '#ffffff', lineHeight: 1.4 }}>
+                    <span style={{ fontWeight: 800, color: C.amber }}>🤝 Collaboration Context: </span>
+                    {collab.reason}
+                  </div>
+
+                  <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: C.muted }}>
+                      Location: {OFFICE_ROOMS.find(r => r.id === partnerAgent.roomId)?.name || 'HQ'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAgentId(partnerAgent.id);
+                        setSelectedRoomId(partnerAgent.roomId);
+                      }}
+                      style={{
+                        padding: '5px 10px', borderRadius: 6, border: `1px solid ${partnerAgent.color}`,
+                        background: '#050b16', color: partnerAgent.color, fontSize: 11, fontWeight: 800, cursor: 'pointer'
+                      }}
+                    >
+                      👉 Switch to {partnerAgent.name}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 4: Plan & Roadmap */}
+            {inspectorTab === 'plan' && (
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ padding: 10, borderRadius: 8, background: '#050b16', border: `1px solid ${C.border}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 10, color: C.muted, fontWeight: 800, textTransform: 'uppercase' }}>
+                      Autonomous Execution Plan (4 Steps)
+                    </span>
+                    <span style={{ fontSize: 10, color: C.green, fontWeight: 800 }}>
+                      {autoShiftSec ? `🔄 Every ${autoShiftSec}s Auto-Shift` : '⏸️ Manual Shift'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {currentPlan.map(st => (
+                      <div
+                        key={st.step}
+                        style={{
+                          padding: '8px 10px', borderRadius: 6,
+                          background: st.done ? '#081c14' : st.active ? '#1c1508' : '#081121',
+                          border: `1px solid ${st.done ? C.green : st.active ? C.amber : C.border}`,
+                          fontSize: 12
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 800, color: '#ffffff' }}>
+                            Step {st.step}: {st.title}
+                          </span>
+                          <span style={{
+                            fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 6,
+                            background: st.done ? `${C.green}22` : st.active ? `${C.amber}22` : '#050b16',
+                            color: st.done ? C.green : st.active ? C.amber : C.muted,
+                            border: `1px solid ${st.done ? C.green : st.active ? C.amber : C.border}`
+                          }}>
+                            {st.done ? '✓ COMPLETED' : st.active ? '⚡ IN-PROGRESS' : '⏳ SCHEDULED'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{st.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Roster Quick Switcher */}
           <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
-            <SecTitle>👥 AI Employee Roster ({OFFICE_AGENT_ROSTER.length} Agents)</SecTitle>
+            <SecTitle>👥 AI Employee Roster ({activeRoster.length} Agents)</SecTitle>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {OFFICE_AGENT_ROSTER.map(ag => {
+              {activeRoster.map(ag => {
                 const st = agentStatuses[ag.id] || {};
                 const isSel = selectedAgentId === ag.id;
                 return (
@@ -17301,7 +17801,10 @@ function AiOfficeHqTab({
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 12, fontWeight: 900, color: '#ffffff' }}>{ag.name}</span>
+                      <span style={{ fontSize: 12, fontWeight: 900, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span>{ag.face}</span>
+                        <span>{ag.name}</span>
+                      </span>
                       <span style={{ fontSize: 9, fontWeight: 900, color: st.state === 'WORKING' ? C.green : st.state === 'WALKING' ? C.amber : C.muted }}>
                         {st.state || 'IDLE'}
                       </span>
@@ -17316,6 +17819,192 @@ function AiOfficeHqTab({
           </Card>
         </div>
       </div>
+
+      {/* ── AI Employee Customization Modal (Name, Face Emoji & Color) ── */}
+      {editingAgentId && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(2, 8, 20, 0.88)', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+        }}>
+          <div style={{
+            background: '#081121', border: `2px solid ${editForm.color || C.amber}`,
+            borderRadius: 12, padding: 20, maxWidth: 480, width: '100%',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>✏️</span>
+                <span>Customize AI Employee</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingAgentId(null)}
+                style={{
+                  background: 'transparent', border: 'none', color: C.muted, fontSize: 18, cursor: 'pointer', fontWeight: 900
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Live Preview Box */}
+            <div style={{
+              padding: 12, borderRadius: 8, background: '#050b16', border: `2px solid ${editForm.color}`,
+              display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16
+            }}>
+              <div style={{
+                width: 50, height: 50, borderRadius: 10, background: '#081121',
+                border: `2px solid ${editForm.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28
+              }}>
+                {editForm.face || '🤖'}
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: '#ffffff' }}>
+                  {editForm.name || 'Agent Name'}
+                </div>
+                <div style={{ fontSize: 12, color: editForm.color, fontWeight: 700 }}>
+                  {editForm.role || 'Specialist Role'}
+                </div>
+              </div>
+            </div>
+
+            {/* Name Input */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', marginBottom: 4 }}>
+                Agent Name
+              </label>
+              <input
+                type="text"
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                style={{
+                  width: '100%', padding: '9px 12px', borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: '#050b16', color: '#ffffff', fontSize: 13, outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Face Emoji Picker */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', marginBottom: 4 }}>
+                Face Avatar (Click to select or enter emoji)
+              </label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                {CUSTOM_EMOJIS.map(em => (
+                  <button
+                    key={em}
+                    type="button"
+                    onClick={() => setEditForm(prev => ({ ...prev, face: em }))}
+                    style={{
+                      width: 32, height: 32, borderRadius: 6, cursor: 'pointer', fontSize: 16,
+                      background: editForm.face === em ? editForm.color : '#050b16',
+                      border: `1.5px solid ${editForm.face === em ? '#ffffff' : C.border}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={editForm.face}
+                onChange={(e) => setEditForm(prev => ({ ...prev, face: e.target.value }))}
+                placeholder="Or type custom emoji / icon…"
+                style={{
+                  width: '100%', padding: '7px 12px', borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: '#050b16', color: '#ffffff', fontSize: 12, outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Accent Color Swatches */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', marginBottom: 4 }}>
+                Theme Color (Solid High-Contrast)
+              </label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                {CUSTOM_COLORS.map(c => (
+                  <button
+                    key={c.hex}
+                    type="button"
+                    onClick={() => setEditForm(prev => ({ ...prev, color: c.hex }))}
+                    title={c.name}
+                    style={{
+                      width: 30, height: 30, borderRadius: 6, cursor: 'pointer',
+                      background: c.hex,
+                      border: editForm.color === c.hex ? '2.5px solid #ffffff' : '1px solid #050b16'
+                    }}
+                  />
+                ))}
+              </div>
+              <input
+                type="text"
+                value={editForm.color}
+                onChange={(e) => setEditForm(prev => ({ ...prev, color: e.target.value }))}
+                placeholder="#HEX Color"
+                style={{
+                  width: '100%', padding: '7px 12px', borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: '#050b16', color: '#ffffff', fontSize: 12, outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Role Title Input */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', marginBottom: 4 }}>
+                Role / Title
+              </label>
+              <input
+                type="text"
+                value={editForm.role}
+                onChange={(e) => setEditForm(prev => ({ ...prev, role: e.target.value }))}
+                style={{
+                  width: '100%', padding: '9px 12px', borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: '#050b16', color: '#ffffff', fontSize: 13, outline: 'none'
+                }}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <button
+                type="button"
+                onClick={handleResetCustomizer}
+                style={{
+                  padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.border}`,
+                  background: '#050b16', color: C.muted, fontSize: 12, fontWeight: 800, cursor: 'pointer'
+                }}
+              >
+                ↺ Reset Default
+              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingAgentId(null)}
+                  style={{
+                    padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.border}`,
+                    background: '#050b16', color: '#ffffff', fontSize: 12, fontWeight: 800, cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCustomizer}
+                  style={{
+                    padding: '9px 16px', borderRadius: 8, border: 'none',
+                    background: editForm.color || C.green, color: '#050b16', fontSize: 12, fontWeight: 900, cursor: 'pointer'
+                  }}
+                >
+                  💾 Save Profile
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Live Autonomous Operations Activity Feed ── */}
       <Card style={{ marginBottom: 0, background: '#081121', border: `1.5px solid ${C.border}` }}>
@@ -17380,7 +18069,7 @@ function AiOfficeHqTab({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 22, fontWeight: 900 }}>🤖 {selectedAgent.name}</span>
+                  <span style={{ fontSize: 22, fontWeight: 900 }}>{selectedAgent.face || '🤖'} {selectedAgent.name}</span>
                   <span style={{
                     fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 8,
                     backgroundColor: '#050b16', color: selectedAgent.color, border: `1px solid ${selectedAgent.color}`
@@ -17445,37 +18134,21 @@ function AiOfficeHqTab({
               </div>
             </div>
 
-            {selectedAgentLogs.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>
-                  📜 Recent Reports from {selectedAgent.name}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {selectedAgentLogs.map(lg => (
-                    <div key={lg.id} style={{ backgroundColor: '#050b16', border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 10px', fontSize: 12 }}>
-                      <span style={{ color: C.muted }}>{lg.timestamp ? new Date(lg.timestamp).toLocaleTimeString() : ''} · </span>
-                      <span style={{ color: '#ffffff' }}>{lg.summary}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 14 }}>
               <button
                 type="button"
                 onClick={() => {
-                  dispatchAgent(selectedAgent.id);
                   setEmployeeModalOpen(false);
+                  handleDispatchAgent(selectedAgent.id);
                 }}
                 style={{
-                  minHeight: 44, padding: '10px 16px', borderRadius: 8, border: 'none',
-                  backgroundColor: selectedAgent.color, color: '#050b16', fontWeight: 900, fontSize: 13, cursor: 'pointer'
+                  minHeight: 44, padding: '10px 18px', borderRadius: 8, border: `1px solid ${selectedAgent.color}`,
+                  backgroundColor: selectedAgent.color, color: '#050b16', fontSize: 13, fontWeight: 900, cursor: 'pointer'
                 }}
               >
                 ▶ Dispatch {selectedAgent.name} to Desk Now
               </button>
-              {setTab && (
+              {setTab && selectedAgent.targetTab && (
                 <button
                   type="button"
                   onClick={() => {
@@ -17483,8 +18156,8 @@ function AiOfficeHqTab({
                     setTab(selectedAgent.targetTab);
                   }}
                   style={{
-                    minHeight: 44, padding: '10px 16px', borderRadius: 8, border: `2px solid ${selectedAgent.color}`,
-                    backgroundColor: '#0f1a2a', color: '#ffffff', fontWeight: 800, fontSize: 13, cursor: 'pointer'
+                    minHeight: 44, padding: '10px 18px', borderRadius: 8, border: `1px solid ${C.border}`,
+                    backgroundColor: '#0f1a2a', color: '#ffffff', fontSize: 13, fontWeight: 800, cursor: 'pointer'
                   }}
                 >
                   ↗ Open {selectedAgent.targetTab} Module
@@ -17497,6 +18170,8 @@ function AiOfficeHqTab({
     </div>
   );
 }
+
+
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 const checkSessionAdmin = (sess) => {

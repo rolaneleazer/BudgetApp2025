@@ -138,7 +138,6 @@ export default async function handler(req, res) {
       "resources",
       "second-brain",
       "ai-office",
-      "code-sentinel",
       "admin"
     ];
 
