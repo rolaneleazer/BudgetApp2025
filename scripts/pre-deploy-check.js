@@ -70,6 +70,7 @@ check("Financial Modules Calculations", () => {
     "monthly",
     "accounts",
     "investments",
+    "pru-funds",
     "debts",
     "credits",
     "major",
@@ -79,8 +80,8 @@ check("Financial Modules Calculations", () => {
     "ux-advisor",
     "resources",
     "second-brain",
-    "second-brain",
     "ai-office",
+    "code-sentinel",
     "raw"
   ];
 

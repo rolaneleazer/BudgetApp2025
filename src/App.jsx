@@ -9,6 +9,7 @@ import { isSuperAdminEmail } from "./config/superAdmins";
 import { ADMIN_ONLY_MODULES, ADMIN_RESTRICTED_FEATURE_MODULES, getDefaultModuleAccess } from "./config/modulePermissions";
 import dtcgTokens from "./config/dtcgTokens.json";
 import CodeSentinelTab, { CodeSentinelNotificationBanner, useCodeSentinelLive } from "./components/CodeSentinelTab";
+import PruFundTrackerTab from "./components/PruFundTrackerTab";
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const OT_RATES = { weekday: 750, weekend: 680 };
@@ -18846,6 +18847,7 @@ export default function App() {
     { id: 'budget', label: sm ? '📅' : '📅 Monthly' },
     { id: 'accounts', label: sm ? '🏦' : '🏦 Accounts' },
     { id: 'investments', label: sm ? '📈' : '📈 Investments' },
+    { id: 'pru-funds', label: sm ? '🛡️' : '🛡️ Pru Life Funds' },
     { id: 'debts', label: sm ? '💳' : '💳 Debt Manager' },
     { id: 'credits', label: sm ? '🤝' : '🤝 Credits' },
     { id: 'expenses', label: sm ? '🎯' : '🎯 Major' },
@@ -18870,6 +18872,7 @@ export default function App() {
     'account-manager': 'Account Manager',
     reconcile: 'Reconcile & Audit',
     investments: 'Investments',
+    'pru-funds': 'Pru Life UK (PH) PRULink Fund Value & NAVPU Tracker',
     debts: 'Debt Manager',
     credits: 'Credits (Money Owed)',
     expenses: 'Major Expenses',
@@ -18894,6 +18897,7 @@ export default function App() {
     { id: 'history', label: 'Budget History', icon: '📋', group: 'manage' },
     { id: 'calendar', label: 'Bills', icon: '🗓', group: 'manage' },
     { id: 'investments', label: 'Investments', icon: '📈', group: 'analytics' },
+    { id: 'pru-funds', label: 'Pru Life Funds', icon: '🛡️', group: 'analytics' },
     { id: 'graph', label: 'Financial Graph', icon: '🕸', group: 'analytics' },
     { id: 'reports', label: 'Reports', icon: '📊', group: 'analytics' },
     { id: 'security', label: 'Cyber Security', icon: '🛡️', group: 'admin' },
@@ -19271,6 +19275,7 @@ export default function App() {
               {tab === 'transactions' && <TransactionsTab accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
               {tab === 'balancelog' && <BalanceLogTab accounts={accounts} setAccounts={setAccounts} balanceHistory={balanceHistory} setBalanceHistory={setBalanceHistory} sm={sm} canWrite={canWrite} canUpdate={canUpdate} />}
               {tab === 'investments' && <InvestmentsTab accounts={accounts} setAccounts={setAccounts} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
+              {tab === 'pru-funds' && <PruFundTrackerTab budgetData={budgetData} setBudgetData={setBudgetData} session={session} sm={sm} canUpdate={canUpdate} />}
               {tab === 'debts' && <DebtsTab debts={debts} setDebts={setDebts} accounts={accounts} setAccounts={setAccounts} budgetData={budgetData} setBudgetData={setBudgetData} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} ownerName={displayName} />}
               {tab === 'credits' && <CreditsTab credits={credits} setCredits={setCredits} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
               {tab === 'expenses' && <MajorTab majorExpenses={majorExpenses} setMajorExpenses={setMajorExpenses} sm={sm} readOnly={readOnly} canWrite={canWrite} canUpdate={canUpdate} />}
@@ -20703,6 +20708,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
             { id: "reconcile", label: "Reconcile Module", icon: "🔍" },
             { id: "transactions", label: "Transactions Module", icon: "💸" },
             { id: "investments", label: "Investments Module", icon: "📈" },
+            { id: "pru-funds", label: "Pru Life Funds", icon: "🛡️" },
             { id: "debts", label: "Debt Module", icon: "💳" },
             { id: "credits", label: "Credits Module", icon: "🤝" },
             { id: "major", label: "Major Goals Module", icon: "🎯" },
@@ -20806,6 +20812,7 @@ function AdminTab({ sm, users, setUsers, adminConfigured, fetchUsers }) {
                 { id: "reconcile", label: "Reconcile & Audit", icon: "🔍" },
                 { id: "transactions", label: "Transactions", icon: "💸" },
                 { id: "investments", label: "Investments", icon: "📈" },
+                { id: "pru-funds", label: "Pru Life Funds", icon: "🛡️" },
                 { id: "debts", label: "Debt Manager", icon: "💳" },
                 { id: "credits", label: "Credits", icon: "🤝" },
                 { id: "expenses", label: "Major Goals", icon: "🎯" },

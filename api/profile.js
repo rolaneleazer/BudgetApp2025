@@ -126,6 +126,7 @@ export default async function handler(req, res) {
       "reconcile",
       "transactions",
       "investments",
+      "pru-funds",
       "debts",
       "credits",
       "expenses",
@@ -138,6 +139,7 @@ export default async function handler(req, res) {
       "resources",
       "second-brain",
       "ai-office",
+      "code-sentinel",
       "admin"
     ];
 

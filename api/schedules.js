@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 import { processSchedule, tick } from "../mcp/scheduler.js";
+import { fetchPruFundPrices, mergePruPrices, DEFAULT_PRU_FUNDS_SEED, PRU_FUNDS_URL } from "../mcp/pruFunds.js";
 
 function getSupabase() {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -36,12 +37,57 @@ async function getUserId(req) {
 }
 
 export default async function handler(req, res) {
+  const action = req.query?.action || new URL(req.url, 'http://localhost').searchParams.get('action');
+
+  // GET or POST — Fetch latest Pru Life UK PRULink NAVPU prices
+  if ((req.method === 'GET' || req.method === 'POST') && action === 'pru_prices') {
+    let parsed;
+    let liveFetch = true;
+    try {
+      parsed = await fetchPruFundPrices();
+    } catch (err) {
+      liveFetch = false;
+      parsed = {
+        funds: DEFAULT_PRU_FUNDS_SEED,
+        dates: ['2026-11-10', '2026-11-11'],
+        source: PRU_FUNDS_URL,
+        fetchedAt: new Date().toISOString(),
+        fallbackReason: err.message
+      };
+    }
+
+    const supabase = getSupabase();
+    const userId = supabase ? await getUserId(req) : null;
+    let mergedStore = null;
+    if (supabase && userId) {
+      const { data: row } = await supabase
+        .from('user_data')
+        .select('budget_data')
+        .eq('user_id', userId)
+        .maybeSingle();
+      const prevStore = row?.budget_data?.pruFunds || {};
+      mergedStore = mergePruPrices(prevStore, parsed, liveFetch ? 'website' : 'seed');
+      await supabase
+        .from('user_data')
+        .update({
+          budget_data: { ...(row?.budget_data || {}), pruFunds: mergedStore },
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+    }
+
+    return res.status(200).json({
+      ok: true,
+      liveFetch,
+      ...parsed,
+      pruFunds: mergedStore
+    });
+  }
+
   const supabase = getSupabase();
   if (!supabase) {
     return res.status(500).json({ error: 'Supabase not configured on server.' });
   }
-
-  const action = req.query?.action || new URL(req.url, 'http://localhost').searchParams.get('action');
 
   // GET or POST — Run cron tick (does not require standard user auth)
   if ((req.method === 'POST' || req.method === 'GET') && action === 'tick') {
@@ -59,6 +105,28 @@ export default async function handler(req, res) {
 
     try {
       await tick();
+      // Also accumulate daily Pru Life UK NAVPU prices for users tracking pruFunds
+      try {
+        const parsed = await fetchPruFundPrices();
+        const { data: rows } = await supabase.from('user_data').select('user_id, budget_data');
+        if (Array.isArray(rows)) {
+          for (const r of rows) {
+            if (!r?.budget_data?.pruFunds) continue;
+            const nextPru = mergePruPrices(r.budget_data.pruFunds, parsed, 'website');
+            if (nextPru.lastFetchAdded > 0) {
+              await supabase
+                .from('user_data')
+                .update({
+                  budget_data: { ...r.budget_data, pruFunds: nextPru },
+                  updated_at: new Date().toISOString()
+                })
+                .eq('user_id', r.user_id);
+            }
+          }
+        }
+      } catch {
+        // Non-fatal if Pru Life website is temporarily unreachable during cron
+      }
       return res.status(200).json({ success: true, message: 'Cron tick processed.' });
     } catch (err) {
       return res.status(500).json({ error: err.message });

@@ -92,6 +92,7 @@ const moduleNames = [
   "monthly",
   "accounts",
   "investments",
+  "pru-funds",
   "debts",
   "credits",
   "major",
@@ -101,8 +102,8 @@ const moduleNames = [
   "ux-advisor",
   "resources",
   "second-brain",
-  "second-brain",
   "ai-office",
+  "code-sentinel",
   "raw",
 ];
 
@@ -956,7 +957,7 @@ function summarizeAiOfficeModule(profile) {
   return {
     officeRoomsCount: rooms.length,
     rooms,
-    activeAgentsCount: 8,
+    activeAgentsCount: 9,
     roster: [
       "Boss",
       "Librarian",
@@ -966,9 +967,88 @@ function summarizeAiOfficeModule(profile) {
       "VercelBot",
       "Vero",
       "Tala",
+      "Sentinel",
     ],
     totalMissionsExecuted: logs.length,
     recentMissions: logs.slice(0, 15),
+  };
+}
+
+function summarizeCodeSentinelModule(profile) {
+  const cs = profile.budgetData?.codeSentinel || {};
+  const findings = Array.isArray(cs.findings) ? cs.findings : [];
+  const logs = Array.isArray(cs.logs) ? cs.logs : [];
+  const pending = findings.filter((f) => f.status !== "FIXED_VERIFIED" && f.status !== "IGNORED");
+  return {
+    agentName: "Code Sentinel (Snyk-Style Real-Time Auditor)",
+    score: cs.summary?.score ?? 100,
+    pendingReviewCount: pending.length,
+    fixedCount: findings.filter((f) => f.status === "FIXED_VERIFIED").length,
+    bySeverity: {
+      CRITICAL: pending.filter((f) => f.severity === "CRITICAL").length,
+      HIGH: pending.filter((f) => f.severity === "HIGH").length,
+      MEDIUM: pending.filter((f) => f.severity === "MEDIUM").length,
+      LOW: pending.filter((f) => f.severity === "LOW").length,
+    },
+    syncedAt: cs.syncedAt || null,
+    recentFindings: findings.slice(0, 15),
+    recentLogs: logs.slice(0, 20),
+  };
+}
+
+function summarizePruFundsModule(profile) {
+  const pf = profile.budgetData?.pruFunds || {};
+  const holdings = Array.isArray(pf.holdings) ? pf.holdings : [];
+  const prices = pf.prices && typeof pf.prices === "object" ? pf.prices : {};
+  const catalog = pf.catalog && typeof pf.catalog === "object" ? pf.catalog : {};
+
+  let totalValuePhp = 0;
+  let totalValueUsd = 0;
+  let totalPremiumsPhp = 0;
+  let totalPremiumsUsd = 0;
+
+  const enrichedHoldings = holdings.map((h) => {
+    const series = Array.isArray(prices[h.fundCode]) ? prices[h.fundCode] : [];
+    const latest = series.length > 0 ? series[series.length - 1] : null;
+    const prev = series.length > 1 ? series[series.length - 2] : null;
+    const navpu = Number(latest?.navpu ?? h.lastNavpu ?? 0);
+    const units = Number(h.units || 0);
+    const value = units * navpu;
+    const premiums = Number(h.totalPremiumsPaid || 0);
+    const currency = h.currency || catalog[h.fundCode]?.currency || "PHP";
+    if (currency === "USD") {
+      totalValueUsd += value;
+      totalValueUsd = Number(totalValueUsd.toFixed(2));
+      totalPremiumsUsd += premiums;
+    } else {
+      totalValuePhp += value;
+      totalValuePhp = Number(totalValuePhp.toFixed(2));
+      totalPremiumsPhp += premiums;
+    }
+    return {
+      ...h,
+      currency,
+      latestDate: latest?.date || h.asOf || null,
+      latestNavpu: navpu,
+      prevNavpu: prev ? Number(prev.navpu) : null,
+      currentValue: Number(value.toFixed(2)),
+      gainLoss: premiums > 0 ? Number((value - premiums).toFixed(2)) : null,
+      historyPoints: series.length,
+    };
+  });
+
+  return {
+    module: "Pru Life UK (PH) PRULink Fund Value Tracker",
+    holdingsCount: holdings.length,
+    trackedFundsCount: Object.keys(prices).length,
+    totalValuePhp: Number(totalValuePhp.toFixed(2)),
+    totalValueUsd: Number(totalValueUsd.toFixed(2)),
+    totalPremiumsPhp: Number(totalPremiumsPhp.toFixed(2)),
+    totalPremiumsUsd: Number(totalPremiumsUsd.toFixed(2)),
+    netGainLossPhp: totalPremiumsPhp > 0 ? Number((totalValuePhp - totalPremiumsPhp).toFixed(2)) : null,
+    netGainLossUsd: totalPremiumsUsd > 0 ? Number((totalValueUsd - totalPremiumsUsd).toFixed(2)) : null,
+    lastFetchAt: pf.lastFetchAt || null,
+    holdings: enrichedHoldings,
   };
 }
 
@@ -986,6 +1066,8 @@ export function buildModulePayload(profile, moduleName, args = {}) {
       return summarizeAccounts(profile.accounts);
     case "investments":
       return summarizeInvestments(profile.accounts);
+    case "pru-funds":
+      return summarizePruFundsModule(profile);
     case "debts":
       return summarizeDebts(profile.debts);
     case "credits":
@@ -1010,10 +1092,10 @@ export function buildModulePayload(profile, moduleName, args = {}) {
       return summarizeResourcesModule(profile);
     case "second-brain":
       return summarizeSecondBrainModule(profile);
-    case "second-brain":
-      return summarizeSecondBrainModule(profile);
     case "ai-office":
       return summarizeAiOfficeModule(profile);
+    case "code-sentinel":
+      return summarizeCodeSentinelModule(profile);
     case "raw":
       return profile;
     default:

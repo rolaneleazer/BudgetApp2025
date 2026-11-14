@@ -15,7 +15,9 @@
     "pullboard:init": "npx pullboard init",
     "pullboard:status": "npx pullboard status",
     "pullboard:tour": "npx pullboard tour",
-    "pullboard:gate": "node --max-http-header-size=65536 scripts/pre-deploy-check.js"
+    "pullboard:gate": "node --max-http-header-size=65536 scripts/pre-deploy-check.js",
+    "sentinel:watch": "node --max-http-header-size=65536 agent/code-sentinel.js --watch",
+    "sentinel:scan": "node --max-http-header-size=65536 agent/code-sentinel.js --scan"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
