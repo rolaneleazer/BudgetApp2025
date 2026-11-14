@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -443,6 +444,8 @@ const POLICY_TYPES = [
   "Other PRULink VUL Policy",
 ];
 
+const TOPUP_PRESETS = [5000, 10000, 20000, 50000, 100000];
+
 const MONTHS_MAP = {
   jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
   jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
@@ -488,6 +491,19 @@ function computeHoldingValueAtPrice(holding, navpu) {
     return snapVal;
   }
   return Number((units * price).toFixed(2));
+}
+
+function findNavpuOnOrBefore(series = [], dateStr = "") {
+  if (!Array.isArray(series) || series.length === 0) return null;
+  let match = series[0];
+  for (const pt of series) {
+    if (pt.date <= dateStr) {
+      match = pt;
+    } else {
+      break;
+    }
+  }
+  return match;
 }
 
 function solidBtnStyle({ bg = PALETTE.cardElevated, fg = PALETTE.text, border = PALETTE.border, disabled = false }) {
@@ -563,13 +579,34 @@ export default function PruFundTrackerTab({
       : DEFAULT_PRU_HOLDINGS;
   }, [pruStore.holdings]);
 
+  const unitEvents = useMemo(() => {
+    return Array.isArray(pruStore.unitEvents) ? pruStore.unitEvents : [];
+  }, [pruStore.unitEvents]);
+
   const [selectedFundCode, setSelectedFundCode] = useState("ALL_MY_HOLDINGS");
   const [chartMode, setChartMode] = useState("value"); // "navpu" | "value"
   const [rangeFilter, setRangeFilter] = useState("ALL"); // "1M" | "3M" | "YTD" | "1Y" | "ALL"
   const [fetchingLive, setFetchingLive] = useState(false);
   const [statusBanner, setStatusBanner] = useState(null);
 
-  // Modals
+  // Deep-Dive & Top-Up Simulator Modal State (opens when clicking any fund card or row)
+  const [detailModalFundCode, setDetailModalFundCode] = useState(null);
+  const [detailModalTab, setDetailModalTab] = useState("ALL"); // "ALL" | "SIMULATOR" | "TOPUPS" | "HISTORY"
+  const [simTopUpAmount, setSimTopUpAmount] = useState("10000");
+  const [simBeforeDate, setSimBeforeDate] = useState("2026-01-15");
+  const [simCustomBeforeNavpu, setSimCustomBeforeNavpu] = useState("");
+  const [simUpToDateGrowthPct, setSimUpToDateGrowthPct] = useState(10); // -10 to +30%
+
+  // New Money Top-Up Form inside the Deep-Dive Modal
+  const [newTopUpForm, setNewTopUpForm] = useState({
+    type: "TOP_UP",
+    amountPhp: "5000",
+    date: "2026-11-13",
+    customNavpu: "",
+    note: "New Top-Up Allocation",
+  });
+
+  // Modals for Add/Edit Holding, Unit Events, and Backfill
   const [holdingModalOpen, setHoldingModalOpen] = useState(false);
   const [editingHoldingId, setEditingHoldingId] = useState(null);
   const [holdingForm, setHoldingForm] = useState({
@@ -584,10 +621,10 @@ export default function PruFundTrackerTab({
   const [unitEventModalOpen, setUnitEventModalOpen] = useState(false);
   const [unitEventForm, setUnitEventForm] = useState({
     holdingId: "",
-    type: "TOP_UP", // "TOP_UP" | "CHARGE" | "WITHDRAWAL"
+    type: "TOP_UP",
     unitsDelta: "",
     premiumAdded: "",
-    date: new Date().toISOString().slice(0, 10),
+    date: "2026-11-13",
     note: "",
   });
 
@@ -627,7 +664,6 @@ export default function PruFundTrackerTab({
       const prev = series.length > 1 ? series[series.length - 2] : null;
       const navpu = Number(latest?.navpu || h.snapshotNavpu || 0);
       const prevNavpu = prev ? Number(prev.navpu) : navpu;
-      const units = Number(h.units || 0);
       const currentValue = computeHoldingValueAtPrice(h, navpu);
       const prevValue = computeHoldingValueAtPrice(h, prevNavpu);
       const dayChangeVal = Number((currentValue - prevValue).toFixed(2));
@@ -704,7 +740,6 @@ export default function PruFundTrackerTab({
       let totalVal = 0;
       for (const h of phpHoldings) {
         const series = mergedPricesByFund[h.fundCode] || [];
-        // Find latest price on or before date `d`
         let priceAtDate = null;
         for (const pt of series) {
           if (pt.date <= d) priceAtDate = pt.navpu;
@@ -802,6 +837,150 @@ export default function PruFundTrackerTab({
     return { latest, first, high, highDate, low, lowDate, changePct };
   }, [filteredSeries, isCombinedView]);
 
+  // ── Deep-Dive Modal Computed Data (for the clicked fund) ──
+  const modalFundMeta = useMemo(() => {
+    if (!detailModalFundCode) return null;
+    return (
+      PRULINK_FUND_CATALOG.find((f) => f.fundCode === detailModalFundCode) ||
+      PRULINK_FUND_CATALOG[0]
+    );
+  }, [detailModalFundCode]);
+
+  const modalHolding = useMemo(() => {
+    if (!detailModalFundCode) return null;
+    return enrichedHoldings.find((h) => h.fundCode === detailModalFundCode) || null;
+  }, [detailModalFundCode, enrichedHoldings]);
+
+  const modalSeries = useMemo(() => {
+    if (!detailModalFundCode) return [];
+    return mergedPricesByFund[detailModalFundCode] || [];
+  }, [detailModalFundCode, mergedPricesByFund]);
+
+  const modalFundEvents = useMemo(() => {
+    if (!detailModalFundCode) return [];
+    return unitEvents.filter((ev) => ev.fundCode === detailModalFundCode);
+  }, [detailModalFundCode, unitEvents]);
+
+  // Open the Deep-Dive Modal for any fund
+  const openFundDeepDiveModal = (fundCode) => {
+    const series = mergedPricesByFund[fundCode] || [];
+    const earliestDate = series.length > 0 ? series[0].date : "2026-01-15";
+    const latestDate = series.length > 0 ? series[series.length - 1].date : "2026-11-13";
+    setSelectedFundCode(fundCode);
+    setDetailModalFundCode(fundCode);
+    setDetailModalTab("ALL");
+    setSimBeforeDate(earliestDate);
+    setSimCustomBeforeNavpu("");
+    setNewTopUpForm((prev) => ({
+      ...prev,
+      date: latestDate,
+      customNavpu: "",
+    }));
+  };
+
+  // Top-Up Simulator Calculations ("Before Date" vs "Up-to-Date")
+  const simulatorData = useMemo(() => {
+    if (!modalFundMeta || modalSeries.length === 0) return null;
+    const topUpMoney = Math.max(0, Number(simTopUpAmount || 0));
+    const latestPoint = modalSeries[modalSeries.length - 1];
+    const upToDateNavpu = Number(latestPoint?.navpu || 1);
+    const upToDateDate = latestPoint?.date || "2026-11-13";
+
+    const matchedBeforePt = findNavpuOnOrBefore(modalSeries, simBeforeDate) || modalSeries[0];
+    const beforeNavpu =
+      Number(simCustomBeforeNavpu) > 0
+        ? Number(simCustomBeforeNavpu)
+        : Number(matchedBeforePt?.navpu || upToDateNavpu);
+    const beforeDateEffective = simBeforeDate || matchedBeforePt?.date || "2026-01-15";
+
+    const existingUnits = Number(modalHolding?.units || 0);
+    const baselineValueToday = modalHolding
+      ? computeHoldingValueAtPrice(modalHolding, upToDateNavpu)
+      : 0;
+    const baselineValueAtBefore = modalHolding
+      ? computeHoldingValueAtPrice(modalHolding, beforeNavpu)
+      : 0;
+
+    // Scenario A: Top-Up on "Before Date"
+    const unitsBoughtBefore = beforeNavpu > 0 ? topUpMoney / beforeNavpu : 0;
+    const topUpValueTodayIfBoughtBefore = Number((unitsBoughtBefore * upToDateNavpu).toFixed(2));
+    const topUpProfitBefore = Number((topUpValueTodayIfBoughtBefore - topUpMoney).toFixed(2));
+    const topUpProfitPctBefore =
+      topUpMoney > 0 ? ((topUpValueTodayIfBoughtBefore - topUpMoney) / topUpMoney) * 100 : 0;
+    const combinedValueTodayIfBoughtBefore = Number(
+      (baselineValueToday + topUpValueTodayIfBoughtBefore).toFixed(2)
+    );
+
+    // Scenario B: Top-Up "Up-to-Date" (Today) + Target Growth Projection
+    const unitsBoughtUpToDate = upToDateNavpu > 0 ? topUpMoney / upToDateNavpu : 0;
+    const extraUnitsFromEarlierBuy = unitsBoughtBefore - unitsBoughtUpToDate;
+    const combinedValueImmediateUpToDate = Number((baselineValueToday + topUpMoney).toFixed(2));
+    const projectedNavpu = Number(
+      (upToDateNavpu * (1 + Number(simUpToDateGrowthPct || 0) / 100)).toFixed(5)
+    );
+    const projectedTopUpValue = Number((unitsBoughtUpToDate * projectedNavpu).toFixed(2));
+    const projectedCombinedValue = Number(
+      ((existingUnits + unitsBoughtUpToDate) * projectedNavpu).toFixed(2)
+    );
+    const projectedGainOnTopUp = Number((projectedTopUpValue - topUpMoney).toFixed(2));
+
+    // Dual-line historical + simulated chart series
+    const chartSeries = modalSeries.map((pt, idx) => {
+      const prevPt = idx > 0 ? modalSeries[idx - 1] : null;
+      const navpu = Number(pt.navpu);
+      const baseVal = modalHolding ? computeHoldingValueAtPrice(modalHolding, navpu) : 0;
+      const isOnOrAfterBeforeDate = pt.date >= beforeDateEffective;
+      const simTopUpValAtDate = isOnOrAfterBeforeDate
+        ? Number((unitsBoughtBefore * navpu).toFixed(2))
+        : 0;
+      const simTotalVal = Number((baseVal + simTopUpValAtDate).toFixed(2));
+      const chgPct =
+        prevPt && prevPt.navpu > 0 ? ((navpu - prevPt.navpu) / prevPt.navpu) * 100 : 0;
+
+      return {
+        date: pt.date,
+        navpu,
+        chgPct,
+        source: pt.source || "website",
+        baselineValue: baseVal,
+        simulatedTopUpOnly: simTopUpValAtDate,
+        simulatedTotalValue: simTotalVal,
+      };
+    });
+
+    return {
+      topUpMoney,
+      beforeDateEffective,
+      beforeNavpu,
+      upToDateDate,
+      upToDateNavpu,
+      existingUnits,
+      baselineValueAtBefore,
+      baselineValueToday,
+      unitsBoughtBefore,
+      topUpValueTodayIfBoughtBefore,
+      topUpProfitBefore,
+      topUpProfitPctBefore,
+      combinedValueTodayIfBoughtBefore,
+      unitsBoughtUpToDate,
+      extraUnitsFromEarlierBuy,
+      combinedValueImmediateUpToDate,
+      projectedNavpu,
+      projectedTopUpValue,
+      projectedCombinedValue,
+      projectedGainOnTopUp,
+      chartSeries,
+    };
+  }, [
+    modalFundMeta,
+    modalSeries,
+    modalHolding,
+    simTopUpAmount,
+    simBeforeDate,
+    simCustomBeforeNavpu,
+    simUpToDateGrowthPct,
+  ]);
+
   const updatePruStore = (updater) => {
     if (!setBudgetData) return;
     setBudgetData((prev) => {
@@ -811,6 +990,96 @@ export default function PruFundTrackerTab({
         ...prev,
         pruFunds: next,
       };
+    });
+  };
+
+  // Record New Money Top-Up directly inside the Fund Deep-Dive Modal
+  const handleRecordModalTopUp = () => {
+    if (!modalFundMeta) return;
+    const amountNum = Math.abs(Number(newTopUpForm.amountPhp || 0));
+    const normDate = normalizeDateInput(newTopUpForm.date) || "2026-11-13";
+    const matchedPt = findNavpuOnOrBefore(modalSeries, normDate);
+    const buyNavpu =
+      Number(newTopUpForm.customNavpu) > 0
+        ? Number(newTopUpForm.customNavpu)
+        : Number(matchedPt?.navpu || modalHolding?.latestNavpu || 1);
+
+    if (!amountNum || amountNum <= 0 || !buyNavpu || buyNavpu <= 0) {
+      setStatusBanner({
+        tone: PALETTE.red,
+        bg: PALETTE.redBg,
+        text: "Please enter a valid positive Peso Top-Up amount and NAVPU.",
+      });
+      return;
+    }
+
+    const computedUnits = Number((amountNum / buyNavpu).toFixed(5));
+    const isDeduction =
+      newTopUpForm.type === "CHARGE" || newTopUpForm.type === "WITHDRAWAL";
+    const signedUnits = isDeduction ? -computedUnits : computedUnits;
+    const signedMoney = isDeduction ? -amountNum : amountNum;
+
+    const eventRecord = {
+      id: `uev_${Date.now()}`,
+      holdingId: modalHolding?.id || `pru_hold_${modalFundMeta.fundCode.toLowerCase()}`,
+      fundCode: modalFundMeta.fundCode,
+      fundName: modalFundMeta.fundName,
+      type: newTopUpForm.type,
+      amountPhp: Number(amountNum.toFixed(2)),
+      buyNavpu: Number(buyNavpu.toFixed(5)),
+      unitsDelta: signedUnits,
+      premiumAdded: signedMoney,
+      date: normDate,
+      note: String(newTopUpForm.note || "New Money Top-Up").trim(),
+    };
+
+    updatePruStore((cur) => {
+      const baseHoldings =
+        Array.isArray(cur.holdings) && cur.holdings.length > 0
+          ? cur.holdings
+          : DEFAULT_PRU_HOLDINGS;
+      const exists = baseHoldings.some((h) => h.fundCode === modalFundMeta.fundCode);
+      const nextHoldings = exists
+        ? baseHoldings.map((h) => {
+            if (h.fundCode !== modalFundMeta.fundCode) return h;
+            return {
+              ...h,
+              units: Math.max(0, Number((Number(h.units || 0) + signedUnits).toFixed(5))),
+              totalPremiumsPaid: Math.max(
+                0,
+                Number((Number(h.totalPremiumsPaid || 0) + signedMoney).toFixed(2))
+              ),
+              asOf: normDate,
+            };
+          })
+        : [
+            ...baseHoldings,
+            {
+              id: eventRecord.holdingId,
+              fundCode: modalFundMeta.fundCode,
+              fundName: modalFundMeta.fundName,
+              accountSection: "Initial Account",
+              currency: modalFundMeta.currency || "PHP",
+              policyType: "PRULink Initial Account",
+              policyNo: "Initial Account",
+              units: Math.max(0, signedUnits),
+              totalPremiumsPaid: Math.max(0, signedMoney),
+              asOf: normDate,
+            },
+          ];
+
+      const prevEvents = Array.isArray(cur.unitEvents) ? cur.unitEvents : [];
+      return {
+        ...cur,
+        holdings: nextHoldings,
+        unitEvents: [eventRecord, ...prevEvents].slice(0, 150),
+      };
+    });
+
+    setStatusBanner({
+      tone: PALETTE.green,
+      bg: PALETTE.greenBg,
+      text: `✅ Recorded ${fmtMoney(amountNum, modalFundMeta.currency)} ${newTopUpForm.type} (${signedUnits > 0 ? "+" : ""}${signedUnits.toFixed(5)} units @ ${buyNavpu.toFixed(5)}) for ${modalFundMeta.fundName}.`,
     });
   };
 
@@ -976,15 +1245,21 @@ export default function PruFundTrackerTab({
         : deltaAbs;
     const premDelta = Number(unitEventForm.premiumAdded || 0);
 
+    const series = mergedPricesByFund[targetHolding.fundCode] || [];
+    const matchedPt = findNavpuOnOrBefore(series, unitEventForm.date);
+    const buyNavpu = Number(matchedPt?.navpu || targetHolding.snapshotNavpu || 1);
+
     const eventRecord = {
       id: `uev_${Date.now()}`,
       holdingId: targetHolding.id,
       fundCode: targetHolding.fundCode,
       fundName: targetHolding.fundName,
       type: unitEventForm.type,
+      amountPhp: premDelta > 0 ? premDelta : Number((deltaAbs * buyNavpu).toFixed(2)),
+      buyNavpu,
       unitsDelta: Number(signedDelta.toFixed(5)),
       premiumAdded: premDelta,
-      date: unitEventForm.date || new Date().toISOString().slice(0, 10),
+      date: unitEventForm.date || "2026-11-13",
       note: String(unitEventForm.note || "").trim(),
     };
 
@@ -1006,7 +1281,7 @@ export default function PruFundTrackerTab({
       return {
         ...cur,
         holdings: nextHoldings,
-        unitEvents: [eventRecord, ...prevEvents].slice(0, 100),
+        unitEvents: [eventRecord, ...prevEvents].slice(0, 150),
       };
     });
 
@@ -1020,7 +1295,9 @@ export default function PruFundTrackerTab({
 
   // Add single manual historical NAVPU
   const handleAddManualPrice = () => {
-    const targetCode = isCombinedView ? "GLOBAL_EQUITY_NAVIGATOR_FUND" : selectedFundCode;
+    const targetCode =
+      detailModalFundCode ||
+      (isCombinedView ? "GLOBAL_EQUITY_NAVIGATOR_FUND" : selectedFundCode);
     const normDate = normalizeDateInput(manualDate);
     const navpuNum = Number(manualNavpu);
     if (!normDate || isNaN(navpuNum) || navpuNum <= 0) {
@@ -1051,7 +1328,9 @@ export default function PruFundTrackerTab({
 
   // Bulk CSV / text import
   const handleBulkCsvImport = () => {
-    const targetCode = isCombinedView ? "GLOBAL_EQUITY_NAVIGATOR_FUND" : selectedFundCode;
+    const targetCode =
+      detailModalFundCode ||
+      (isCombinedView ? "GLOBAL_EQUITY_NAVIGATOR_FUND" : selectedFundCode);
     const lines = String(bulkCsvText || "")
       .split(/\r?\n/)
       .map((l) => l.trim())
@@ -1152,13 +1431,16 @@ export default function PruFundTrackerTab({
                 🛡️ PRU LIFE U.K. · INITIAL ACCOUNT
               </span>
               <h2 style={{ margin: 0, fontSize: sm ? 20 : 24, fontWeight: 900, color: PALETTE.text }}>
-                PRULink Policy Fund Value & Historical NAVPU Tracker
+                PRULink Policy Fund Value & Top-Up Simulator
               </h2>
             </div>
             <p style={{ margin: "6px 0 0", fontSize: 13, color: PALETTE.soft, lineHeight: 1.5 }}>
               Synced with your <strong>PruServices Policy Viewing</strong> (<strong>Initial Account</strong> as of <strong>13 Nov 2026</strong> · Total Value:{" "}
               <strong style={{ color: PALETTE.green }}>₱71,981.70</strong> · Premium Allocation:{" "}
-              <strong style={{ color: PALETTE.amber }}>PRULINK GLOBAL EQUITYNAVIGATOR [PGEN]</strong>).
+              <strong style={{ color: PALETTE.amber }}>PRULINK GLOBAL EQUITYNAVIGATOR [PGEN]</strong>).{" "}
+              <span style={{ color: PALETTE.blue, fontWeight: 800 }}>
+                👉 Click any fund card below to open its Historical Value & Top-Up Simulator Modal!
+              </span>
             </p>
           </div>
 
@@ -1210,7 +1492,7 @@ export default function PruFundTrackerTab({
                   border: PALETTE.pruRed,
                 })}
               >
-                🛡️ Restore 13 Nov 2026 Portal Snapshot (₱71,981.70)
+                🛡️ Restore 13 Nov 2026 Snapshot (₱71,981.70)
               </button>
             )}
             <button
@@ -1350,7 +1632,7 @@ export default function PruFundTrackerTab({
         </div>
       </div>
 
-      {/* ── PruServices Initial Account Breakdown Table & Cards ── */}
+      {/* ── PruServices Initial Account Breakdown Cards ── */}
       <div
         style={{
           backgroundColor: PALETTE.card,
@@ -1384,8 +1666,8 @@ export default function PruFundTrackerTab({
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: PALETTE.text }}>
                 Initial Account — Consisting of 5 PRULink Funds (Total: PHP {portfolioSummary.phpValue.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
               </h3>
-              <div style={{ fontSize: 12, color: PALETTE.muted, marginTop: 2 }}>
-                Unit balance and price as of 13 Nov 2026 · Click any fund card below to inspect its individual NAVPU & Fund Value chart.
+              <div style={{ fontSize: 12, color: PALETTE.soft, marginTop: 2 }}>
+                👉 <strong>Click any Fund Card</strong> to open its <strong>Historical Value, New Top-Up Money & Before/Up-to-Date Simulator Modal</strong>.
               </div>
             </div>
           </div>
@@ -1436,7 +1718,7 @@ export default function PruFundTrackerTab({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: sm ? "1fr" : "repeat(auto-fill, minmax(320px, 1fr))",
+            gridTemplateColumns: sm ? "1fr" : "repeat(auto-fill, minmax(330px, 1fr))",
             gap: 12,
           }}
         >
@@ -1446,10 +1728,11 @@ export default function PruFundTrackerTab({
               portfolioSummary.phpValue > 0
                 ? ((h.currentValue / portfolioSummary.phpValue) * 100).toFixed(1)
                 : "0.0";
+            const fundTopUpCount = unitEvents.filter((ev) => ev.fundCode === h.fundCode).length;
             return (
               <div
                 key={h.id}
-                onClick={() => setSelectedFundCode(h.fundCode)}
+                onClick={() => openFundDeepDiveModal(h.fundCode)}
                 style={{
                   backgroundColor: active ? PALETTE.cardElevated : PALETTE.highContrast,
                   border: `2px solid ${active ? PALETTE.blue : PALETTE.border}`,
@@ -1542,13 +1825,41 @@ export default function PruFundTrackerTab({
                     {h.dayChangePct.toFixed(2)}% ({h.dayChangeVal >= 0 ? "+" : ""}
                     {fmtMoney(h.dayChangeVal, h.currency)})
                   </span>
-                  {h.allocationCode && (
-                    <span style={{ color: PALETTE.amber, fontWeight: 800 }}>{h.allocationCode}</span>
+                  {fundTopUpCount > 0 ? (
+                    <span style={{ color: PALETTE.amber, fontWeight: 800 }}>
+                      💵 {fundTopUpCount} Top-Up(s) logged
+                    </span>
+                  ) : (
+                    <span style={{ color: PALETTE.blue, fontWeight: 800 }}>
+                      🔍 Click to Simulate Top-Up
+                    </span>
                   )}
                 </div>
 
-                {canUpdate && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openFundDeepDiveModal(h.fundCode);
+                    }}
+                    style={{
+                      minHeight: 44,
+                      flex: 1,
+                      padding: "6px 12px",
+                      borderRadius: 6,
+                      backgroundColor: PALETTE.blueBg,
+                      color: PALETTE.text,
+                      border: `2px solid ${PALETTE.blue}`,
+                      fontSize: 12,
+                      fontWeight: 900,
+                      cursor: "pointer",
+                    }}
+                  >
+                    🧮 History & Top-Up Simulator
+                  </button>
+
+                  {canUpdate && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1576,30 +1887,10 @@ export default function PruFundTrackerTab({
                         cursor: "pointer",
                       }}
                     >
-                      ✏️ Edit Units
+                      ✏️ Edit
                     </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteHolding(h.id);
-                      }}
-                      style={{
-                        minHeight: 44,
-                        padding: "6px 12px",
-                        borderRadius: 6,
-                        backgroundColor: PALETTE.redBg,
-                        color: PALETTE.red,
-                        border: `1px solid ${PALETTE.red}`,
-                        fontSize: 12,
-                        fontWeight: 800,
-                        cursor: "pointer",
-                      }}
-                    >
-                      🗑️ Remove
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}
@@ -1667,6 +1958,19 @@ export default function PruFundTrackerTab({
 
           {/* Chart Mode & Range Controls */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {!isCombinedView && (
+              <button
+                type="button"
+                onClick={() => openFundDeepDiveModal(selectedFundCode)}
+                style={solidBtnStyle({
+                  bg: PALETTE.purpleBg,
+                  fg: PALETTE.text,
+                  border: PALETTE.purple,
+                })}
+              >
+                🧮 Open Top-Up Simulator Modal
+              </button>
+            )}
             {!isCombinedView && (
               <button
                 type="button"
@@ -1882,7 +2186,7 @@ export default function PruFundTrackerTab({
           }}
         >
           <h3 style={{ margin: "0 0 10px", fontSize: 16, fontWeight: 900, color: PALETTE.text }}>
-            📋 All 22 Official PRULink Funds (Latest NAVPU)
+            📋 All 22 Official PRULink Funds (Click Any Row for Simulator Modal)
           </h3>
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -1907,7 +2211,7 @@ export default function PruFundTrackerTab({
                   return (
                     <tr
                       key={f.fundCode}
-                      onClick={() => setSelectedFundCode(f.fundCode)}
+                      onClick={() => openFundDeepDiveModal(f.fundCode)}
                       style={{
                         borderBottom: `1px solid ${PALETTE.border}`,
                         cursor: "pointer",
@@ -1941,6 +2245,1015 @@ export default function PruFundTrackerTab({
         </div>
       </div>
 
+      {/* ══════════════════════════════════════════════════════════════════════════
+          MODAL 0: FUND DEEP-DIVE, NEW MONEY TOP-UP & BEFORE/UP-TO-DATE SIMULATOR
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {detailModalFundCode && modalFundMeta && simulatorData && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setDetailModalFundCode(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 99998,
+            backgroundColor: "rgba(2, 8, 20, 0.92)",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            padding: sm ? 10 : 24,
+            overflowY: "auto",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 1080,
+              backgroundColor: PALETTE.card,
+              border: `2px solid ${PALETTE.blue}`,
+              borderRadius: 14,
+              padding: sm ? 16 : 24,
+              color: PALETTE.text,
+              marginTop: sm ? 8 : 16,
+              marginBottom: 32,
+            }}
+          >
+            {/* Modal Top Header */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 12,
+                paddingBottom: 14,
+                borderBottom: `2px solid ${PALETTE.border}`,
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span
+                    style={{
+                      backgroundColor: PALETTE.pruRedBg,
+                      color: "#ffffff",
+                      border: `1px solid ${PALETTE.pruRed}`,
+                      padding: "3px 10px",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 900,
+                    }}
+                  >
+                    {modalHolding ? "⭐ MY INITIAL ACCOUNT HOLDING" : `PRULINK ${modalFundMeta.currency} FUND`}
+                  </span>
+                  <span
+                    style={{
+                      backgroundColor: PALETTE.blueBg,
+                      color: PALETTE.blue,
+                      border: `1px solid ${PALETTE.blue}`,
+                      padding: "3px 10px",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {modalFundMeta.category} · {modalFundMeta.currency}
+                  </span>
+                </div>
+                <h2 style={{ margin: "8px 0 4px", fontSize: sm ? 20 : 24, fontWeight: 900, color: PALETTE.text }}>
+                  {modalFundMeta.fundName}
+                </h2>
+                <div style={{ fontSize: 13, color: PALETTE.soft }}>
+                  Inspect historical NAVPU & specific fund value, track new money top-ups, and simulate how much your money grows from a <strong>Before Date</strong> vs. <strong>Up-to-Date ({simulatorData.upToDateDate})</strong>.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDetailModalFundCode(null)}
+                style={solidBtnStyle({
+                  bg: PALETTE.redBg,
+                  fg: PALETTE.text,
+                  border: PALETTE.red,
+                })}
+              >
+                ✕ Close Modal
+              </button>
+            </div>
+
+            {/* Specific Fund KPI Strip */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: sm ? "1fr 1fr" : "repeat(4, 1fr)",
+                gap: 12,
+                marginTop: 16,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  backgroundColor: PALETTE.highContrast,
+                  border: `2px solid ${PALETTE.green}`,
+                  borderRadius: 10,
+                  padding: 14,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: PALETTE.muted, textTransform: "uppercase" }}>
+                  My Current Fund Value
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: PALETTE.green, marginTop: 4 }}>
+                  {fmtMoney(simulatorData.baselineValueToday, modalFundMeta.currency, 2)}
+                </div>
+                <div style={{ fontSize: 12, color: PALETTE.soft, marginTop: 4 }}>
+                  As of <strong>{simulatorData.upToDateDate}</strong>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  backgroundColor: PALETTE.highContrast,
+                  border: `1px solid ${PALETTE.border}`,
+                  borderRadius: 10,
+                  padding: 14,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: PALETTE.muted, textTransform: "uppercase" }}>
+                  Unit Balance Held
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: PALETTE.text, marginTop: 4 }}>
+                  {Number(simulatorData.existingUnits).toFixed(5)}
+                </div>
+                <div style={{ fontSize: 12, color: PALETTE.muted, marginTop: 4 }}>
+                  {modalHolding?.accountSection || "Initial Account"} units
+                </div>
+              </div>
+
+              <div
+                style={{
+                  backgroundColor: PALETTE.highContrast,
+                  border: `1px solid ${PALETTE.border}`,
+                  borderRadius: 10,
+                  padding: 14,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: PALETTE.muted, textTransform: "uppercase" }}>
+                  Up-to-Date NAVPU Price
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: PALETTE.blue, marginTop: 4 }}>
+                  {fmtMoney(simulatorData.upToDateNavpu, modalFundMeta.currency, 5)}
+                </div>
+                <div style={{ fontSize: 12, color: PALETTE.soft, marginTop: 4 }}>
+                  Before Date ({simulatorData.beforeDateEffective}):{" "}
+                  <strong>{fmtMoney(simulatorData.beforeNavpu, modalFundMeta.currency, 5)}</strong>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  backgroundColor: PALETTE.highContrast,
+                  border: `1px solid ${PALETTE.amber}`,
+                  borderRadius: 10,
+                  padding: 14,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: PALETTE.muted, textTransform: "uppercase" }}>
+                  New Money Top-Ups Logged
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: PALETTE.amber, marginTop: 4 }}>
+                  {modalFundEvents.length} Event(s)
+                </div>
+                <div style={{ fontSize: 12, color: PALETTE.soft, marginTop: 4 }}>
+                  Total New Money:{" "}
+                  <strong>
+                    {fmtMoney(
+                      modalFundEvents.reduce((acc, e) => acc + Number(e.amountPhp || e.premiumAdded || 0), 0),
+                      modalFundMeta.currency
+                    )}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal View Filter Tabs */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+              {[
+                { id: "ALL", label: "🌐 Complete View (Simulator + Top-Ups + History)" },
+                { id: "SIMULATOR", label: "🧮 Top-Up Simulator (Before Date vs. Up-to-Date)" },
+                { id: "TOPUPS", label: `💵 New Money Top-Ups (${modalFundEvents.length})` },
+                { id: "HISTORY", label: `📜 Historical Fund Value & NAVPU (${modalSeries.length} dates)` },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setDetailModalTab(t.id)}
+                  style={solidBtnStyle({
+                    bg: detailModalTab === t.id ? PALETTE.blueBg : PALETTE.highContrast,
+                    fg: PALETTE.text,
+                    border: detailModalTab === t.id ? PALETTE.blue : PALETTE.border,
+                  })}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* ── SECTION 1: INTERACTIVE TOP-UP SIMULATOR (Before Date vs. Up-to-Date) ── */}
+            {(detailModalTab === "ALL" || detailModalTab === "SIMULATOR") && (
+              <div
+                style={{
+                  backgroundColor: PALETTE.cardElevated,
+                  border: `2px solid ${PALETTE.green}`,
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 18,
+                }}
+              >
+                <h3 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 900, color: PALETTE.text }}>
+                  🧮 What-If Top-Up Simulator: Before Date vs. Up-to-Date Visualizer
+                </h3>
+                <p style={{ margin: "0 0 14px", fontSize: 13, color: PALETTE.soft }}>
+                  Simulate how much your money would be worth if you topped up on a <strong>Before Date</strong> (historical buy-in price) compared to topping up <strong>Up-to-Date ({simulatorData.upToDateDate})</strong>.
+                </p>
+
+                {/* Simulator Input Controls */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: sm ? "1fr" : "1.2fr 1fr 1fr",
+                    gap: 12,
+                    backgroundColor: PALETTE.highContrast,
+                    border: `1px solid ${PALETTE.border}`,
+                    borderRadius: 10,
+                    padding: 14,
+                    marginBottom: 14,
+                  }}
+                >
+                  {/* 1. Top-Up Money Input + Quick Presets */}
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 800, color: PALETTE.amber, display: "block", marginBottom: 6 }}>
+                      1. Simulated Top-Up Money ({modalFundMeta.currency})
+                    </label>
+                    <input
+                      type="number"
+                      step="500"
+                      value={simTopUpAmount}
+                      onChange={(e) => setSimTopUpAmount(e.target.value)}
+                      style={{
+                        width: "100%",
+                        minHeight: 44,
+                        backgroundColor: PALETTE.card,
+                        color: PALETTE.text,
+                        border: `2px solid ${PALETTE.amber}`,
+                        borderRadius: 8,
+                        padding: "8px 12px",
+                        fontSize: 16,
+                        fontWeight: 900,
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                      {TOPUP_PRESETS.map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setSimTopUpAmount(String(amt))}
+                          style={{
+                            minHeight: 44,
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            backgroundColor:
+                              Number(simTopUpAmount) === amt ? PALETTE.amberBg : PALETTE.card,
+                            color: Number(simTopUpAmount) === amt ? PALETTE.amber : PALETTE.soft,
+                            border: `1px solid ${
+                              Number(simTopUpAmount) === amt ? PALETTE.amber : PALETTE.border
+                            }`,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                          }}
+                        >
+                          +{fmtMoney(amt, modalFundMeta.currency, 0)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. Before Date Selector & Optional Custom NAVPU */}
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 800, color: PALETTE.blue, display: "block", marginBottom: 6 }}>
+                      2. Select &ldquo;Before Date&rdquo; (Historical Buy-In Date)
+                    </label>
+                    <select
+                      value={simBeforeDate}
+                      onChange={(e) => {
+                        setSimBeforeDate(e.target.value);
+                        setSimCustomBeforeNavpu("");
+                      }}
+                      style={{
+                        width: "100%",
+                        minHeight: 44,
+                        backgroundColor: PALETTE.card,
+                        color: PALETTE.text,
+                        border: `2px solid ${PALETTE.blue}`,
+                        borderRadius: 8,
+                        padding: "8px 12px",
+                        fontSize: 14,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {modalSeries.map((pt) => (
+                        <option key={pt.date} value={pt.date}>
+                          {pt.date} — NAVPU: {fmtMoney(pt.navpu, modalFundMeta.currency, 5)}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ marginTop: 8 }}>
+                      <label style={{ fontSize: 11, color: PALETTE.muted, display: "block", marginBottom: 4 }}>
+                        Or override custom Before Date NAVPU:
+                      </label>
+                      <input
+                        type="number"
+                        step="0.00001"
+                        placeholder={`Default: ${simulatorData.beforeNavpu.toFixed(5)}`}
+                        value={simCustomBeforeNavpu}
+                        onChange={(e) => setSimCustomBeforeNavpu(e.target.value)}
+                        style={{
+                          width: "100%",
+                          minHeight: 44,
+                          backgroundColor: PALETTE.card,
+                          color: PALETTE.text,
+                          border: `1px solid ${PALETTE.border}`,
+                          borderRadius: 8,
+                          padding: "6px 10px",
+                          fontSize: 13,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 3. Up-to-Date Future Target Growth Slider */}
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 800, color: PALETTE.green, display: "block", marginBottom: 6 }}>
+                      3. Up-to-Date ({simulatorData.upToDateDate}) Future Target Growth:{" "}
+                      <span style={{ color: PALETTE.text }}>
+                        {simUpToDateGrowthPct >= 0 ? "+" : ""}
+                        {simUpToDateGrowthPct}%
+                      </span>
+                    </label>
+                    <input
+                      type="range"
+                      min="-15"
+                      max="35"
+                      step="1"
+                      value={simUpToDateGrowthPct}
+                      onChange={(e) => setSimUpToDateGrowthPct(Number(e.target.value))}
+                      style={{
+                        width: "100%",
+                        minHeight: 44,
+                        cursor: "pointer",
+                      }}
+                    />
+                    <div style={{ fontSize: 12, color: PALETTE.soft, marginTop: 4, lineHeight: 1.4 }}>
+                      Up-to-Date NAVPU: <strong>{fmtMoney(simulatorData.upToDateNavpu, modalFundMeta.currency, 5)}</strong>
+                      <br />
+                      Projected Target NAVPU:{" "}
+                      <strong style={{ color: PALETTE.green }}>
+                        {fmtMoney(simulatorData.projectedNavpu, modalFundMeta.currency, 5)}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Side-by-Side Scenario Comparison Cards */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: sm ? "1fr" : "1fr 1fr",
+                    gap: 14,
+                    marginBottom: 16,
+                  }}
+                >
+                  {/* Scenario A: Topped Up on Before Date */}
+                  <div
+                    style={{
+                      backgroundColor: PALETTE.highContrast,
+                      border: `2px solid ${PALETTE.green}`,
+                      borderRadius: 10,
+                      padding: 16,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <span
+                        style={{
+                          backgroundColor: PALETTE.greenBg,
+                          color: PALETTE.green,
+                          border: `1px solid ${PALETTE.green}`,
+                          padding: "3px 10px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 900,
+                        }}
+                      >
+                        ⏪ SCENARIO A · TOP-UP ON BEFORE DATE ({simulatorData.beforeDateEffective})
+                      </span>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: PALETTE.muted }}>New Money Put In</div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: PALETTE.text }}>
+                          {fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency)}
+                        </div>
+                        <div style={{ fontSize: 11, color: PALETTE.blue, fontWeight: 700 }}>
+                          @ NAVPU {fmtMoney(simulatorData.beforeNavpu, modalFundMeta.currency, 5)}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, color: PALETTE.muted }}>Units Bought on {simulatorData.beforeDateEffective}</div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: PALETTE.amber }}>
+                          +{simulatorData.unitsBoughtBefore.toFixed(5)} units
+                        </div>
+                        <div style={{ fontSize: 11, color: PALETTE.soft }}>
+                          ({simulatorData.extraUnitsFromEarlierBuy >= 0 ? "+" : ""}
+                          {simulatorData.extraUnitsFromEarlierBuy.toFixed(5)} vs. buying today)
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 12,
+                        paddingTop: 12,
+                        borderTop: `1px solid ${PALETTE.border}`,
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 11, color: PALETTE.muted }}>
+                          Top-Up Money Worth Today ({simulatorData.upToDateDate})
+                        </div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: PALETTE.green }}>
+                          {fmtMoney(simulatorData.topUpValueTodayIfBoughtBefore, modalFundMeta.currency)}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 800,
+                            color: simulatorData.topUpProfitBefore >= 0 ? PALETTE.green : PALETTE.red,
+                          }}
+                        >
+                          {simulatorData.topUpProfitBefore >= 0 ? "▲ Profit: +" : "▼ Loss: "}
+                          {fmtMoney(simulatorData.topUpProfitBefore, modalFundMeta.currency)} (
+                          {simulatorData.topUpProfitPctBefore >= 0 ? "+" : ""}
+                          {simulatorData.topUpProfitPctBefore.toFixed(2)}%)
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: 11, color: PALETTE.muted }}>
+                          Total Fund Value Today (Existing + Top-Up)
+                        </div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: PALETTE.text }}>
+                          {fmtMoney(simulatorData.combinedValueTodayIfBoughtBefore, modalFundMeta.currency)}
+                        </div>
+                        <div style={{ fontSize: 11, color: PALETTE.soft }}>
+                          Baseline without Top-Up:{" "}
+                          <strong>{fmtMoney(simulatorData.baselineValueToday, modalFundMeta.currency)}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scenario B: Top-Up Up-to-Date (Today) & Projected Forward */}
+                  <div
+                    style={{
+                      backgroundColor: PALETTE.highContrast,
+                      border: `2px solid ${PALETTE.blue}`,
+                      borderRadius: 10,
+                      padding: 16,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <span
+                        style={{
+                          backgroundColor: PALETTE.blueBg,
+                          color: PALETTE.blue,
+                          border: `1px solid ${PALETTE.blue}`,
+                          padding: "3px 10px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 900,
+                        }}
+                      >
+                        ⏩ SCENARIO B · TOP-UP UP-TO-DATE ({simulatorData.upToDateDate})
+                      </span>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: PALETTE.muted }}>New Money Top-Up Today</div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: PALETTE.text }}>
+                          {fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency)}
+                        </div>
+                        <div style={{ fontSize: 11, color: PALETTE.blue, fontWeight: 700 }}>
+                          @ Up-to-Date NAVPU {fmtMoney(simulatorData.upToDateNavpu, modalFundMeta.currency, 5)}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, color: PALETTE.muted }}>New Units Bought Today</div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: PALETTE.blue }}>
+                          +{simulatorData.unitsBoughtUpToDate.toFixed(5)} units
+                        </div>
+                        <div style={{ fontSize: 11, color: PALETTE.soft }}>
+                          New Total Units:{" "}
+                          <strong>{(simulatorData.existingUnits + simulatorData.unitsBoughtUpToDate).toFixed(5)}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 12,
+                        paddingTop: 12,
+                        borderTop: `1px solid ${PALETTE.border}`,
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 11, color: PALETTE.muted }}>
+                          Immediate Combined Fund Value Today
+                        </div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: PALETTE.text }}>
+                          {fmtMoney(simulatorData.combinedValueImmediateUpToDate, modalFundMeta.currency)}
+                        </div>
+                        <div style={{ fontSize: 11, color: PALETTE.soft }}>
+                          ({fmtMoney(simulatorData.baselineValueToday, modalFundMeta.currency)} +{" "}
+                          {fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency)})
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: 11, color: PALETTE.muted }}>
+                          Projected Total Value at {simUpToDateGrowthPct >= 0 ? "+" : ""}
+                          {simUpToDateGrowthPct}% NAVPU
+                        </div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: PALETTE.green }}>
+                          {fmtMoney(simulatorData.projectedCombinedValue, modalFundMeta.currency)}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 800,
+                            color: simulatorData.projectedGainOnTopUp >= 0 ? PALETTE.green : PALETTE.red,
+                          }}
+                        >
+                          Top-Up becomes {fmtMoney(simulatorData.projectedTopUpValue, modalFundMeta.currency)} (
+                          {simulatorData.projectedGainOnTopUp >= 0 ? "+" : ""}
+                          {fmtMoney(simulatorData.projectedGainOnTopUp, modalFundMeta.currency)})
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dual-Line Visualizer Chart: Baseline Value vs. Simulated Value with Top-Up */}
+                <div
+                  style={{
+                    backgroundColor: PALETTE.highContrast,
+                    border: `1px solid ${PALETTE.border}`,
+                    borderRadius: 10,
+                    padding: 14,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 900, color: PALETTE.text }}>
+                      📈 Visual Comparison Curve: Baseline Fund Value vs. Simulated Value with{" "}
+                      {fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency, 0)} Top-Up on {simulatorData.beforeDateEffective}
+                    </div>
+                    <div style={{ fontSize: 12, color: PALETTE.soft }}>
+                      <span style={{ color: PALETTE.blue, fontWeight: 800 }}>● Blue: Actual Historical Value</span>{" "}
+                      &nbsp;|&nbsp;{" "}
+                      <span style={{ color: PALETTE.green, fontWeight: 800 }}>
+                        ● Green: Value with +{fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency, 0)} Top-Up
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ height: 270, width: "100%" }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={simulatorData.chartSeries}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={PALETTE.border} />
+                        <XAxis dataKey="date" stroke={PALETTE.muted} fontSize={12} />
+                        <YAxis
+                          stroke={PALETTE.muted}
+                          fontSize={12}
+                          domain={["auto", "auto"]}
+                          tickFormatter={(v) => fmtMoney(v, modalFundMeta.currency, 0)}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: PALETTE.cardElevated,
+                            border: `2px solid ${PALETTE.blue}`,
+                            borderRadius: 8,
+                            color: PALETTE.text,
+                            fontWeight: 800,
+                          }}
+                          formatter={(val, name) => [
+                            fmtMoney(val, modalFundMeta.currency, 2),
+                            name === "simulatedTotalValue"
+                              ? `Simulated Total Value (w/ Top-Up)`
+                              : `Actual Baseline Fund Value`,
+                          ]}
+                        />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          name="Actual Baseline Fund Value"
+                          dataKey="baselineValue"
+                          stroke={PALETTE.blue}
+                          strokeWidth={3}
+                          dot={{ r: 4, fill: PALETTE.blue }}
+                        />
+                        <Line
+                          type="monotone"
+                          name="Simulated Total Value (w/ Top-Up)"
+                          dataKey="simulatedTotalValue"
+                          stroke={PALETTE.green}
+                          strokeWidth={3}
+                          dot={{ r: 5, fill: PALETTE.green }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── SECTION 2: NEW MONEY / TOP-UP LEDGER FOR THIS FUND ── */}
+            {(detailModalTab === "ALL" || detailModalTab === "TOPUPS") && (
+              <div
+                style={{
+                  backgroundColor: PALETTE.cardElevated,
+                  border: `1px solid ${PALETTE.amber}`,
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 18,
+                }}
+              >
+                <h3 style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 900, color: PALETTE.text }}>
+                  💵 New Money / Top-Up Ledger — {modalFundMeta.fundName}
+                </h3>
+                <p style={{ margin: "0 0 12px", fontSize: 12, color: PALETTE.soft }}>
+                  Record actual new money top-ups (or monthly premium allocations) for this fund. We automatically compute the units bought using that date&apos;s NAVPU and track how much that top-up is worth today.
+                </p>
+
+                {canUpdate && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: sm ? "1fr" : "1fr 1fr 1fr 1fr 1.2fr auto",
+                      gap: 10,
+                      backgroundColor: PALETTE.highContrast,
+                      border: `1px solid ${PALETTE.border}`,
+                      borderRadius: 10,
+                      padding: 12,
+                      marginBottom: 14,
+                      alignItems: "end",
+                    }}
+                  >
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 800, color: PALETTE.soft, display: "block", marginBottom: 4 }}>
+                        Transaction Type
+                      </label>
+                      <select
+                        value={newTopUpForm.type}
+                        onChange={(e) => setNewTopUpForm((p) => ({ ...p, type: e.target.value }))}
+                        style={{
+                          width: "100%",
+                          minHeight: 44,
+                          backgroundColor: PALETTE.card,
+                          color: PALETTE.text,
+                          border: `1px solid ${PALETTE.border}`,
+                          borderRadius: 8,
+                          padding: "8px 10px",
+                          fontSize: 13,
+                        }}
+                      >
+                        <option value="TOP_UP">➕ Top-Up / New Money</option>
+                        <option value="CHARGE">➖ Admin / COI Charge</option>
+                        <option value="WITHDRAWAL">➖ Partial Withdrawal</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 800, color: PALETTE.amber, display: "block", marginBottom: 4 }}>
+                        New Money Amount ({modalFundMeta.currency})
+                      </label>
+                      <input
+                        type="number"
+                        step="100"
+                        value={newTopUpForm.amountPhp}
+                        onChange={(e) => setNewTopUpForm((p) => ({ ...p, amountPhp: e.target.value }))}
+                        style={{
+                          width: "100%",
+                          minHeight: 44,
+                          backgroundColor: PALETTE.card,
+                          color: PALETTE.text,
+                          border: `1px solid ${PALETTE.amber}`,
+                          borderRadius: 8,
+                          padding: "8px 10px",
+                          fontSize: 13,
+                          fontWeight: 800,
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 800, color: PALETTE.soft, display: "block", marginBottom: 4 }}>
+                        Top-Up Date
+                      </label>
+                      <input
+                        type="date"
+                        value={newTopUpForm.date}
+                        onChange={(e) => setNewTopUpForm((p) => ({ ...p, date: e.target.value }))}
+                        style={{
+                          width: "100%",
+                          minHeight: 44,
+                          backgroundColor: PALETTE.card,
+                          color: PALETTE.text,
+                          border: `1px solid ${PALETTE.border}`,
+                          borderRadius: 8,
+                          padding: "8px 10px",
+                          fontSize: 13,
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 800, color: PALETTE.soft, display: "block", marginBottom: 4 }}>
+                        Buy-In NAVPU (Optional)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.00001"
+                        placeholder={`Auto (${simulatorData.upToDateNavpu.toFixed(5)})`}
+                        value={newTopUpForm.customNavpu}
+                        onChange={(e) => setNewTopUpForm((p) => ({ ...p, customNavpu: e.target.value }))}
+                        style={{
+                          width: "100%",
+                          minHeight: 44,
+                          backgroundColor: PALETTE.card,
+                          color: PALETTE.text,
+                          border: `1px solid ${PALETTE.border}`,
+                          borderRadius: 8,
+                          padding: "8px 10px",
+                          fontSize: 13,
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 800, color: PALETTE.soft, display: "block", marginBottom: 4 }}>
+                        Note / Reference
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Monthly Top-Up"
+                        value={newTopUpForm.note}
+                        onChange={(e) => setNewTopUpForm((p) => ({ ...p, note: e.target.value }))}
+                        style={{
+                          width: "100%",
+                          minHeight: 44,
+                          backgroundColor: PALETTE.card,
+                          color: PALETTE.text,
+                          border: `1px solid ${PALETTE.border}`,
+                          borderRadius: 8,
+                          padding: "8px 10px",
+                          fontSize: 13,
+                        }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRecordModalTopUp}
+                      style={solidBtnStyle({
+                        bg: PALETTE.greenBg,
+                        fg: PALETTE.text,
+                        border: PALETTE.green,
+                      })}
+                    >
+                      ➕ Record Top-Up
+                    </button>
+                  </div>
+                )}
+
+                {modalFundEvents.length === 0 ? (
+                  <div
+                    style={{
+                      backgroundColor: PALETTE.highContrast,
+                      border: `1px dashed ${PALETTE.border}`,
+                      borderRadius: 8,
+                      padding: 14,
+                      fontSize: 13,
+                      color: PALETTE.muted,
+                      textAlign: "center",
+                    }}
+                  >
+                    No new money top-ups recorded yet for <strong>{modalFundMeta.fundName}</strong>. Use the form above to log a real top-up or use the simulator above to test &ldquo;What-If&rdquo; scenarios!
+                  </div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ borderBottom: `2px solid ${PALETTE.border}`, textAlign: "left", color: PALETTE.muted }}>
+                          <th style={{ padding: "8px 6px" }}>Date</th>
+                          <th style={{ padding: "8px 6px" }}>Type</th>
+                          <th style={{ padding: "8px 6px" }}>New Money Put In</th>
+                          <th style={{ padding: "8px 6px" }}>Buy-In NAVPU</th>
+                          <th style={{ padding: "8px 6px" }}>Units Delta</th>
+                          <th style={{ padding: "8px 6px" }}>Value Up-to-Date</th>
+                          <th style={{ padding: "8px 6px" }}>Gain / Loss</th>
+                          <th style={{ padding: "8px 6px" }}>Note</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {modalFundEvents.map((ev) => {
+                          const unitsAbs = Math.abs(Number(ev.unitsDelta || 0));
+                          const costBasis = Number(ev.amountPhp || ev.premiumAdded || unitsAbs * Number(ev.buyNavpu || simulatorData.upToDateNavpu));
+                          const valToday = Number((unitsAbs * simulatorData.upToDateNavpu).toFixed(2));
+                          const diff = Number((valToday - costBasis).toFixed(2));
+                          const diffPct = costBasis > 0 ? (diff / costBasis) * 100 : 0;
+                          return (
+                            <tr key={ev.id} style={{ borderBottom: `1px solid ${PALETTE.border}` }}>
+                              <td style={{ padding: "8px 6px", fontWeight: 700 }}>{ev.date}</td>
+                              <td style={{ padding: "8px 6px", fontWeight: 800, color: ev.unitsDelta >= 0 ? PALETTE.green : PALETTE.red }}>
+                                {ev.type}
+                              </td>
+                              <td style={{ padding: "8px 6px", fontWeight: 800 }}>
+                                {fmtMoney(costBasis, modalFundMeta.currency)}
+                              </td>
+                              <td style={{ padding: "8px 6px", color: PALETTE.blue, fontWeight: 700 }}>
+                                {ev.buyNavpu ? fmtMoney(ev.buyNavpu, modalFundMeta.currency, 5) : "—"}
+                              </td>
+                              <td style={{ padding: "8px 6px", fontWeight: 800, color: ev.unitsDelta >= 0 ? PALETTE.amber : PALETTE.red }}>
+                                {ev.unitsDelta >= 0 ? "+" : ""}
+                                {Number(ev.unitsDelta).toFixed(5)}
+                              </td>
+                              <td style={{ padding: "8px 6px", fontWeight: 900, color: PALETTE.green }}>
+                                {fmtMoney(valToday, modalFundMeta.currency)}
+                              </td>
+                              <td style={{ padding: "8px 6px", fontWeight: 800, color: diff >= 0 ? PALETTE.green : PALETTE.red }}>
+                                {diff >= 0 ? "+" : ""}
+                                {fmtMoney(diff, modalFundMeta.currency)} ({diffPct >= 0 ? "+" : ""}
+                                {diffPct.toFixed(2)}%)
+                              </td>
+                              <td style={{ padding: "8px 6px", color: PALETTE.soft }}>{ev.note || "—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── SECTION 3: SPECIFIC FUND HISTORICAL DATA & VALUE TABLE ── */}
+            {(detailModalTab === "ALL" || detailModalTab === "HISTORY") && (
+              <div
+                style={{
+                  backgroundColor: PALETTE.cardElevated,
+                  border: `1px solid ${PALETTE.border}`,
+                  borderRadius: 12,
+                  padding: 16,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 10,
+                    marginBottom: 10,
+                  }}
+                >
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: PALETTE.text }}>
+                      📜 Historical NAVPU & Specific Fund Value Table — {modalFundMeta.fundName}
+                    </h3>
+                    <div style={{ fontSize: 12, color: PALETTE.muted, marginTop: 2 }}>
+                      Shows the historical unit price, your actual fund value ({Number(simulatorData.existingUnits).toFixed(5)} units), and the simulated value with your +{fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency, 0)} top-up.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBackfillModalOpen(true)}
+                    style={solidBtnStyle({
+                      bg: PALETTE.highContrast,
+                      fg: PALETTE.soft,
+                      border: PALETTE.blue,
+                    })}
+                  >
+                    📥 Add / Backfill Historical NAVPU for This Fund
+                  </button>
+                </div>
+
+                <div style={{ maxHeight: 340, overflowY: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `2px solid ${PALETTE.border}`, textAlign: "left", color: PALETTE.muted }}>
+                        <th style={{ padding: "8px 6px" }}>Valuation Date</th>
+                        <th style={{ padding: "8px 6px" }}>NAVPU Price</th>
+                        <th style={{ padding: "8px 6px" }}>Period Chg</th>
+                        <th style={{ padding: "8px 6px" }}>My Actual Fund Value</th>
+                        <th style={{ padding: "8px 6px" }}>
+                          Simulated Value (w/ +{fmtMoney(simulatorData.topUpMoney, modalFundMeta.currency, 0)} on {simulatorData.beforeDateEffective})
+                        </th>
+                        <th style={{ padding: "8px 6px" }}>Source</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...simulatorData.chartSeries].reverse().map((row) => (
+                        <tr key={row.date} style={{ borderBottom: `1px solid ${PALETTE.border}` }}>
+                          <td style={{ padding: "8px 6px", fontWeight: 800 }}>
+                            {row.date}
+                            {row.date === simulatorData.beforeDateEffective && (
+                              <span
+                                style={{
+                                  marginLeft: 6,
+                                  fontSize: 10,
+                                  padding: "2px 6px",
+                                  borderRadius: 4,
+                                  backgroundColor: PALETTE.amberBg,
+                                  color: PALETTE.amber,
+                                  fontWeight: 900,
+                                }}
+                              >
+                                BEFORE DATE
+                              </span>
+                            )}
+                            {row.date === simulatorData.upToDateDate && (
+                              <span
+                                style={{
+                                  marginLeft: 6,
+                                  fontSize: 10,
+                                  padding: "2px 6px",
+                                  borderRadius: 4,
+                                  backgroundColor: PALETTE.greenBg,
+                                  color: PALETTE.green,
+                                  fontWeight: 900,
+                                }}
+                              >
+                                UP-TO-DATE
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: "8px 6px", color: PALETTE.blue, fontWeight: 800 }}>
+                            {fmtMoney(row.navpu, modalFundMeta.currency, 5)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 6px",
+                              fontWeight: 800,
+                              color: row.chgPct >= 0 ? PALETTE.green : PALETTE.red,
+                            }}
+                          >
+                            {row.chgPct >= 0 ? "+" : ""}
+                            {row.chgPct.toFixed(2)}%
+                          </td>
+                          <td style={{ padding: "8px 6px", color: PALETTE.text, fontWeight: 900 }}>
+                            {fmtMoney(row.baselineValue, modalFundMeta.currency, 2)}
+                          </td>
+                          <td style={{ padding: "8px 6px", color: PALETTE.green, fontWeight: 900 }}>
+                            {fmtMoney(row.simulatedTotalValue, modalFundMeta.currency, 2)}
+                          </td>
+                          <td style={{ padding: "8px 6px", fontSize: 11, color: PALETTE.muted }}>{row.source}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Modal 1: Add / Edit Policy Fund Holding ── */}
       {holdingModalOpen && (
         <div
@@ -1949,7 +3262,7 @@ export default function PruFundTrackerTab({
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 99995,
+            zIndex: 99999,
             backgroundColor: "rgba(2, 8, 20, 0.88)",
             display: "flex",
             alignItems: "center",
@@ -2116,21 +3429,38 @@ export default function PruFundTrackerTab({
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setHoldingModalOpen(false)}
-                  style={solidBtnStyle({ bg: PALETTE.highContrast, fg: PALETTE.soft, border: PALETTE.border })}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveHolding}
-                  style={solidBtnStyle({ bg: PALETTE.greenBg, fg: PALETTE.text, border: PALETTE.green })}
-                >
-                  ✓ Save Policy Holding
-                </button>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
+                {editingHoldingId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleDeleteHolding(editingHoldingId);
+                      setHoldingModalOpen(false);
+                      setEditingHoldingId(null);
+                    }}
+                    style={solidBtnStyle({ bg: PALETTE.redBg, fg: PALETTE.red, border: PALETTE.red })}
+                  >
+                    🗑️ Remove Holding
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setHoldingModalOpen(false)}
+                    style={solidBtnStyle({ bg: PALETTE.highContrast, fg: PALETTE.soft, border: PALETTE.border })}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveHolding}
+                    style={solidBtnStyle({ bg: PALETTE.greenBg, fg: PALETTE.text, border: PALETTE.green })}
+                  >
+                    ✓ Save Policy Holding
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2145,7 +3475,7 @@ export default function PruFundTrackerTab({
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 99995,
+            zIndex: 99999,
             backgroundColor: "rgba(2, 8, 20, 0.88)",
             display: "flex",
             alignItems: "center",
@@ -2253,7 +3583,7 @@ export default function PruFundTrackerTab({
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 99995,
+            zIndex: 99999,
             backgroundColor: "rgba(2, 8, 20, 0.88)",
             display: "flex",
             alignItems: "center",
@@ -2273,7 +3603,7 @@ export default function PruFundTrackerTab({
             }}
           >
             <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 900 }}>
-              📥 Add or Import Historical NAVPU — {selectedFundMeta.fundName}
+              📥 Add or Import Historical NAVPU — {modalFundMeta?.fundName || selectedFundMeta.fundName}
             </h3>
             <p style={{ margin: "0 0 14px", fontSize: 12, color: PALETTE.muted }}>
               Backfill past NAVPU unit prices from your PruServices portal or monthly Fund Fact Sheets.
